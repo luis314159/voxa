@@ -1,0 +1,42 @@
+# Cómo debe pronunciar VOXA ciertas palabras. Sobre todo nombres en inglés,
+# que la voz en español lee letra por letra.
+#
+#   Palabra o frase: como se dice
+#
+# - Se escribe «a la española», con acento donde va el golpe de voz: «de bítels».
+# - Para un caso difícil se pueden dar fonemas IPA entre [[ ]]: «Gabriel: "[[ɡaβɾjˈel]]"».
+# - No importan mayúsculas ni minúsculas.
+# - Para agregar los tuyos sin tocar este archivo: ~/.config/voxa/pronunciacion.yaml
+#   (mismo formato; lo tuyo tiene prioridad).
+#
+# Para revisar: voxa decir --fonemas "The Beatles"
+
+# Servicios y palabras de la casa
+Spotify: espótifai
+YouTube: yutúb
+playlist: pléilist
+playlists: pléilists
+Bluetooth: blutúz
+Wi-Fi: uaifái
+OK: okéi
+
+# Artistas
+The Beatles: de bítels
+Coldplay: cóldplei
+Queen: cuín
+Michael Jackson: máikol yákson
+Bad Bunny: bad bóni
+Taylor Swift: téilor suift
+Imagine Dragons: imáyin drágons
+The Weeknd: de uíkend
+Ed Sheeran: ed shíran
+Metallica: metálica
+"Guns N' Roses": gans an róuses
+AC/DC: eisi disi
+Pink Floyd: pink flóid
+Daddy Yankee: dádi yánki
+J Balvin: yei bálvin
+Billie Eilish: bíli áilish
+Bruno Mars: brúno mars
+Lady Gaga: léidi gága
+Maroon 5: marún faiv

@@ -27,10 +27,10 @@
 
 # --- música ---
 - {text: "pon Soda Stereo", intent: music.play, slots: {query: soda stereo}}
-- {text: "Oye Voxa, ponme a Café Tacvba", intent: music.play, slots: {query: cafe tacvba}}
+- {text: "Oye Voxa, ponme a Café Tacvba", intent: music.play, slots: {query: café tacvba}}
 - {text: "pon música de Bad Bunny", intent: music.play, slots: {query: bad bunny, kind: artist}}
 - {text: "reproduce la canción Bohemian Rhapsody", intent: music.play, slots: {query: bohemian rhapsody, kind: track}}
-- {text: "pon el disco Re de Café Tacvba", intent: music.play, slots: {query: re de cafe tacvba, kind: album}}
+- {text: "pon el disco Re de Café Tacvba", intent: music.play, slots: {query: re de café tacvba, kind: album}}
 - {text: "pon mi playlist de cocina", intent: music.play, slots: {query: cocina, kind: playlist}}
 - {text: "quiero escuchar persiana americana de soda stereo", intent: music.play, slots: {query: persiana americana de soda stereo}}
 - {text: "pon algo de música", intent: media.resume}
@@ -72,7 +72,7 @@
 - {text: "quita el silencio", intent: volume.unmute}
 
 # --- video ---
-- {text: "pon un video de cómo hacer pan de elote", intent: video.play, slots: {query: como hacer pan de elote}}
+- {text: "pon un video de cómo hacer pan de elote", intent: video.play, slots: {query: cómo hacer pan de elote}}
 - {text: "busca en YouTube receta de pozole", intent: video.play, slots: {query: receta de pozole}}
 - {text: "cierra el video", intent: video.close}
 

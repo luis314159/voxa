@@ -51,6 +51,11 @@ class NowPlaying:
     title: str
     artist: str | None = None
     playing: bool = True
+    # Para la pantalla (solo MPRIS los llena; los segundos son flotantes).
+    album: str | None = None
+    art_url: str | None = None
+    position: float | None = None
+    length: float | None = None
 
 
 class MusicBackend(Protocol):

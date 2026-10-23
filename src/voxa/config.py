@@ -66,6 +66,12 @@ class VoiceConfig:
 
 
 @dataclass(frozen=True)
+class DisplayConfig:
+    enabled: bool = True
+    port: int = 8766
+
+
+@dataclass(frozen=True)
 class Config:
     spotify: SpotifyConfig = field(default_factory=SpotifyConfig)
     spotifast: SpotifastConfig = field(default_factory=SpotifastConfig)
@@ -73,12 +79,17 @@ class Config:
     timers: TimersConfig = field(default_factory=TimersConfig)
     weather: WeatherConfig = field(default_factory=WeatherConfig)
     voice: VoiceConfig = field(default_factory=VoiceConfig)
+    display: DisplayConfig = field(default_factory=DisplayConfig)
     config_dir: Path = field(default_factory=lambda: _xdg("XDG_CONFIG_HOME", ".config"))
     state_dir: Path = field(default_factory=lambda: _xdg("XDG_STATE_HOME", ".local/state"))
 
     @property
     def spotify_token_path(self) -> Path:
         return self.config_dir / "spotify_token.json"
+
+    @property
+    def pronunciation_path(self) -> Path:
+        return self.config_dir / "pronunciacion.yaml"
 
     @property
     def timers_path(self) -> Path:

@@ -55,6 +55,11 @@ duck_level = 0.2
 # Silencio que marca el fin de una orden.
 end_silence_ms = 720
 
+[display]
+# Canal local (solo 127.0.0.1) por el que la pantalla de cocina (voxa-ui) recibe el estado.
+enabled = true
+port = 8766
+
 [weather]
 # Ubicación de la casa para el clima (Open-Meteo). Ejemplo: Ciudad de México.
 # latitude = 19.43

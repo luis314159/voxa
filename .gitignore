@@ -10,3 +10,6 @@ spotify_token.json
 *.wav
 !assets/sounds/*.wav
 models/
+
+# Rust
+ui/target/

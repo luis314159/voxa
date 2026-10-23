@@ -10,7 +10,7 @@
 | YouTube | Firefox | **mpv + yt-dlp** (Firefox como plan B) | Menos RAM/CPU, control total por IPC, se puede mostrar «Escuchando…» encima del video. |
 | Audio | Micrófono y bocinas genéricas | **Bocina Bluetooth** + micrófono de la PC, con *ducking* y cancelación de eco | El mayor riesgo real es oír «Hey Voxa» con música sonando. |
 | Funciones | Música y video | + **temporizadores**, volumen, hora, clima, ayuda | En una cocina, los temporizadores son la función más usada. |
-| Rust | Fase 6 | Fuera del plan | Lo pesado (wake word, STT, TTS) ya corre en C/C++. Se reconsidera solo si las mediciones lo piden. |
+| Rust | Fase 6 | **La pantalla (`voxa-ui`) en Rust con egui** desde ya; el núcleo sigue en Python | La pantalla está encendida todo el día: en Rust usa 0.3 % de CPU en reposo y un binario de 9 MB, sin navegador. Lo pesado del núcleo (wake word, STT, TTS) ya corre en C/C++; pasarlo a Rust se decide con mediciones de la Fase 3. |
 | Calidad | Criterios generales | **Métricas con objetivos numéricos** y pruebas con audio real | «Excelente» tiene que poder medirse. |
 
 ## 1. Visión y principios
@@ -100,7 +100,7 @@ Todos corren como servicios `systemd --user` con `Restart=on-failure`:
 | `voxa-core` | Demonio Python (asyncio): audio, wake word, STT, intenciones, habilidades, TTS, servidor de la interfaz | 300–600 MB según el STT |
 | `spotifast` | Reproductor y dispositivo Spotify Connect «VOXA Cocina» (librespot). Arranca con la sesión en modo bandeja, sin ventana | 100–250 MB (dato del proyecto) |
 | `mpv` | Se lanza bajo demanda para videos | 150–250 MB a 720p |
-| `voxa-ui` | Ventana a pantalla completa (pywebview / WebKitGTK) con la interfaz web local | ~150 MB |
+| `voxa-ui` | Pantalla de cocina en Rust + egui (OpenGL), conectada a `voxa-core` por 127.0.0.1 | ~50–150 MB (a medir en el equipo) |
 | `voxa-bt` | Reconexión de la bocina (puede vivir dentro de `voxa-core`) | — |
 
 Con 4 GB hay margen. Con 2 GB: STT solo con Vosk (sin Whisper), escritorio Xfce, videos a 480p y, si aun así falta memoria, spotifyd (~30 MB, sin interfaz) en lugar de Spotifast.
@@ -221,7 +221,8 @@ Pensada para leerse a 3 metros y, si la pantalla es táctil, para usarse con el 
 | Micrófono apagado | Ícono tachado permanente y botón grande para reactivarlo |
 
 - Atenuar la pantalla de noche (horario configurable) y despertarla con la voz o al tocarla.
-- Interfaz en HTML/CSS servida por `voxa-core` (WebSocket para los estados) y mostrada con pywebview (WebKitGTK), que pesa menos que Firefox.
+- Programa aparte en **Rust + egui** (`ui/`), que recibe el estado de `voxa-core` como JSON por líneas en 127.0.0.1 (`src/voxa/display.py`). Los segundos de temporizadores y canciones los cuenta la pantalla; solo se repinta una vez por segundo, o a 30 fps mientras el anillo se anima.
+- **Fondos:** fotos de paisajes y pueblos (dominio público/CC0, `scripts/descargar_fondos.py`) o de la familia, que rotan cada 10 minutos con un velo oscuro para que el texto se lea.
 - Durante un video, los estados se muestran con el OSD de mpv.
 
 ## 8. Fiabilidad y operación
@@ -342,7 +343,9 @@ voxa/
 │   ├── skills/             # music, volume, timers, video, clock, weather, system, help
 │   ├── services/           # music_backend, spotify_api, spotifast_cli, mpris, mpv_ipc, pipewire, bluetooth
 │   ├── state/              # persistencia (temporizadores)
-│   └── ui/                 # server.py + web/ (HTML/CSS/JS)
+│   ├── display.py          # estado y canal local para la pantalla
+│   └── service.py          # voz + pantalla + temporizadores
+├── ui/                     # voxa-ui: pantalla de cocina en Rust + egui
 └── tests/
     ├── data/utterances.yaml
     ├── test_nlu.py

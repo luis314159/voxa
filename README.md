@@ -18,8 +18,9 @@ Asistente de voz familiar para la cocina, sobre una PC All-in-One con Linux Mint
 | Volumen (PipeWire), hora, clima (Open-Meteo) | ✅ |
 | Modo texto (`voxa texto`) | ✅ |
 | Voz con «pulsar para hablar» (`voxa voz`): micrófono, fin de frase, STT híbrido Vosk/Whisper, Piper, sonidos, ducking | ✅ (falta calibrar en el equipo real) |
+| Pantalla de cocina (`ui/`, Rust + egui): reloj, temporizadores, música, anillo animado, fondos | ✅ (falta probar en el equipo real) |
 | «Hey Voxa» (detector de palabra de activación) | ⏳ Fase 3 |
-| Interfaz de cocina, servicios systemd | ⏳ Fase 4 |
+| Servicios systemd e instalador | ⏳ Fase 4 |
 | Videos (mpv + yt-dlp) | ⏳ Fase 5 |
 
 ## Probarlo (sin micrófono)
@@ -49,10 +50,24 @@ export VOXA_CONFIG=config/dev.toml          # PowerShell: $env:VOXA_CONFIG="conf
 voxa voz --simulado                         # Enter → hablar
 voxa decir "Diez minutos para el arroz."    # probar la voz
 voxa sonidos                                # escuchar los sonidos de VOXA
+voxa decir --fonemas "Juan Gabriel"         # revisar una pronunciación
 voxa escuchar grabacion.wav                 # procesar una grabación
 ```
 
 `scripts/evaluar_voz.py` mide la cadena voz → intención: Piper «dice» todo el corpus (con ruido opcional) y compara Vosk, Whisper y el híbrido. Con voces sintéticas (más difíciles que una voz real) el híbrido llega a 81 % con Whisper *base* y a 87 % con *small*. La elección final sale del benchmark de la Fase 0 en el equipo real.
+
+Si VOXA pronuncia mal un nombre, agrégalo a `~/.config/voxa/pronunciacion.yaml` (formato en [src/voxa/audio/pronunciacion.yaml](src/voxa/audio/pronunciacion.yaml)).
+
+### Pantalla de cocina
+
+```bash
+cd ui && cargo build --release               # requiere Rust (https://rustup.rs)
+python scripts/demo_pantalla.py              # datos de ejemplo, sin micrófono ni Spotify
+ui/target/release/voxa-ui                    # --completa para pantalla completa
+python scripts/descargar_fondos.py           # fondos: paisajes y pueblos en dominio público/CC0
+```
+
+La pantalla se conecta sola a `voxa texto`, `voxa voz` o `voxa servicio` (puerto 8766, solo local) y se reconecta si VOXA se reinicia. Tocar el anillo equivale a pulsar para hablar. Las fotos de `~/.local/share/voxa/fondos/` (también las tuyas) rotan cada 10 minutos (`--cambio-fondo`).
 
 Sin `--simulado`, usa Spotify, Spotifast y PipeWire reales. Para configurarlos, ver la [guía de la Fase 0](docs/fase0_guia.md#51-probar-voxa-con-spotify-real-modo-texto).
 
@@ -73,8 +88,11 @@ src/voxa/
 ├── skills/     música, volumen, temporizadores, hora, clima, sistema
 ├── services/   Spotify (Web API, auth PKCE), Spotifast CLI, MPRIS, PipeWire, Open-Meteo
 ├── state/      temporizadores persistentes
+├── display.py  estado para la pantalla y su canal local
+├── service.py  voz + pantalla + temporizadores juntos
 ├── app.py      arma todo
-└── main.py     CLI: voxa texto | voxa spotify-login
+└── main.py     CLI: voxa texto | voz | servicio | decir | spotify-login
+ui/             voxa-ui: pantalla de cocina (Rust + egui)
 scripts/fase0/  diagnóstico y benchmarks para correr en la PC
 config/         configuración de ejemplo
 ```

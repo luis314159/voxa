@@ -12,7 +12,7 @@ from typing import Any, Callable
 import yaml
 
 from voxa.core.types import Intent
-from voxa.nlu.normalize import normalize, phonetic_key, strip_accents
+from voxa.nlu.normalize import normalize, phonetic_key, restore_original, strip_accents
 from voxa.nlu.numbers import DURATION_WORDS, NUMBER_WORDS, parse_duration, parse_number
 
 _NUMBER_TOKEN = r"\d+(?:\.\d+)?"
@@ -146,6 +146,8 @@ class Matcher:
                 if slots is None:
                     continue
                 slots.update(pattern.fixed)
+                for name in _FREE_SLOTS & slots.keys():
+                    slots[name] = restore_original(slots[name], raw)
                 return Intent(spec.name, slots, text, raw)
         return None
 

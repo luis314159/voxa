@@ -87,3 +87,19 @@ def test_fuzzy_correction_does_not_touch_free_text():
     intent = MATCHER.match("pon soda estereo")
     assert intent.name == "music.play"
     assert intent.slots["query"] == "soda estereo"
+
+
+def test_free_slots_keep_accents_and_enye():
+    matcher = load_matcher()
+    assert matcher.match("Pon a José José").slots["query"] == "josé josé"
+    assert matcher.match("pon un temporizador de 5 minutos para la piñata").slots["name"] == "la piñata"
+    # Si el STT cambió la palabra, se queda la versión normalizada.
+    assert matcher.match("con soda stereo").slots["query"] == "soda stereo"
+
+
+def test_timer_labels_match_without_accents():
+    from voxa.state.timers import TimerManager
+
+    timers = TimerManager()
+    timer = timers.add(60, "el té")
+    assert timers.find("te") == [timer]

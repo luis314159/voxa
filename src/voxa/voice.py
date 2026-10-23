@@ -9,6 +9,7 @@ import asyncio
 import logging
 import time
 from dataclasses import dataclass, field
+from typing import Protocol
 
 from voxa.audio.clip import Clip
 from voxa.audio.devices import AudioOutput, Microphone
@@ -45,6 +46,21 @@ class TurnTimings:
         return f"escucha {self.listen:.2f}s · STT {self.stt:.2f}s · acción {self.nlu_and_action:.2f}s · TTS {self.tts:.2f}s"
 
 
+class TurnObserver(Protocol):
+    """Quien quiera seguir el turno (la pantalla): fase actual y qué se oyó/respondió."""
+
+    def phase(self, name: str) -> None: ...  # idle | listening | thinking | speaking
+    def exchange(self, heard: str, response: Response | None) -> None: ...
+
+
+class _NoObserver:
+    def phase(self, name: str) -> None:
+        pass
+
+    def exchange(self, heard: str, response: Response | None) -> None:
+        pass
+
+
 @dataclass
 class TurnResult:
     heard: str | None
@@ -63,6 +79,7 @@ class VoiceSession:
         ducker: Ducker,
         echo_guard_ms: int = 240,
         endpoint: EndpointConfig | None = None,
+        observer: TurnObserver | None = None,
     ) -> None:
         self.assistant = assistant
         self._stt = stt
@@ -73,6 +90,7 @@ class VoiceSession:
         self._echo_guard_ms = echo_guard_ms
         self._endpoint = endpoint or EndpointConfig()
         self._speaking = asyncio.Lock()
+        self.observer: TurnObserver = observer or _NoObserver()
 
     def warm_up(self, phrases: list[str] = COMMON_PHRASES) -> None:
         if self._tts is not None and hasattr(self._tts, "warm_up"):
@@ -82,6 +100,7 @@ class VoiceSession:
         timings = TurnTimings()
         await self._ducker.duck()
         try:
+            self.observer.phase("listening")
             await self._output.play(self._sounds["listening"])
             start = time.perf_counter()
             audio = await mic.record_utterance(UtteranceCollector(self._endpoint), skip_ms=self._echo_guard_ms)
@@ -91,20 +110,24 @@ class VoiceSession:
                 return TurnResult(None, None, timings)
             return await self.respond_to_audio(audio, timings)
         finally:
+            self.observer.phase("idle")
             await self._ducker.restore()
 
     async def respond_to_audio(self, audio, timings: TurnTimings | None = None) -> TurnResult:
         timings = timings or TurnTimings()
+        self.observer.phase("thinking")
         start = time.perf_counter()
         text = await asyncio.to_thread(self._stt.transcribe, audio)
         timings.stt = time.perf_counter() - start
         if not text:
+            self.observer.exchange("", None)
             await self._output.play(self._sounds["error"])
             return TurnResult("", None, timings)
 
         start = time.perf_counter()
         response = await self.assistant.handle_text(text)
         timings.nlu_and_action = time.perf_counter() - start
+        self.observer.exchange(text, response)
         timings.tts = await self.say(response)
         log.info("«%s» → %s (%s)", text, response.speech or response.sound, timings)
         return TurnResult(text, response, timings)
@@ -116,7 +139,11 @@ class VoiceSession:
                 start = time.perf_counter()
                 clip = await asyncio.to_thread(self._tts.synthesize, response.speech)
                 elapsed = time.perf_counter() - start
-                await self._output.play(clip)
+                self.observer.phase("speaking")
+                try:
+                    await self._output.play(clip)
+                finally:
+                    self.observer.phase("idle")
                 return elapsed
             if response.sound or response.speech:
                 await self._output.play(self._sounds.get(response.sound or "ok", self._sounds["ok"]))

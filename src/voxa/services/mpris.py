@@ -7,6 +7,18 @@ import asyncio
 from voxa.services.music_backend import BackendUnavailable, NotSupported, NowPlaying, PlayResult
 from voxa.services.process import CommandNotFound, CommandRunner, run_command
 
+_METADATA_FORMAT = "\t".join(
+    ["{{status}}", "{{title}}", "{{artist}}", "{{album}}", "{{mpris:artUrl}}", "{{position}}", "{{mpris:length}}"]
+)
+
+
+def _seconds(microseconds: str) -> float | None:
+    """MPRIS mide en microsegundos."""
+    try:
+        return int(microseconds) / 1_000_000
+    except ValueError:
+        return None
+
 
 class PlayerctlBackend:
     name = "mpris"
@@ -51,11 +63,21 @@ class PlayerctlBackend:
         raise NotSupported("MPRIS no tiene «me gusta»")
 
     async def now_playing(self) -> NowPlaying | None:
-        out = await self._call("metadata", "--format", "{{status}}\t{{title}}\t{{artist}}")
+        out = await self._call("metadata", "--format", _METADATA_FORMAT)
         fields = out.rstrip("\n").split("\t")
         if len(fields) < 3 or not fields[1]:
             return None
-        return NowPlaying(fields[1], fields[2] or None, playing=fields[0] == "Playing")
+        fields += [""] * (7 - len(fields))
+        status, title, artist, album, art_url, position, length = fields[:7]
+        return NowPlaying(
+            title,
+            artist or None,
+            playing=status == "Playing",
+            album=album or None,
+            art_url=art_url or None,
+            position=_seconds(position),
+            length=_seconds(length),
+        )
 
     async def transfer(self, device: str) -> str:
         raise NotSupported("MPRIS no conoce otros dispositivos")

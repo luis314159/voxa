@@ -68,6 +68,14 @@ async def test_playerctl_commands():
     np = await backend.now_playing()
     assert run.calls[0] == ["playerctl", "--player=spotifast", "position", "10-"]
     assert np.title == "De música ligera" and not np.playing
+    assert np.art_url is None and np.position is None
+
+
+async def test_playerctl_metadata_for_display():
+    line = "Playing\tPersiana americana\tSoda Stereo\tSignos\thttps://i.scdn.co/image/abc\t61500000\t287000000\n"
+    backend = PlayerctlBackend("spotifast", run=FakeRunner(CommandResult(0, line)))
+    np = await backend.now_playing()
+    assert (np.album, np.art_url, np.position, np.length) == ("Signos", "https://i.scdn.co/image/abc", 61.5, 287.0)
 
 
 class Failing:

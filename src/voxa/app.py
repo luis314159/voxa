@@ -5,14 +5,14 @@ from __future__ import annotations
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING, Awaitable, Callable
 
 from voxa.config import Config
 from voxa.core.assistant import Assistant
 from voxa.nlu.matcher import Matcher, load_matcher
 from voxa.services.http import UrllibHttp
 from voxa.services.mpris import PlayerctlBackend
-from voxa.services.music_backend import LayeredMusicBackend, MusicBackend
+from voxa.services.music_backend import LayeredMusicBackend, MusicBackend, NowPlaying
 from voxa.services.pipewire import VolumeControl, WpctlVolume
 from voxa.services.simulated import SimulatedMusic, SimulatedVolume
 from voxa.services.spotifast_cli import SpotifastCli
@@ -38,6 +38,8 @@ class App:
     assistant: Assistant
     timers: TimerManager
     matcher: Matcher
+    # Para la pantalla: lo que suena, preguntado localmente por MPRIS (sin gastar la Web API).
+    now_playing: Callable[[], Awaitable[NowPlaying | None]] | None = None
 
 
 class SetupError(Exception):
@@ -69,11 +71,13 @@ def build_stt(config: Config, matcher: Matcher) -> SpeechToText:
 
 
 def build_tts(config: Config) -> PiperTts:
+    from voxa.audio.pronunciation import DEFAULT_LEXICON, Lexicon
     from voxa.audio.tts import PiperTts
 
     hint = "Descarga una voz con: python -m piper.download_voices es_MX-claude-high --download-dir models/piper"
     model = _existing(config.voice.piper_voice, "la voz de Piper", hint)
-    return PiperTts(model, config.tts_cache_dir, config.voice.speech_rate)
+    lexicon = Lexicon.load(DEFAULT_LEXICON, config.pronunciation_path)
+    return PiperTts(model, config.tts_cache_dir, config.voice.speech_rate, lexicon)
 
 
 def build_voice(config: Config, app: App, *, simulated: bool = False) -> VoiceSession:
@@ -114,6 +118,7 @@ def build_app(config: Config, *, simulated: bool = False, on_ring: Callable[[Tim
         ring_timeout_seconds=config.timers.alarm_timeout_minutes * 60,
     )
     music: MusicBackend = SimulatedMusic() if simulated else build_music(config)
+    now_playing = music.now_playing if simulated else PlayerctlBackend(config.spotifast.mpris_player).now_playing
     volume: VolumeControl = SimulatedVolume() if simulated else WpctlVolume()
     weather = None
     if config.weather.latitude is not None and config.weather.longitude is not None:
@@ -128,4 +133,4 @@ def build_app(config: Config, *, simulated: bool = False, on_ring: Callable[[Tim
         "system": SystemSkill(),
     }
     matcher = load_matcher()
-    return App(Assistant(matcher, skills, timers), timers, matcher)
+    return App(Assistant(matcher, skills, timers), timers, matcher, now_playing)

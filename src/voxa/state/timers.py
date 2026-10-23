@@ -10,6 +10,8 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Callable
 
+from voxa.nlu.normalize import strip_accents
+
 log = logging.getLogger(__name__)
 
 _ARTICLES = ("el ", "la ", "los ", "las ", "al ", "del ", "de ", "a ", "para ", "mi ", "mis ")
@@ -19,7 +21,12 @@ _MAX_OVERDUE_ON_LOAD = 3600
 
 
 def label_key(label: str) -> str:
-    """Clave para comparar nombres: «al arroz», «del arroz» y «arroz» son el mismo."""
+    """Clave para comparar nombres: «al arroz», «del arroz» y «arroz» son el mismo; «té» y «te» también."""
+    return strip_accents(display_label(label))
+
+
+def display_label(label: str) -> str:
+    """El nombre sin artículos, para mostrarlo: «el té» → «té»."""
     key = label.strip().lower()
     changed = True
     while changed:

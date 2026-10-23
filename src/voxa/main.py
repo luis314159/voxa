@@ -1,4 +1,4 @@
-"""Punto de entrada: ``voxa texto | voz | decir | escuchar | sonidos | spotify-login``."""
+"""Punto de entrada: ``voxa texto | voz | servicio | decir | escuchar | sonidos | spotify-login``."""
 
 from __future__ import annotations
 
@@ -18,6 +18,8 @@ from pathlib import Path
 from voxa.app import SetupError, build_app, build_tts, build_voice
 from voxa.config import Config, load_config
 from voxa.core.types import Response
+from voxa.display import Display
+from voxa.service import Service
 from voxa.services.http import UrllibHttp
 from voxa.services.spotify_auth import SpotifyAuth, new_verifier
 from voxa.skills.timers import ring_phrase
@@ -32,15 +34,29 @@ def render(response: Response) -> str:
     return f"VOXA: [sonido: {response.sound or 'ok'}]"
 
 
-async def run_text_mode(config: Config, simulated: bool) -> None:
+def _service(config: Config, simulated: bool, on_ring_print: bool = True) -> Service:
+    service: Service | None = None
+
     def on_ring(timer: Timer) -> None:
-        print(f"\n[alarma] {ring_phrase(timer)}  (di «ya» o «para»)\n> ", end="", flush=True)
+        if on_ring_print:
+            print(f"\n[alarma] {ring_phrase(timer)}")
+        if service is not None:
+            service.on_ring(timer)
 
     app = build_app(config, simulated=simulated, on_ring=on_ring)
-    ticker = asyncio.create_task(app.timers.run())
-    mode = "simulado" if simulated else "real"
-    print(f"VOXA en modo texto ({mode}). Escribe una orden como si la dijeras; «salir» para terminar.")
-    try:
+    service = Service(app, Display(app.timers, app.now_playing))
+    return service
+
+
+def _display_port(config: Config) -> int | None:
+    return config.display.port if config.display.enabled else None
+
+
+async def run_text_mode(config: Config, simulated: bool) -> None:
+    service = _service(config, simulated)
+    async with service.running(_display_port(config)):
+        mode = "simulado" if simulated else "real"
+        print(f"VOXA en modo texto ({mode}). Escribe una orden como si la dijeras; «salir» para terminar.")
         while True:
             try:
                 line = await asyncio.to_thread(input, "> ")
@@ -48,13 +64,8 @@ async def run_text_mode(config: Config, simulated: bool) -> None:
                 break
             if line.strip().lower() in _EXIT_WORDS:
                 break
-            if not line.strip():
-                continue
-            print(render(await app.assistant.handle_text(line)))
-    finally:
-        ticker.cancel()
-        with contextlib.suppress(asyncio.CancelledError):
-            await ticker
+            if line.strip():
+                print(render(await service.handle_text(line)))
 
 
 def _device(value: str) -> str | int | None:
@@ -63,55 +74,61 @@ def _device(value: str) -> str | int | None:
     return int(value) if value.isdigit() else value
 
 
+async def _with_voice(config: Config, service: Service, simulated: bool):
+    print("Cargando modelos de voz…")
+    session = await asyncio.to_thread(build_voice, config, service.app, simulated=simulated)
+    await asyncio.to_thread(session.warm_up)
+    return session
+
+
 async def run_voice_mode(config: Config, simulated: bool) -> None:
     from voxa.audio.devices import Microphone
 
-    loop = asyncio.get_running_loop()
-    session = None
-
-    def on_ring(timer: Timer) -> None:
-        print(f"\n[alarma] {ring_phrase(timer)}")
-        if session is not None:
-            loop.create_task(session.announce(ring_phrase(timer)))
-
-    app = build_app(config, simulated=simulated, on_ring=on_ring)
-    print("Cargando modelos de voz…")
-    session = await asyncio.to_thread(build_voice, config, app, simulated=simulated)
-    await asyncio.to_thread(session.warm_up)
-    ticker = asyncio.create_task(app.timers.run())
-    try:
-        async with Microphone(_device(config.voice.input_device)) as mic:
-            print("Listo. Pulsa Enter y habla (o escribe una orden). «salir» para terminar.")
-            while True:
-                try:
-                    line = await asyncio.to_thread(input, "🎙  ")
-                except EOFError:
-                    break
-                if line.strip().lower() in _EXIT_WORDS:
-                    break
-                if line.strip():
-                    response = await app.assistant.handle_text(line)
-                    print(render(response))
-                    await session.say(response)
-                    continue
-                result = await session.turn(mic)
-                if result.heard is None:
-                    print("(no escuché nada)")
-                    continue
-                print(f"Escuché: «{result.heard}»")
-                if result.response:
-                    print(render(result.response))
-                print(f"   {result.timings}")
-    finally:
-        ticker.cancel()
-        with contextlib.suppress(asyncio.CancelledError):
-            await ticker
+    service = _service(config, simulated)
+    session = await _with_voice(config, service, simulated)
+    async with Microphone(_device(config.voice.input_device)) as mic, service.running(_display_port(config)):
+        service.attach_voice(session, mic)
+        print("Listo. Pulsa Enter y habla (o escribe una orden). «salir» para terminar.")
+        while True:
+            try:
+                line = await asyncio.to_thread(input, "🎙  ")
+            except EOFError:
+                break
+            if line.strip().lower() in _EXIT_WORDS:
+                break
+            if line.strip():
+                print(render(await service.handle_text(line)))
+                continue
+            result = await service.talk()
+            if result is None:
+                continue
+            if result.heard is None:
+                print("(no escuché nada)")
+                continue
+            print(f"Escuché: «{result.heard}»")
+            if result.response:
+                print(render(result.response))
+            print(f"   {result.timings}")
 
 
-async def say_text(config: Config, text: str) -> None:
+async def run_service(config: Config, simulated: bool) -> None:
+    """Modo permanente (systemd): sin teclado; las órdenes llegan por la pantalla y, en la Fase 3, «Hey Voxa»."""
+    from voxa.audio.devices import Microphone
+
+    service = _service(config, simulated, on_ring_print=False)
+    session = await _with_voice(config, service, simulated)
+    async with Microphone(_device(config.voice.input_device)) as mic, service.running(_display_port(config)):
+        service.attach_voice(session, mic)
+        logging.getLogger(__name__).warning("VOXA lista.")
+        await asyncio.Event().wait()
+
+
+async def say_text(config: Config, text: str, show_phonemes: bool = False) -> None:
     from voxa.audio.devices import SpeakerOutput
 
     tts = await asyncio.to_thread(build_tts, config)
+    if show_phonemes:
+        print(f"Fonemas: {tts.phonemes(text)}")
     start = time.perf_counter()
     clip = await asyncio.to_thread(tts.synthesize, text)
     print(f"Síntesis: {time.perf_counter() - start:.2f}s · audio: {clip.seconds:.1f}s")
@@ -202,8 +219,11 @@ def main(argv: list[str] | None = None) -> int:
     text.add_argument("--simulado", action="store_true", help="música y volumen simulados (sin Spotify ni PipeWire)")
     voice = sub.add_parser("voz", help="pulsa Enter y habla: micrófono, STT, respuesta hablada")
     voice.add_argument("--simulado", action="store_true", help="música y volumen simulados")
+    daemon = sub.add_parser("servicio", help="modo permanente para systemd: voz + pantalla, sin teclado")
+    daemon.add_argument("--simulado", action="store_true", help="música y volumen simulados")
     say = sub.add_parser("decir", help="prueba la voz de VOXA")
     say.add_argument("texto", nargs="+")
+    say.add_argument("--fonemas", action="store_true", help="muestra los fonemas (para ajustar pronunciacion.yaml)")
     listen = sub.add_parser("escuchar", help="procesa una grabación WAV como si fuera una orden")
     listen.add_argument("archivo", type=Path)
     listen.add_argument("--simulado", action="store_true")
@@ -225,7 +245,8 @@ def main(argv: list[str] | None = None) -> int:
     commands = {
         "texto": lambda: run_text_mode(config, args.simulado),
         "voz": lambda: run_voice_mode(config, args.simulado),
-        "decir": lambda: say_text(config, " ".join(args.texto)),
+        "servicio": lambda: run_service(config, args.simulado),
+        "decir": lambda: say_text(config, " ".join(args.texto), args.fonemas),
         "escuchar": lambda: listen_file(config, args.archivo, args.simulado),
         "sonidos": lambda: play_sounds(config, args.guardar),
     }

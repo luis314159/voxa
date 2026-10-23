@@ -35,6 +35,21 @@ def strip_accents(text: str) -> str:
     return "".join(ch for ch in decomposed if unicodedata.category(ch) != "Mn")
 
 
+def restore_original(value: str, raw: str) -> str:
+    """El fragmento de ``raw`` que corresponde a ``value`` (ya normalizado), con sus acentos y eñes.
+
+    «pon a José José» → slot «jose jose» → «josé josé»: para que VOXA lo diga con el acento en su lugar
+    y Spotify lo busque tal cual. Si el STT cambió las palabras, se queda el valor normalizado.
+    """
+    words = re.findall(r"\w+", raw.lower())
+    target = value.split()
+    keys = [strip_accents(w) for w in words]
+    for i in range(len(words) - len(target) + 1):
+        if keys[i : i + len(target)] == target:
+            return " ".join(words[i : i + len(target)])
+    return value
+
+
 def normalize(text: str) -> str:
     text = strip_accents(text.lower())
     text = _DECIMAL.sub(r"\1.\2", text)

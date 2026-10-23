@@ -11,8 +11,11 @@ from typing import Protocol
 import numpy as np
 
 from voxa.audio.clip import Clip
+from voxa.audio.pronunciation import Lexicon, fix_phonemes
 
 log = logging.getLogger(__name__)
+
+_PHONEME_FIXES_VERSION = 1  # súbelo al cambiar fix_phonemes: invalida el audio en caché
 
 
 class TextToSpeech(Protocol):
@@ -20,16 +23,31 @@ class TextToSpeech(Protocol):
 
 
 class PiperTts:
-    def __init__(self, model: Path, cache_dir: Path | None = None, length_scale: float = 1.0) -> None:
+    def __init__(
+        self,
+        model: Path,
+        cache_dir: Path | None = None,
+        length_scale: float = 1.0,
+        lexicon: Lexicon | None = None,
+    ) -> None:
         from piper import PiperVoice, SynthesisConfig  # import perezoso: solo si se usa voz
 
         self._voice = PiperVoice.load(model)
+        espeak_phonemize = self._voice.phonemize
+        self._voice.phonemize = lambda text: [fix_phonemes(s) for s in espeak_phonemize(text)]
         self._config = SynthesisConfig(length_scale=length_scale)
+        self._lexicon = lexicon or Lexicon({})
         self._cache_dir = cache_dir
-        self._cache_prefix = f"{model.stem}-{length_scale}"
+        self._cache_prefix = f"{model.stem}-{length_scale}-{_PHONEME_FIXES_VERSION}"
         self._lock = threading.Lock()  # el modelo ONNX no se comparte entre hilos
 
+    def phonemes(self, text: str) -> str:
+        """Fonemas que Piper usará, con los ajustes aplicados (para depurar pronunciaciones)."""
+        with self._lock:
+            return " | ".join("".join(s) for s in self._voice.phonemize(self._lexicon.apply(text)))
+
     def synthesize(self, text: str) -> Clip:
+        text = self._lexicon.apply(text)
         cached = self._cache_path(text)
         if cached and cached.exists():
             return Clip.load(cached)

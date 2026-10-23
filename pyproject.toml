@@ -37,7 +37,7 @@ voxa = "voxa.main:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-voxa = ["nlu/*.yaml"]
+voxa = ["nlu/*.yaml", "audio/*.yaml"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
