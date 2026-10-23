@@ -123,7 +123,7 @@ impl Backgrounds {
         let mut veil = egui::Mesh::default();
         let dark = |a: f32| Color32::from_rgba_unmultiplied(0x0B, 0x10, 0x20, (a * 255.0) as u8);
         let middle = rect.left() + rect.width() * 0.62;
-        for (x, a) in [(rect.left(), 0.62), (middle, 0.18), (rect.right(), 0.30)] {
+        for (x, a) in [(rect.left(), 0.66), (middle, 0.30), (rect.right(), 0.42)] {
             veil.colored_vertex(pos2(x, rect.top()), dark(a));
             veil.colored_vertex(pos2(x, rect.bottom()), dark(a));
         }

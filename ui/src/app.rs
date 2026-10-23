@@ -103,7 +103,7 @@ impl eframe::App for VoxaApp {
         if let Some(backgrounds) = &mut self.backgrounds {
             let ppp = ui.ctx().pixels_per_point();
             backgrounds.update(ui.ctx(), [(rect.width() * ppp) as u32, (rect.height() * ppp) as u32]);
-            backgrounds.paint(&painter, rect, 0.72);
+            backgrounds.paint(&painter, rect, 0.66);
         }
 
         let margin = f.px(72.0);
@@ -126,7 +126,7 @@ impl eframe::App for VoxaApp {
         self.timers(ui, &painter, &f, timers_area, &state);
         let mut footer = rect.bottom() - f.px(28.0);
         if let Some(place) = self.backgrounds.as_ref().and_then(Backgrounds::caption) {
-            let shown = painter.text(
+            let shown = widgets::shadow_text(&painter, 
                 pos2(right.right(), footer),
                 Align2::RIGHT_BOTTOM,
                 place,
@@ -136,7 +136,7 @@ impl eframe::App for VoxaApp {
             footer = shown.top() - f.px(6.0);
         }
         if !connected {
-            painter.text(
+            widgets::shadow_text(&painter, 
                 pos2(right.right(), footer),
                 Align2::RIGHT_BOTTOM,
                 "Sin conexión con VOXA · reintentando…",
@@ -160,7 +160,7 @@ impl VoxaApp {
     fn clock_and_caption(&self, painter: &Painter, f: &Frame, area: Rect, state: &State) -> f32 {
         let local = chrono::Local::now();
         let date = format::date(local.date_naive());
-        painter.text(area.left_top(), Align2::LEFT_TOP, &date, theme::regular(f.px(44.0)), theme::TEXT_DIM);
+        widgets::shadow_text(painter, area.left_top(), Align2::LEFT_TOP, &date, theme::regular(f.px(44.0)), theme::TEXT_DIM);
 
         let (time, suffix) = format::clock(local.time(), self.options.twenty_four_hours);
         let clock_top = area.top() + f.px(50.0);
@@ -173,7 +173,7 @@ impl VoxaApp {
             theme::TEXT,
         );
         if let Some(suffix) = suffix {
-            painter.text(
+            widgets::shadow_text(painter, 
                 pos2(clock.right() + f.px(18.0), clock.bottom() - f.px(58.0)),
                 Align2::LEFT_BOTTOM,
                 suffix,
@@ -188,7 +188,7 @@ impl VoxaApp {
         let listening = matches!(state.phase, Phase::Listening | Phase::Thinking);
         if listening {
             let text = if state.phase == Phase::Listening { "Te escucho…" } else { "Un momento…" };
-            painter.text(pos2(area.left(), y), Align2::LEFT_TOP, text, theme::regular(f.px(52.0)), theme::CYAN);
+            widgets::shadow_text(painter, pos2(area.left(), y), Align2::LEFT_TOP, text, theme::regular(f.px(52.0)), theme::CYAN);
         } else if fade > 0.0 {
             if let Some(heard) = &state.heard {
                 let galley = painter.layout(
@@ -198,7 +198,7 @@ impl VoxaApp {
                     area.width(),
                 );
                 let h = galley.size().y;
-                painter.galley(pos2(area.left(), y), galley, theme::TEXT_DIM);
+                widgets::shadow_galley(painter, pos2(area.left(), y), galley, theme::TEXT_DIM);
                 y += h + f.px(12.0);
             }
             if let Some(answer) = &state.answer {
@@ -209,7 +209,7 @@ impl VoxaApp {
                     area.width(),
                 );
                 let h = galley.size().y;
-                painter.galley(pos2(area.left(), y), galley, theme::TEXT);
+                widgets::shadow_galley(painter, pos2(area.left(), y), galley, theme::TEXT);
                 y += h;
             }
         }
@@ -286,8 +286,8 @@ impl VoxaApp {
                 let bar = Rect::from_min_max(pos2(progress_left, y - f.px(4.0)), pos2(card.right(), y + f.px(4.0)));
                 widgets::progress_bar(painter, bar, (position / length) as f32, None);
                 let font = theme::regular(f.px(24.0));
-                painter.text(bar.left_bottom() + vec2(0.0, f.px(12.0)), Align2::LEFT_TOP, format::track_time(position), font.clone(), theme::TEXT_DIM);
-                painter.text(bar.right_bottom() + vec2(0.0, f.px(12.0)), Align2::RIGHT_TOP, format::track_time(length), font, theme::TEXT_DIM);
+                widgets::shadow_text(painter, bar.left_bottom() + vec2(0.0, f.px(12.0)), Align2::LEFT_TOP, format::track_time(position), font.clone(), theme::TEXT_DIM);
+                widgets::shadow_text(painter, bar.right_bottom() + vec2(0.0, f.px(12.0)), Align2::RIGHT_TOP, format::track_time(length), font, theme::TEXT_DIM);
             }
         }
     }
@@ -306,7 +306,7 @@ impl VoxaApp {
 
         // En reposo se invita a tocar; al escuchar o pensar lo dice el texto grande de la izquierda.
         if connected && state.phase == Phase::Idle {
-            painter.text(
+            widgets::shadow_text(painter, 
                 pos2(center.x - radius * 1.45, center.y),
                 Align2::RIGHT_CENTER,
                 "Toca para hablar",
@@ -334,7 +334,7 @@ impl VoxaApp {
         let hidden = state.timers.len() - shown;
         if hidden > 0 {
             let text = if hidden == 1 { "y 1 temporizador más".to_owned() } else { format!("y {hidden} temporizadores más") };
-            painter.text(pos2(area.left(), y), Align2::LEFT_TOP, text, theme::regular(f.px(32.0)), theme::TEXT_DIM);
+            widgets::shadow_text(painter, pos2(area.left(), y), Align2::LEFT_TOP, text, theme::regular(f.px(32.0)), theme::TEXT_DIM);
         }
     }
 
@@ -348,8 +348,8 @@ impl VoxaApp {
             let glow = widgets::pulse(f.time, 1.2);
             painter.rect_filled(card, radius, theme::lerp(theme::ALARM_DIM, theme::lerp(theme::CARD, theme::ALARM, 0.45), glow));
             painter.rect_stroke(card, radius, egui::Stroke::new(f.px(3.0), theme::ALARM), egui::StrokeKind::Inside);
-            painter.text(card.left_top() + vec2(pad, pad * 0.8), Align2::LEFT_TOP, format!("¡{label} listo!"), theme::strong(f.px(52.0)), theme::TEXT);
-            painter.text(card.left_bottom() + vec2(pad, -pad * 0.8), Align2::LEFT_BOTTOM, "Toca para detener la alarma", theme::regular(f.px(30.0)), theme::TEXT);
+            widgets::shadow_text(painter, card.left_top() + vec2(pad, pad * 0.8), Align2::LEFT_TOP, format!("¡{label} listo!"), theme::strong(f.px(52.0)), theme::TEXT);
+            widgets::shadow_text(painter, card.left_bottom() + vec2(pad, -pad * 0.8), Align2::LEFT_BOTTOM, "Toca para detener la alarma", theme::regular(f.px(30.0)), theme::TEXT);
             if response.clicked() {
                 self.send(Command::StopAlarm);
             }
@@ -359,7 +359,7 @@ impl VoxaApp {
         painter.rect_filled(card, radius, if response.hovered() { theme::CARD_HOVER } else { theme::CARD });
         let label_font = theme::regular(f.px(36.0));
         widgets::fitted_text(painter, card.left_top() + vec2(pad, pad * 0.75), Align2::LEFT_TOP, &label, label_font, theme::TEXT_DIM, card.width() * 0.45);
-        painter.text(
+        widgets::shadow_text(painter, 
             card.left_top() + vec2(pad, pad * 0.75 + f.px(48.0)),
             Align2::LEFT_TOP,
             format::duration(timer.total),
@@ -400,7 +400,7 @@ impl VoxaApp {
 
     fn hints(&self, painter: &Painter, f: &Frame, area: Rect) {
         let mut y = area.top() + f.px(40.0);
-        painter.text(pos2(area.left(), y), Align2::LEFT_TOP, "Prueba decir:", theme::regular(f.px(34.0)), theme::TEXT_DIM);
+        widgets::shadow_text(painter, pos2(area.left(), y), Align2::LEFT_TOP, "Prueba decir:", theme::regular(f.px(34.0)), theme::TEXT_DIM);
         y += f.px(64.0);
         let n = (f.time / 8.0) as usize;
         for row in 0..3 {
@@ -408,13 +408,13 @@ impl VoxaApp {
             let color = theme::alpha(theme::TEXT, if row == 0 { 0.9 } else { 0.45 });
             let galley = painter.layout(hint.to_owned(), theme::regular(f.px(40.0)), color, area.width());
             let height = galley.size().y;
-            painter.galley(pos2(area.left(), y), galley, color);
+            widgets::shadow_galley(painter, pos2(area.left(), y), galley, color);
             y += height + f.px(28.0);
         }
     }
 
     fn capture_if_requested(&mut self, ui: &Ui) {
-        const WAIT: Duration = Duration::from_millis(2500); // conexión, estado y portada
+        const WAIT: Duration = Duration::from_millis(3500); // conexión, estado, portada y fundido del fondo
         let Some(path) = &self.options.capture else { return };
         if self.started.elapsed() < WAIT {
             ui.ctx().request_repaint_after(Duration::from_millis(100));

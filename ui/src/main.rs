@@ -35,9 +35,11 @@ struct Args {
 /// Carpeta de fondos por defecto: `~/.local/share/voxa/fondos` (o `%LOCALAPPDATA%\voxa\fondos`).
 fn default_backgrounds() -> Option<PathBuf> {
     let env = |name: &str| std::env::var_os(name).filter(|v| !v.is_empty()).map(PathBuf::from);
-    let data = env("XDG_DATA_HOME")
-        .or_else(|| env("HOME").map(|home| home.join(".local").join("share")))
-        .or_else(|| env("LOCALAPPDATA"))?;
+    let data = if cfg!(windows) {
+        env("LOCALAPPDATA")?
+    } else {
+        env("XDG_DATA_HOME").or_else(|| env("HOME").map(|home| home.join(".local").join("share")))?
+    };
     Some(data.join("voxa").join("fondos"))
 }
 
@@ -101,6 +103,14 @@ fn main() -> eframe::Result {
     }
     let options = eframe::NativeOptions { viewport, ..Default::default() };
     let addr = SocketAddr::from((Ipv4Addr::LOCALHOST, args.port));
+    if args.capture.is_some() {
+        // Si la ventana no llega a pintarse (minimizada, sin pantalla), no quedarse colgado.
+        std::thread::spawn(|| {
+            std::thread::sleep(Duration::from_secs(20));
+            eprintln!("voxa-ui: la captura no se completó en 20 s");
+            std::process::exit(1);
+        });
+    }
 
     eframe::run_native(
         "VOXA",

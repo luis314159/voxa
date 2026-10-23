@@ -64,10 +64,12 @@ Si VOXA pronuncia mal un nombre, agrégalo a `~/.config/voxa/pronunciacion.yaml`
 cd ui && cargo build --release               # requiere Rust (https://rustup.rs)
 python scripts/demo_pantalla.py              # datos de ejemplo, sin micrófono ni Spotify
 ui/target/release/voxa-ui                    # --completa para pantalla completa
-python scripts/descargar_fondos.py           # fondos: paisajes y pueblos en dominio público/CC0
+python scripts/descargar_fondos.py           # 36 fondos: pueblos mágicos, pueblos del mundo y naturaleza
 ```
 
 La pantalla se conecta sola a `voxa texto`, `voxa voz` o `voxa servicio` (puerto 8766, solo local) y se reconecta si VOXA se reinicia. Tocar el anillo equivale a pulsar para hablar. Las fotos de `~/.local/share/voxa/fondos/` (también las tuyas) rotan cada 10 minutos (`--cambio-fondo`).
+
+Los fondos ([assets/fondos/catalogo.json](assets/fondos/catalogo.json)) son fotos de Wikimedia Commons en **dominio público o CC0**. El script vuelve a consultar en Commons la licencia de cada una antes de bajarla y, por precaución, omite las importadas de Unsplash que Commons aún no revisa a mano (`--incluir-sin-revisar` las agrega).
 
 Sin `--simulado`, usa Spotify, Spotifast y PipeWire reales. Para configurarlos, ver la [guía de la Fase 0](docs/fase0_guia.md#51-probar-voxa-con-spotify-real-modo-texto).
 

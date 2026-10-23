@@ -2,7 +2,9 @@
 
 use std::f32::consts::TAU;
 
-use egui::{Align2, Color32, CornerRadius, FontId, Painter, Pos2, Rect, Shape, Stroke, Vec2, pos2, vec2};
+use std::sync::Arc;
+
+use egui::{Align2, Color32, CornerRadius, FontId, Galley, Painter, Pos2, Rect, Shape, Stroke, Vec2, pos2, vec2};
 
 use crate::protocol::Phase;
 use crate::theme;
@@ -107,6 +109,22 @@ pub fn voxa_ring(painter: &Painter, center: Pos2, radius: f32, mode: RingMode, t
     }
 }
 
+/// Texto con una sombra suave: se lee aunque la foto de fondo sea clara o tenga mucho detalle.
+pub fn shadow_galley(painter: &Painter, pos: Pos2, galley: Arc<Galley>, color: Color32) {
+    let r = (galley.size().y / 36.0).max(1.0);
+    for (offset, alpha) in [(vec2(0.0, r), 150), (vec2(r * 0.6, r * 1.8), 70)] {
+        painter.galley_with_override_text_color(pos + offset, galley.clone(), Color32::from_black_alpha(alpha));
+    }
+    painter.galley(pos, galley, color);
+}
+
+pub fn shadow_text(painter: &Painter, pos: Pos2, anchor: Align2, text: impl ToString, font: FontId, color: Color32) -> Rect {
+    let galley = painter.layout_no_wrap(text.to_string(), font, color);
+    let rect = anchor.anchor_size(pos, galley.size());
+    shadow_galley(painter, rect.min, galley, color);
+    rect
+}
+
 /// Texto con dígitos de ancho fijo: el reloj y las cuentas regresivas no «bailan» al cambiar.
 pub fn tabular_text(painter: &Painter, pos: Pos2, anchor: Align2, text: &str, font: FontId, color: Color32) -> Rect {
     let digit_width = (0..10)
@@ -126,7 +144,7 @@ pub fn tabular_text(painter: &Painter, pos: Pos2, anchor: Align2, text: &str, fo
     let mut x = rect.left();
     for (galley, w) in glyphs {
         let offset = (w - galley.size().x) / 2.0;
-        painter.galley(pos2(x + offset, rect.top()), galley, color);
+        shadow_galley(painter, pos2(x + offset, rect.top()), galley, color);
         x += w;
     }
     rect
@@ -145,7 +163,7 @@ pub fn fitted_text(painter: &Painter, pos: Pos2, anchor: Align2, text: &str, fon
             }
         }
     }
-    painter.text(pos, anchor, shown, font, color)
+    shadow_text(painter, pos, anchor, shown, font, color)
 }
 
 /// Barra de progreso redondeada; sin color fijo usa el degradado de la marca.
