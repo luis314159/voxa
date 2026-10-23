@@ -1,0 +1,9 @@
+# Configuración para desarrollar desde la carpeta del proyecto (modelos en ./models).
+# Uso:  VOXA_CONFIG=config/dev.toml voxa voz --simulado
+#       (PowerShell: $env:VOXA_CONFIG="config/dev.toml")
+
+[voice]
+stt = "hibrido"
+vosk_model = "models/vosk/vosk-model-small-es-0.42"
+whisper_model = "base"
+piper_voice = "models/piper/es_MX-claude-high.onnx"

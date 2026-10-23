@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import sys
 from dataclasses import dataclass
-from typing import Callable
+from pathlib import Path
+from typing import TYPE_CHECKING, Callable
 
 from voxa.config import Config
 from voxa.core.assistant import Assistant
-from voxa.nlu.matcher import load_matcher
+from voxa.nlu.matcher import Matcher, load_matcher
 from voxa.services.http import UrllibHttp
 from voxa.services.mpris import PlayerctlBackend
 from voxa.services.music_backend import LayeredMusicBackend, MusicBackend
@@ -25,11 +27,73 @@ from voxa.skills.volume import VolumeSkill
 from voxa.skills.weather import WeatherSkill
 from voxa.state.timers import Timer, TimerManager
 
+if TYPE_CHECKING:  # el audio (numpy, sounddevice…) solo se importa al usar la voz
+    from voxa.audio.stt import SpeechToText
+    from voxa.audio.tts import PiperTts
+    from voxa.voice import VoiceSession
+
 
 @dataclass
 class App:
     assistant: Assistant
     timers: TimerManager
+    matcher: Matcher
+
+
+class SetupError(Exception):
+    """Falta algo para arrancar (modelo, voz…); el mensaje dice qué hacer."""
+
+
+def _existing(path: str, what: str, hint: str) -> Path:
+    if not path:
+        raise SetupError(f"Falta configurar {what} en [voice] de config.toml. {hint}")
+    resolved = Path(path).expanduser()
+    if not resolved.exists():
+        raise SetupError(f"No encontré {what}: {resolved}. {hint}")
+    return resolved
+
+
+def build_stt(config: Config, matcher: Matcher) -> SpeechToText:
+    from voxa.audio.stt import HybridStt, VoskStt, WhisperStt
+
+    voice = config.voice
+    vosk_hint = "Descarga vosk-model-small-es de https://alphacephei.com/vosk/models."
+    if voice.stt == "vosk":
+        return VoskStt(_existing(voice.vosk_model, "el modelo de Vosk", vosk_hint))
+    if voice.stt == "whisper":
+        return WhisperStt(voice.whisper_model)
+    if voice.stt == "hibrido":
+        fast = VoskStt(_existing(voice.vosk_model, "el modelo de Vosk", vosk_hint))
+        return HybridStt(fast, WhisperStt(voice.whisper_model), matcher.needs_accurate_stt, matcher.understands)
+    raise SetupError(f"Motor de STT desconocido: {voice.stt!r} (usa vosk, whisper o hibrido).")
+
+
+def build_tts(config: Config) -> PiperTts:
+    from voxa.audio.tts import PiperTts
+
+    hint = "Descarga una voz con: python -m piper.download_voices es_MX-claude-high --download-dir models/piper"
+    model = _existing(config.voice.piper_voice, "la voz de Piper", hint)
+    return PiperTts(model, config.tts_cache_dir, config.voice.speech_rate)
+
+
+def build_voice(config: Config, app: App, *, simulated: bool = False) -> VoiceSession:
+    from voxa.audio.devices import SpeakerOutput
+    from voxa.audio.ducking import NoDucking, PipeWireDucker
+    from voxa.audio.endpoint import EndpointConfig
+    from voxa.audio.sounds import make_sounds
+    from voxa.voice import VoiceSession
+
+    voice = config.voice
+    return VoiceSession(
+        app.assistant,
+        build_stt(config, app.matcher),
+        build_tts(config),
+        SpeakerOutput(voice.output_device or None, voice.lead_in_ms),
+        make_sounds(),
+        NoDucking() if simulated or sys.platform != "linux" else PipeWireDucker(voice.duck_level),
+        echo_guard_ms=voice.echo_guard_ms,
+        endpoint=EndpointConfig(end_silence_ms=voice.end_silence_ms),
+    )
 
 
 def build_music(config: Config) -> MusicBackend:
@@ -63,4 +127,5 @@ def build_app(config: Config, *, simulated: bool = False, on_ring: Callable[[Tim
         "weather": WeatherSkill(weather),
         "system": SystemSkill(),
     }
-    return App(Assistant(load_matcher(), skills, timers), timers)
+    matcher = load_matcher()
+    return App(Assistant(matcher, skills, timers), timers, matcher)

@@ -17,6 +17,18 @@ _DECIMAL = re.compile(r"(\d)[.,](\d)")
 _NON_WORD = re.compile(r"[^a-z0-9.\s]")
 _SPACES = re.compile(r"\s+")
 
+# Errores típicos del STT al partir o pegar palabras (vistos con Vosk y Whisper).
+_STT_FIXES = [
+    (re.compile(r"\btemporizador es\b"), "temporizadores"),
+    (re.compile(r"\b(sube|baja|adelanta|atrasa|regresa|dale) (le|lo)\b"), r"\1\2"),
+    (re.compile(r"\bcancel a\b"), "cancela"),
+    (re.compile(r"\byou tube\b"), "youtube"),
+    (re.compile(r"\bporciento\b"), "por ciento"),
+    (re.compile(r"\b(de|a) el\b"), lambda m: "del" if m.group(1) == "de" else "al"),
+    # Ninguna orden empieza con «con», «por» o «pone»: es «pon» mal reconocido.
+    (re.compile(r"^(?:con|por|pone|poner|ponga|pongan)\b"), "pon"),
+]
+
 
 def strip_accents(text: str) -> str:
     decomposed = unicodedata.normalize("NFD", text)
@@ -44,4 +56,18 @@ def normalize(text: str) -> str:
             if text.startswith(filler + " "):
                 text = text[len(filler) + 1 :]
                 changed = True
+
+    for pattern, replacement in _STT_FIXES:
+        text = pattern.sub(replacement, text)
     return text
+
+
+def phonetic_key(word: str) -> str:
+    """Clave fonética del español: b/v, s/z/c(e,i), y/ll y la h muda suenan igual.
+
+    Sirve para corregir palabras mal escritas por el STT («abizame» ≈ «avisame»).
+    """
+    key = word.replace("ch", "\0").replace("h", "").replace("\0", "ch")
+    key = key.replace("v", "b").replace("z", "s").replace("ll", "y").replace("qu", "k")
+    key = re.sub(r"c([ei])", r"s\1", key)
+    return re.sub(r"c(?!h)", "k", key)

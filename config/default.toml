@@ -28,6 +28,33 @@ alarm_repeat_seconds = 30
 # Tras cuántos minutos sonando se apaga sola.
 alarm_timeout_minutes = 10
 
+[voice]
+# Reconocimiento de voz: "vosk" (rápido), "whisper" (preciso) o "hibrido"
+# (Vosk para comandos; Whisper cuando la frase trae nombres de canciones o videos).
+stt = "hibrido"
+# Carpeta del modelo de Vosk en español (https://alphacephei.com/vosk/models).
+vosk_model = "~/.local/share/voxa/models/vosk-model-small-es-0.42"
+# Tamaño de faster-whisper: "tiny", "base" o "small" (según el benchmark de la Fase 0).
+whisper_model = "base"
+# Voz de Piper (.onnx con su .onnx.json al lado):
+#   python -m piper.download_voices es_MX-claude-high --download-dir ~/.local/share/voxa/models/piper
+piper_voice = "~/.local/share/voxa/models/piper/es_MX-claude-high.onnx"
+# Velocidad del habla: < 1 más rápido, > 1 más lento.
+speech_rate = 1.0
+# Dispositivos de audio (nombre o número; vacío = el predeterminado del sistema).
+#   python -m sounddevice   ← lista los dispositivos
+input_device = ""
+output_device = ""
+# Silencio antes de cada sonido para que una bocina Bluetooth dormida no se coma el inicio.
+lead_in_ms = 0
+# Audio del micrófono que se descarta tras el sonido «escuchando» (su eco por la bocina).
+# Con Bluetooth conviene 300–400 por la latencia.
+echo_guard_ms = 240
+# A qué fracción baja la música mientras VOXA escucha o habla.
+duck_level = 0.2
+# Silencio que marca el fin de una orden.
+end_silence_ms = 720
+
 [weather]
 # Ubicación de la casa para el clima (Open-Meteo). Ejemplo: Ciudad de México.
 # latitude = 19.43

@@ -58,7 +58,7 @@
 - intent: media.seek_forward
   default_unit: 1
   patterns:
-    - "(adelanta|adelantale|adelantalo|avanza|avanzale|avanzalo|salta) {duration} [(adelante|mas)]"
+    - "(adelanta|adelantale|adelantalo|adelante|avanza|avanzale|avanzalo|salta) {duration} [(adelante|mas)]"
 
 - intent: media.seek_back
   default_unit: 1
@@ -80,6 +80,7 @@
 - intent: media.now_playing
   patterns:
     - "(que|cual) (cancion|rola|tema|musica) (es|es esta|es esa|esta sonando|suena|esta|estamos escuchando)"
+    - "(que|cual) (canciones|rolas|temas) (esta|esa)"
     - "(que|quien) (esta sonando|suena|canta|canta esto|canta esta|es esto|toca)"
     - "como se llama [esta|esa|la] (cancion|rola|tema)"
     - "quien (canta|es|toca) [esta|esa|la] (cancion|rola|tema)"

@@ -164,6 +164,19 @@ Descarga el modelo **español pequeño** de Vosk desde <https://alphacephei.com/
 - Si `small` tarda demasiado, quítalo de la lista.
 - Resultado: tabla en pantalla y `~/voxa-fase0/bench_stt.md`.
 
+### Cadena completa con voces sintéticas (sin grabar)
+
+Mide en este equipo la velocidad y la precisión de voz → intención sobre las ~100 frases del corpus. Requiere VOXA instalado con `pip install -e ".[audio]"` y los modelos en `models/`:
+
+```bash
+python scripts/evaluar_voz.py --voz models/piper/es_MX-ald-medium.onnx \
+  --vosk models/vosk/vosk-model-small-es-0.42 --whisper base
+python scripts/evaluar_voz.py ... --whisper small    # ¿vale la pena el modelo grande aquí?
+python scripts/evaluar_voz.py ... --ruido-db 10      # con ruido de cocina
+```
+
+Copia las tablas a los resultados. Referencia de la PC de desarrollo con la voz `es_MX-claude-high`: híbrido 81 % (base, p90 0.5 s) y 87 % (small, p90 1.5 s).
+
 ### Voz de VOXA (TTS)
 
 ```bash

@@ -51,12 +51,28 @@ class WeatherConfig:
 
 
 @dataclass(frozen=True)
+class VoiceConfig:
+    stt: str = "hibrido"
+    vosk_model: str = ""
+    whisper_model: str = "base"
+    piper_voice: str = ""
+    speech_rate: float = 1.0
+    input_device: str = ""
+    output_device: str = ""
+    lead_in_ms: int = 0
+    echo_guard_ms: int = 240
+    duck_level: float = 0.2
+    end_silence_ms: int = 720
+
+
+@dataclass(frozen=True)
 class Config:
     spotify: SpotifyConfig = field(default_factory=SpotifyConfig)
     spotifast: SpotifastConfig = field(default_factory=SpotifastConfig)
     volume: VolumeConfig = field(default_factory=VolumeConfig)
     timers: TimersConfig = field(default_factory=TimersConfig)
     weather: WeatherConfig = field(default_factory=WeatherConfig)
+    voice: VoiceConfig = field(default_factory=VoiceConfig)
     config_dir: Path = field(default_factory=lambda: _xdg("XDG_CONFIG_HOME", ".config"))
     state_dir: Path = field(default_factory=lambda: _xdg("XDG_STATE_HOME", ".local/state"))
 
@@ -67,6 +83,10 @@ class Config:
     @property
     def timers_path(self) -> Path:
         return self.state_dir / "timers.json"
+
+    @property
+    def tts_cache_dir(self) -> Path:
+        return _xdg("XDG_CACHE_HOME", ".cache") / "tts"
 
 
 def load_config(path: Path | None = None) -> Config:

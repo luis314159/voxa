@@ -99,6 +99,21 @@
 - {text: "ya", intent: system.ack}
 - {text: "Hey Voxa por favor pon pausa", intent: media.pause}
 
+# --- errores reales del STT (Vosk/Whisper) que deben entenderse igual ---
+- {text: "con soda stereo", intent: music.play, slots: {query: soda stereo}}
+- {text: "por mi playlist de cocina", intent: music.play, slots: {query: cocina, kind: playlist}}
+- {text: "Pone el disco Re de Café Tacvba", intent: music.play, slots: {kind: album}}
+- {text: "cancela todos los temporizador es", intent: timer.cancel_all}
+- {text: "Cancel a todos los temporizadores.", intent: timer.cancel_all}
+- {text: "cancela el temporizador de el arroz", intent: timer.cancel, slots: {name: arroz}}
+- {text: "baja le mucho", intent: volume.down}
+- {text: "Abízame en 25 minutos.", intent: timer.set, slots: {duration: 1500}}
+- {text: "que canciones esta", intent: media.now_playing}
+- {text: "busca en you tube receta de pozole", intent: video.play, slots: {query: receta de pozole}}
+- {text: "pon el volumen al cincuenta porciento", intent: volume.set, slots: {number: 50}}
+- {text: "Adelante 30 segundos.", intent: media.seek_forward, slots: {duration: 30}}
+- {text: "poner el volumen a veinte", intent: volume.set, slots: {number: 20}}
+
 # --- no deben reconocerse ---
 - {text: "", intent: null}
 - {text: "hey voxa", intent: null}

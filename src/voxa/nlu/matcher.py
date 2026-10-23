@@ -12,7 +12,7 @@ from typing import Any, Callable
 import yaml
 
 from voxa.core.types import Intent
-from voxa.nlu.normalize import normalize, strip_accents
+from voxa.nlu.normalize import normalize, phonetic_key, strip_accents
 from voxa.nlu.numbers import DURATION_WORDS, NUMBER_WORDS, parse_duration, parse_number
 
 _NUMBER_TOKEN = r"\d+(?:\.\d+)?"
@@ -97,6 +97,7 @@ class Matcher:
         self._intents: list[_IntentSpec] = []
         self._vocabulary: set[str] = set(DURATION_WORDS)
         self._fuzzy_cutoff = fuzzy_cutoff
+        self._phonetic: dict[str, str] | None = None
         for spec in specs:
             intent = _IntentSpec(spec["intent"], [], spec.get("default_unit", 60))
             for entry in spec["patterns"]:
@@ -120,14 +121,27 @@ class Matcher:
             return self._match_text(corrected, raw, allow_free_text=False)
         return None
 
+    @property
+    def vocabulary(self) -> list[str]:
+        """Palabras de la gramática (sin acentos): vocabulario cerrado para Vosk."""
+        return sorted(self._vocabulary)
+
+    def understands(self, text: str) -> bool:
+        return self.match(text) is not None
+
+    def needs_accurate_stt(self, text: str) -> bool:
+        """True si la frase no se entiende o trae texto libre (canción, nombre): conviene Whisper."""
+        intent = self.match(text)
+        return intent is None or any(slot in _FREE_SLOTS for slot in intent.slots)
+
     def _match_text(self, text: str, raw: str, *, allow_free_text: bool) -> Intent | None:
         for spec in self._intents:
             for pattern in spec.patterns:
-                if pattern.free_text and not allow_free_text:
-                    continue
                 m = pattern.regex.match(text)
                 if m is None:
                     continue
+                if not allow_free_text and any(m.groupdict().get(s) for s in _FREE_SLOTS):
+                    continue  # el texto «corregido» de una canción o un nombre ya no es lo que se dijo
                 slots = self._convert_slots(m.groupdict(), spec)
                 if slots is None:
                     continue
@@ -156,13 +170,22 @@ class Matcher:
         return slots
 
     def _correct(self, text: str) -> str:
+        # Se compara por sonido (b/v, s/z/c…), no por letras: así se equivoca el STT en español.
+        if self._phonetic is None:
+            self._phonetic = {}
+            for word in sorted(self._vocabulary):
+                self._phonetic.setdefault(phonetic_key(word), word)
         words = []
         for word in text.split():
             if word in self._vocabulary or word.replace(".", "").isdigit():
                 words.append(word)
                 continue
-            close = difflib.get_close_matches(word, self._vocabulary, n=1, cutoff=self._fuzzy_cutoff)
-            words.append(close[0] if close else word)
+            key = phonetic_key(word)
+            if key in self._phonetic:
+                words.append(self._phonetic[key])
+                continue
+            close = difflib.get_close_matches(key, self._phonetic, n=1, cutoff=self._fuzzy_cutoff)
+            words.append(self._phonetic[close[0]] if close else word)
         return " ".join(words)
 
 

@@ -17,7 +17,8 @@ Asistente de voz familiar para la cocina, sobre una PC All-in-One con Linux Mint
 | Música: Web API + Connect → CLI de Spotifast → MPRIS | ✅ (falta probar en el equipo real) |
 | Volumen (PipeWire), hora, clima (Open-Meteo) | ✅ |
 | Modo texto (`voxa texto`) | ✅ |
-| Voz: captura, «Hey Voxa», STT, TTS | ⏳ tras la Fase 0 |
+| Voz con «pulsar para hablar» (`voxa voz`): micrófono, fin de frase, STT híbrido Vosk/Whisper, Piper, sonidos, ducking | ✅ (falta calibrar en el equipo real) |
+| «Hey Voxa» (detector de palabra de activación) | ⏳ Fase 3 |
 | Interfaz de cocina, servicios systemd | ⏳ Fase 4 |
 | Videos (mpv + yt-dlp) | ⏳ Fase 5 |
 
@@ -37,6 +38,21 @@ VOXA: Faltan 10 minutos.
 > pon Soda Stereo
 VOXA: Soda Stereo.
 ```
+
+### Con voz
+
+```bash
+.venv/bin/pip install -e ".[audio]"
+python -m piper.download_voices es_MX-claude-high --download-dir models/piper
+# + modelo de Vosk en español en models/vosk/ (https://alphacephei.com/vosk/models)
+export VOXA_CONFIG=config/dev.toml          # PowerShell: $env:VOXA_CONFIG="config/dev.toml"
+voxa voz --simulado                         # Enter → hablar
+voxa decir "Diez minutos para el arroz."    # probar la voz
+voxa sonidos                                # escuchar los sonidos de VOXA
+voxa escuchar grabacion.wav                 # procesar una grabación
+```
+
+`scripts/evaluar_voz.py` mide la cadena voz → intención: Piper «dice» todo el corpus (con ruido opcional) y compara Vosk, Whisper y el híbrido. Con voces sintéticas (más difíciles que una voz real) el híbrido llega a 81 % con Whisper *base* y a 87 % con *small*. La elección final sale del benchmark de la Fase 0 en el equipo real.
 
 Sin `--simulado`, usa Spotify, Spotifast y PipeWire reales. Para configurarlos, ver la [guía de la Fase 0](docs/fase0_guia.md#51-probar-voxa-con-spotify-real-modo-texto).
 
