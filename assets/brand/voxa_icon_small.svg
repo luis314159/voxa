@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="300 170 600 600" role="img" aria-labelledby="title">
+  <title id="title">VOXA</title>
+  <defs>
+    <linearGradient id="voxa-gradient" x1="0%" y1="15%" x2="100%" y2="85%">
+      <stop offset="0%" stop-color="#11DDF2"/>
+      <stop offset="48%" stop-color="#3478FF"/>
+      <stop offset="100%" stop-color="#D52BFF"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Favicon / tray (16–64 px): no bars or glow, thicker strokes so it stays legible. -->
+  <rect x="300" y="170" width="600" height="600" rx="132" fill="#0B1020"/>
+  <g fill="none" stroke="url(#voxa-gradient)" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 703.3 275.8 A 220 220 0 1 0 773.4 334.5" stroke-width="48"/>
+    <path d="M 520 372 L 590 540 Q 600 562 610 540 L 680 372" stroke-width="88"/>
+  </g>
+</svg>

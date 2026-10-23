@@ -1,0 +1,21 @@
+name: Pruebas
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  pytest:
+    runs-on: ubuntu-24.04  # misma base que Linux Mint 22
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: pip install -e ".[dev]"
+      - run: pytest -q
+      - name: Sintaxis de los scripts
+        run: for f in scripts/**/*.sh; do bash -n "$f"; done

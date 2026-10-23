@@ -1,0 +1,34 @@
+# Configuración de VOXA.
+# Copia este archivo a ~/.config/voxa/config.toml y cambia lo que necesites.
+# Todo lo que no aparezca usa el valor por defecto.
+
+[spotify]
+# Client ID de la app creada en https://developer.spotify.com/dashboard (ver docs/fase0_guia.md).
+# Se usa OAuth con PKCE: no hace falta el client secret.
+client_id = ""
+# Nombre del dispositivo Spotify Connect de la cocina (el que se le puso a Spotifast).
+device_name = "VOXA Cocina"
+# Debe coincidir EXACTAMENTE con la Redirect URI registrada en la app de Spotify.
+redirect_uri = "http://127.0.0.1:8765/callback"
+
+[spotifast]
+# Comando para la CLI de Spotifast. Con Flatpak sería algo como
+# ["flatpak", "run", "rocks.spotifast.Spotifast"] (confirmar en la Fase 0).
+command = ["spotifast"]
+# Nombre del reproductor en MPRIS (playerctl --list-all).
+mpris_player = "spotifast"
+
+[volume]
+# Cuánto sube o baja «súbele» / «bájale» (en %). «un poco» usa la mitad, «mucho» el doble.
+step = 10
+
+[timers]
+# Cada cuánto se repite la alarma mientras nadie la apaga.
+alarm_repeat_seconds = 30
+# Tras cuántos minutos sonando se apaga sola.
+alarm_timeout_minutes = 10
+
+[weather]
+# Ubicación de la casa para el clima (Open-Meteo). Ejemplo: Ciudad de México.
+# latitude = 19.43
+# longitude = -99.13

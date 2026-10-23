@@ -1,0 +1,189 @@
+# Gramática de intenciones de VOXA.
+#
+# Los patrones se comparan con el texto ya normalizado: minúsculas, sin acentos
+# ni signos y sin «Hey Voxa». Sintaxis:
+#   (a|b)       alternativas
+#   [x]         opcional (puede contener alternativas y slots)
+#   {slot}      texto libre: query, name, device
+#   {duration}  duración («diez minutos», «hora y media»)
+#   {number}    número («treinta», «80»)
+#
+# El ORDEN IMPORTA: gana la primera intención que coincide. Las más específicas
+# van arriba y music.play («pon …») va casi al final.
+# Un patrón puede ser un texto o {pattern: ..., set: {slot: valor}} para fijar slots.
+# default_unit: unidad de un número sin unidad en {duration} (minutos por defecto).
+
+- intent: timer.stop_alarm
+  patterns:
+    - "(apaga|para|quita|deten|silencia|cancela) [la|las] (alarma|alarmas|timbre)"
+    - "(apagala|apagalo)"
+
+- intent: timer.cancel_all
+  patterns:
+    - "(cancela|quita|borra|elimina) (todos|todas) [los|las] (temporizadores|timers|alarmas)"
+
+- intent: timer.set
+  patterns:
+    - "(pon|ponme|crea|programa|inicia|activa|empieza) [un|una|el|la] (temporizador|timer|cronometro|alarma|cuenta regresiva) (de|por|en|a) {duration} [(para|de|del|pa) {name}]"
+    - "(pon|ponme|crea|programa) [un|una] (temporizador|timer|cronometro|alarma) (para|de|del|pa) {name} (de|por|en|a) {duration}"
+    - "(temporizador|timer|cronometro|alarma) (de|por|en|a) {duration} [(para|de|del|pa) {name}]"
+    - "(avisame|recuerdame|despiertame) en {duration} [(para|de|que) {name}]"
+    - "(pon|ponme|cuenta) {duration} [(para|de|del|pa) {name}]"
+
+- intent: timer.query
+  patterns:
+    - "cuanto [tiempo] (falta|queda|le falta|le queda|les falta|les queda) [(al|a la|a los|a las|a|del|de la|de los|de las|de|para) {name}]"
+    - "(como va|como van) [el|la|los|las|mi|mis] (temporizador|temporizadores|timer|timers|alarma|alarmas) [(del|de la|de|para) {name}]"
+    - "(que|cuales|cuantos) (temporizadores|timers|alarmas) (hay|tengo|tienes|llevas)"
+
+- intent: timer.cancel
+  patterns:
+    - "(cancela|quita|borra|elimina|deten|para|apaga) [el|la|mi] (temporizador|timer|cronometro|alarma) [(del|de la|de|para) {name}]"
+    - "(cancela|quita|borra|elimina) (el|la) (del|de la|de los|de las|de|para) {name}"
+
+- intent: system.mute_mic
+  patterns:
+    - "(deja de escuchar|no escuches|apaga el microfono|desactiva el microfono|silencia el microfono|modo privado|apagate)"
+
+- intent: media.pause
+  patterns:
+    - "(pausa|pausala|pausalo|pon pausa|para|parale|basta|detente|deten|stop|callate|calla)"
+    - "(pausa|para|deten|quita|apaga) [la|el|esta|este] (musica|cancion|rola|video|spotify)"
+
+- intent: media.resume
+  patterns:
+    - "(sigue|continua|reanuda|play|dale|dale play|quita la pausa|resume|reproduce)"
+    - "(sigue|continua|reanuda|pon|ponme|regresa) [con] [la|el|algo de] (musica|cancion|video)"
+
+- intent: media.seek_forward
+  default_unit: 1
+  patterns:
+    - "(adelanta|adelantale|adelantalo|avanza|avanzale|avanzalo|salta) {duration} [(adelante|mas)]"
+
+- intent: media.seek_back
+  default_unit: 1
+  patterns:
+    - "(atrasa|atrasale|atrasalo|regresa|regresale|regresalo|retrocede|regresate) {duration} [atras]"
+
+- intent: media.next
+  patterns:
+    - "(siguiente|la siguiente|otra|otra cancion|pasala|cambiala|salta|saltala|saltatela|skip|next|adelante)"
+    - "(pon|ponme|pasa|cambia|salta|vete) [a] [la|el] (siguiente|proxima|otra) [cancion|rola|tema]"
+    - "(cambia|pasa|salta|quita) [de] [la|esta|el|este] (cancion|rola|tema)"
+
+- intent: media.previous
+  patterns:
+    - "(anterior|la anterior|atras|regresa|back)"
+    - "(pon|ponme|regresa|vuelve) [a] [la|el] (anterior|cancion anterior|rola anterior|de antes)"
+    - "(pon|ponme|regresa) [a] [la|el] (cancion|rola|tema) (anterior|de antes|pasada)"
+
+- intent: media.now_playing
+  patterns:
+    - "(que|cual) (cancion|rola|tema|musica) (es|es esta|es esa|esta sonando|suena|esta|estamos escuchando)"
+    - "(que|quien) (esta sonando|suena|canta|canta esto|canta esta|es esto|toca)"
+    - "como se llama [esta|esa|la] (cancion|rola|tema)"
+    - "quien (canta|es|toca) [esta|esa|la] (cancion|rola|tema)"
+
+- intent: music.like
+  patterns:
+    - "(me gusta|me encanta) [mucho] [esta|esa] [cancion|rola]"
+    - "(guarda|agrega|anade|dale like a) [esta|esa|la] (cancion|rola) [(a|en) [mis] (favoritos|me gusta|biblioteca)]"
+    - "(dale like|like|guardala|agregala)"
+
+- intent: music.shuffle
+  patterns:
+    - "(aleatorio|modo aleatorio|revuelve|revuelvelas|shuffle|mezcla|mezclalas)"
+    - "(pon|activa) [el] (modo aleatorio|aleatorio|shuffle)"
+
+- intent: volume.set
+  patterns:
+    - "[pon|sube|baja|cambia|deja] [el] (volumen|sonido) (a|al|en|de) {number}"
+    - "(volumen|sonido) {number}"
+
+- intent: volume.mute
+  patterns:
+    - "(silencia|mutea|mute) [el|la] [volumen|sonido|musica|bocina]"
+    - "(quita|apaga) el (sonido|volumen)"
+    - "silencio"
+
+- intent: volume.unmute
+  patterns:
+    - "(quita|desactiva) el (silencio|mute)"
+    - "(activa|regresa|devuelve) el sonido"
+
+- intent: volume.up
+  patterns:
+    - "(sube|subele|subelo|subela|aumenta|alza) [un poco|un poquito|poquito|mucho|bastante|mas] [el|la] [volumen|musica|sonido|cancion] [un poco|un poquito|poquito|mucho|bastante|mas]"
+    - "(mas|mas fuerte|mas alto|mas volumen|mas recio|no se oye|no oigo|no escucho|no se escucha)"
+
+- intent: volume.down
+  patterns:
+    - "(baja|bajale|bajalo|bajala|disminuye|reduce) [un poco|un poquito|poquito|mucho|bastante|mas] [el|la] [volumen|musica|sonido|cancion] [un poco|un poquito|poquito|mucho|bastante|mas]"
+    - "(mas bajo|mas bajito|menos volumen|menos fuerte|esta muy fuerte|muy fuerte|bajito|mas quedito)"
+
+- intent: music.transfer
+  patterns:
+    - "(ponla|ponlo|pasala|pasalo|mandala|mandalo|cambiala|cambialo|muevela|muevelo) (en|a|al|para) [la|el] {device}"
+    - "(pasa|manda|cambia|mueve|transfiere|pon) [la|el] (musica|cancion|spotify) (en|a|al|para) [la|el] {device}"
+
+- intent: video.close
+  patterns:
+    - "(cierra|quita|apaga|deten) [el] (video|youtube)"
+
+- intent: video.play
+  patterns:
+    - "(pon|ponme|busca|buscame|reproduce|quiero ver|muestrame|ensename) [un|el|unos|los] (video|videos) (de|del|sobre|para|con|que) {query}"
+    - "(busca|buscame|pon|ponme) en youtube {query}"
+    - "(como se hace|como hacer|como preparar|receta de|receta para) {query}"
+
+- intent: clock.time
+  patterns:
+    - "(que hora es|que horas son|dime la hora|me dices la hora|me das la hora|la hora|hora|que hora tienes)"
+
+- intent: clock.date
+  patterns:
+    - "(que dia es hoy|que dia es|a que estamos|que fecha es hoy|que fecha es|cual es la fecha|a cuantos estamos|la fecha|fecha)"
+
+- intent: weather.rain
+  patterns:
+    - "(va a llover|llovera|lloverá) [hoy]"
+    - "(va a haber|habra|hay) (lluvia|tormenta) [hoy]"
+    - "necesito (paraguas|sombrilla)"
+
+- intent: weather.current
+  patterns:
+    - "(como esta|como va|que tal|como sigue) el (clima|tiempo)"
+    - "(que|cual es la) (clima|temperatura) (hace|hay|tenemos)"
+    - "(cuantos grados hace|cuantos grados hay|que temperatura hace|hace frio|hace calor|el clima|clima)"
+
+- intent: system.help
+  patterns:
+    - "(que puedes hacer|que sabes hacer|ayuda|ayudame|como te uso|que haces|que comandos hay|que te puedo pedir|que te puedo decir|que sabes)"
+
+- intent: system.status
+  patterns:
+    - "(estas ahi|me escuchas|me oyes|estas bien|como estas|funcionas|hola|hola voxa)"
+
+- intent: system.repeat
+  patterns:
+    - "(repite|repitelo|que dijiste|otra vez|como dijiste|no te entendi|perdon|mande|que)"
+
+- intent: system.cancel
+  patterns:
+    - "(nada|cancela|cancelalo|olvidalo|no importa|dejalo|ninguno|me equivoque|nada nada)"
+
+- intent: system.ack
+  patterns:
+    - "(ya|ok|okay|listo|gracias|muchas gracias|perfecto|ya esta|ya estuvo|bien|esta bien)"
+
+- intent: music.play
+  patterns:
+    - pattern: "(pon|ponme|reproduce|toca|tocame|quiero escuchar|quiero oir|escuchemos|pongan) (musica|canciones|rolas|algo) (de|del) {query}"
+      set: {kind: artist}
+    - pattern: "(pon|ponme|reproduce|toca|tocame|quiero escuchar|quiero oir) (la cancion|la rola|el tema|la de|esa de) {query}"
+      set: {kind: track}
+    - pattern: "(pon|ponme|reproduce|toca|quiero escuchar|quiero oir) (el disco|el album|el lp) {query}"
+      set: {kind: album}
+    - pattern: "(pon|ponme|reproduce|toca|quiero escuchar|quiero oir) (la playlist|mi playlist|la lista|mi lista|la lista de reproduccion) [de] {query}"
+      set: {kind: playlist}
+    - "(pon|ponme|reproduce|toca|tocame|quiero escuchar|quiero oir|escuchemos) [a] {query}"

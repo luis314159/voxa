@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1200" viewBox="0 0 1200 1200" role="img" aria-labelledby="title desc">
+  <title id="title">VOXA — Tu voz, tu hogar, más fácil</title>
+  <desc id="desc">Logotipo vectorial con una V estilizada, ondas de audio y un anillo degradado azul, cian y violeta.</desc>
+  <defs>
+    <linearGradient id="voxa-gradient" x1="0%" y1="15%" x2="100%" y2="85%">
+      <stop offset="0%" stop-color="#11DDF2"/>
+      <stop offset="48%" stop-color="#3478FF"/>
+      <stop offset="100%" stop-color="#D52BFF"/>
+    </linearGradient>
+    <linearGradient id="v-gradient" x1="15%" y1="0%" x2="90%" y2="100%">
+      <stop offset="0%" stop-color="#25E5F0"/>
+      <stop offset="52%" stop-color="#3478FF"/>
+      <stop offset="100%" stop-color="#C42CFF"/>
+    </linearGradient>
+    <filter id="soft-glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="12" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <!-- Transparent background: place on any surface or add a background rect. -->
+  <g transform="translate(0,-8)" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 808 252 A 270 270 0 1 0 878 310" stroke="url(#voxa-gradient)" stroke-width="24" filter="url(#soft-glow)"/>
+    <path d="M 405 424 V 496 M 438 390 V 530 M 471 424 V 496"
+          stroke="url(#voxa-gradient)" stroke-width="18"/>
+    <path d="M 729 424 V 496 M 762 390 V 530 M 795 424 V 496"
+          stroke="url(#voxa-gradient)" stroke-width="18"/>
+    <path d="M 492 334 L 600 548 Q 612 572 628 548 L 736 334"
+          stroke="url(#v-gradient)" stroke-width="72"/>
+  </g>
+
+  <g font-family="Inter, Montserrat, Arial, sans-serif" text-anchor="middle">
+    <text x="600" y="850" font-size="166" font-weight="650" letter-spacing="14" fill="#F8FAFF">VOX<tspan fill="#F8FAFF">A</tspan></text>
+    <circle cx="929" cy="806" r="13" fill="url(#voxa-gradient)"/>
+    <text x="600" y="928" font-size="32" font-weight="400" letter-spacing="2.4" fill="#D7DDF0">Tu voz, tu hogar, más fácil</text>
+  </g>
+</svg>

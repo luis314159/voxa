@@ -1,0 +1,105 @@
+# Corpus de frases → intención esperada. Agregar aquí las frases reales de la familia
+# (sobre todo las que fallen) para que no vuelvan a fallar.
+# slots: solo se comparan los que aparecen.
+
+# --- temporizadores ---
+- {text: "Hey Voxa, pon un temporizador de diez minutos para el arroz", intent: timer.set, slots: {duration: 600, name: el arroz}}
+- {text: "ponme un timer de 5 minutos", intent: timer.set, slots: {duration: 300}}
+- {text: "temporizador de media hora", intent: timer.set, slots: {duration: 1800}}
+- {text: "pon una alarma en una hora y media para el pollo", intent: timer.set, slots: {duration: 5400, name: el pollo}}
+- {text: "avísame en veinticinco minutos", intent: timer.set, slots: {duration: 1500}}
+- {text: "pon un temporizador de un cuarto de hora para el arroz", intent: timer.set, slots: {duration: 900, name: el arroz}}
+- {text: "temporizador de diez minutos de pasta", intent: timer.set, slots: {duration: 600, name: pasta}}
+- {text: "pon un temporizador para el horno de cuarenta minutos", intent: timer.set, slots: {duration: 2400, name: el horno}}
+- {text: "pon diez minutos para los frijoles", intent: timer.set, slots: {duration: 600, name: los frijoles}}
+- {text: "temporizador de un minuto y medio", intent: timer.set, slots: {duration: 90}}
+- {text: "temporizador de 2 minutos y treinta", intent: timer.set, slots: {duration: 150}}
+- {text: "¿Cuánto le falta al arroz?", intent: timer.query, slots: {name: arroz}}
+- {text: "cuánto falta", intent: timer.query}
+- {text: "¿cuánto tiempo queda?", intent: timer.query}
+- {text: "cómo van los temporizadores", intent: timer.query}
+- {text: "qué temporizadores hay", intent: timer.query}
+- {text: "cancela el temporizador del arroz", intent: timer.cancel, slots: {name: arroz}}
+- {text: "quita el temporizador", intent: timer.cancel}
+- {text: "cancela el del horno", intent: timer.cancel, slots: {name: horno}}
+- {text: "cancela todos los temporizadores", intent: timer.cancel_all}
+- {text: "apaga la alarma", intent: timer.stop_alarm}
+
+# --- música ---
+- {text: "pon Soda Stereo", intent: music.play, slots: {query: soda stereo}}
+- {text: "Oye Voxa, ponme a Café Tacvba", intent: music.play, slots: {query: cafe tacvba}}
+- {text: "pon música de Bad Bunny", intent: music.play, slots: {query: bad bunny, kind: artist}}
+- {text: "reproduce la canción Bohemian Rhapsody", intent: music.play, slots: {query: bohemian rhapsody, kind: track}}
+- {text: "pon el disco Re de Café Tacvba", intent: music.play, slots: {query: re de cafe tacvba, kind: album}}
+- {text: "pon mi playlist de cocina", intent: music.play, slots: {query: cocina, kind: playlist}}
+- {text: "quiero escuchar persiana americana de soda stereo", intent: music.play, slots: {query: persiana americana de soda stereo}}
+- {text: "pon algo de música", intent: media.resume}
+- {text: "pausa", intent: media.pause}
+- {text: "pauza", intent: media.pause}
+- {text: "para la música", intent: media.pause}
+- {text: "para", intent: media.pause}
+- {text: "sigue", intent: media.resume}
+- {text: "continúa con la música", intent: media.resume}
+- {text: "la siguiente", intent: media.next}
+- {text: "pon la siguiente canción", intent: media.next}
+- {text: "cambia de canción", intent: media.next}
+- {text: "la anterior", intent: media.previous}
+- {text: "regresa a la canción anterior", intent: media.previous}
+- {text: "adelanta treinta segundos", intent: media.seek_forward, slots: {duration: 30}}
+- {text: "adelanta treinta", intent: media.seek_forward, slots: {duration: 30}}
+- {text: "regresa diez segundos", intent: media.seek_back, slots: {duration: 10}}
+- {text: "¿qué canción es esta?", intent: media.now_playing}
+- {text: "quién canta", intent: media.now_playing}
+- {text: "cómo se llama esta canción", intent: media.now_playing}
+- {text: "me gusta esta canción", intent: music.like}
+- {text: "guarda esta canción en mis favoritos", intent: music.like}
+- {text: "modo aleatorio", intent: music.shuffle}
+- {text: "ponla en la sala", intent: music.transfer, slots: {device: sala}}
+- {text: "pasa la música a la bocina del cuarto", intent: music.transfer, slots: {device: bocina del cuarto}}
+
+# --- volumen ---
+- {text: "volumen a treinta", intent: volume.set, slots: {number: 30}}
+- {text: "pon el volumen al 50 por ciento", intent: volume.set, slots: {number: 50}}
+- {text: "baja el volumen a veinte", intent: volume.set, slots: {number: 20}}
+- {text: "súbele", intent: volume.up}
+- {text: "súbele un poco", intent: volume.up}
+- {text: "más fuerte", intent: volume.up}
+- {text: "no se oye", intent: volume.up}
+- {text: "bájale mucho", intent: volume.down}
+- {text: "baja el volumen", intent: volume.down}
+- {text: "está muy fuerte", intent: volume.down}
+- {text: "silencio", intent: volume.mute}
+- {text: "quita el silencio", intent: volume.unmute}
+
+# --- video ---
+- {text: "pon un video de cómo hacer pan de elote", intent: video.play, slots: {query: como hacer pan de elote}}
+- {text: "busca en YouTube receta de pozole", intent: video.play, slots: {query: receta de pozole}}
+- {text: "cierra el video", intent: video.close}
+
+# --- hora, clima ---
+- {text: "¿Qué hora es?", intent: clock.time}
+- {text: "qué horas son", intent: clock.time}
+- {text: "qué día es hoy", intent: clock.date}
+- {text: "a cuántos estamos", intent: clock.date}
+- {text: "cómo está el clima", intent: weather.current}
+- {text: "qué temperatura hace", intent: weather.current}
+- {text: "¿va a llover hoy?", intent: weather.rain}
+- {text: "necesito paraguas", intent: weather.rain}
+
+# --- sistema ---
+- {text: "¿qué puedes hacer?", intent: system.help}
+- {text: "ayuda", intent: system.help}
+- {text: "deja de escuchar", intent: system.mute_mic}
+- {text: "¿estás ahí?", intent: system.status}
+- {text: "repite", intent: system.repeat}
+- {text: "mande", intent: system.repeat}
+- {text: "olvídalo", intent: system.cancel}
+- {text: "nada", intent: system.cancel}
+- {text: "gracias", intent: system.ack}
+- {text: "ya", intent: system.ack}
+- {text: "Hey Voxa por favor pon pausa", intent: media.pause}
+
+# --- no deben reconocerse ---
+- {text: "", intent: null}
+- {text: "hey voxa", intent: null}
+- {text: "el gato está en la azotea", intent: null}
