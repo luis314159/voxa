@@ -100,8 +100,8 @@ def _round(value: float) -> float:
     if value < 10:
         return round(value * 2) / 2
     if value < 100:
-        return round(value)
-    return round(value / 5) * 5
+        return float(round(value))
+    return float(round(value / 5) * 5)
 
 
 _SPOKEN_FRACTIONS = [(0.25, "un cuarto de"), (1 / 3, "un tercio de"), (2 / 3, "dos tercios de"), (0.75, "tres cuartos de")]
