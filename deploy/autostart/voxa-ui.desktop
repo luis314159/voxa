@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=VOXA (pantalla)
+Comment=Abre la pantalla de cocina de VOXA al iniciar sesión
+Exec=sh -c "systemctl --user import-environment DISPLAY WAYLAND_DISPLAY XAUTHORITY && systemctl --user start voxa-ui.service"
+NoDisplay=true
+X-GNOME-Autostart-enabled=true

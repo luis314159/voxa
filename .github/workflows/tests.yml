@@ -18,7 +18,11 @@ jobs:
       - run: pip install -e ".[dev]"
       - run: pytest -q
       - name: Sintaxis de los scripts
-        run: for f in scripts/**/*.sh; do bash -n "$f"; done
+        run: for f in scripts/*.sh scripts/*/*.sh; do bash -n "$f"; done
+      - name: Revisión de los scripts (shellcheck)
+        run: shellcheck --severity=warning scripts/install.sh scripts/fase0/*.sh
+      - name: Instalador en modo simulado
+        run: bash scripts/install.sh --simular --sin-apt
 
   voxa-ui:
     runs-on: ubuntu-24.04

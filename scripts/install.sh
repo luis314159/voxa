@@ -1,0 +1,180 @@
+#!/usr/bin/env bash
+# Instala VOXA en la PC de la cocina (Linux Mint 22). Se puede correr varias veces:
+# lo que ya está hecho se respeta (la configuración del usuario nunca se sobrescribe).
+#
+#   bash scripts/install.sh               # todo
+#   bash scripts/install.sh --simular     # muestra qué haría, sin cambiar nada
+#
+# Opciones: --sin-apt  --sin-modelos  --sin-pantalla  --sin-fondos  --sin-servicios  --sin-ajustes-escritorio
+set -euo pipefail
+
+REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+DATA="${XDG_DATA_HOME:-$HOME/.local/share}/voxa"
+CONFIG="${XDG_CONFIG_HOME:-$HOME/.config}"
+BIN="$HOME/.local/bin"
+VOSK_MODEL="vosk-model-small-es-0.42"
+PIPER_VOICE="es_MX-claude-high"
+
+SIMULAR=0 APT=1 MODELOS=1 PANTALLA=1 FONDOS=1 SERVICIOS=1 ESCRITORIO=1
+for arg in "$@"; do
+  case "$arg" in
+    --simular) SIMULAR=1 ;;
+    --sin-apt) APT=0 ;;
+    --sin-modelos) MODELOS=0 ;;
+    --sin-pantalla) PANTALLA=0 ;;
+    --sin-fondos) FONDOS=0 ;;
+    --sin-servicios) SERVICIOS=0 ;;
+    --sin-ajustes-escritorio) ESCRITORIO=0 ;;
+    -h|--help|--ayuda) sed -n '2,9p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    *) echo "Opción desconocida: $arg" >&2; exit 2 ;;
+  esac
+done
+
+paso() { printf '\n\033[1;36m▸ %s\033[0m\n' "$*"; }
+aviso() { printf '\033[1;33m  ⚠ %s\033[0m\n' "$*"; }
+listo() { printf '\033[32m  ✓ %s\033[0m\n' "$*"; }
+# Ejecuta un comando, o solo lo muestra con --simular.
+run() {
+  if [ "$SIMULAR" = 1 ]; then printf '  $ %s\n' "$*"; else "$@"; fi
+}
+tiene() { command -v "$1" >/dev/null 2>&1; }
+# Copia un archivo solo si cambió (y lo dice).
+instalar_archivo() {
+  local origen="$1" destino="$2"
+  if [ -f "$destino" ] && cmp -s "$origen" "$destino"; then return 0; fi
+  run mkdir -p "$(dirname "$destino")"
+  run cp "$origen" "$destino"
+  listo "$destino"
+}
+
+# --- 0. Comprobaciones ---------------------------------------------------------
+paso "Comprobando el sistema"
+if [ "$(id -u)" = 0 ]; then
+  echo "Corre este script como tu usuario normal, no con sudo (pedirá la contraseña cuando haga falta)." >&2
+  exit 1
+fi
+if [ -r /etc/os-release ]; then
+  . /etc/os-release
+  listo "${PRETTY_NAME:-Linux}"
+  case "${ID:-}:${ID_LIKE:-}" in
+    *ubuntu*|*debian*|linuxmint*) ;;
+    *) aviso "Pensado para Linux Mint / Ubuntu; en otra distribución instala los paquetes a mano." ; APT=0 ;;
+  esac
+fi
+
+# --- 1. Paquetes del sistema --------------------------------------------------
+if [ "$APT" = 1 ]; then
+  paso "Paquetes del sistema (pide tu contraseña)"
+  paquetes=(pipx python3-venv playerctl libportaudio2 pipewire-bin wireplumber unzip curl)
+  if [ "$PANTALLA" = 1 ]; then
+    # Para compilar la pantalla (egui sobre X11/Wayland con OpenGL).
+    paquetes+=(build-essential pkg-config libxkbcommon-dev libwayland-dev libgl1-mesa-dev libxcursor-dev libxrandr-dev libxi-dev)
+  fi
+  run sudo apt-get update -qq
+  run sudo apt-get install -y "${paquetes[@]}"
+fi
+
+# --- 2. Núcleo (Python) -------------------------------------------------------
+paso "Instalando VOXA (núcleo)"
+run pipx install --force "$REPO[audio]"
+run pipx ensurepath
+VENV_PY="$(pipx environment --value PIPX_LOCAL_VENVS 2>/dev/null || echo "$HOME/.local/share/pipx/venvs")/voxa/bin/python"
+
+if [ ! -f "$CONFIG/voxa/config.toml" ]; then
+  instalar_archivo "$REPO/config/default.toml" "$CONFIG/voxa/config.toml"
+  aviso "Pega el Client ID de Spotify en $CONFIG/voxa/config.toml y luego corre: voxa spotify-login"
+else
+  listo "Se conserva tu configuración: $CONFIG/voxa/config.toml"
+fi
+
+# --- 3. Modelos de voz ----------------------------------------------------------
+if [ "$MODELOS" = 1 ]; then
+  paso "Modelos de voz (la primera vez descarga ~300 MB)"
+  if [ -d "$DATA/models/$VOSK_MODEL" ]; then
+    listo "Vosk: $VOSK_MODEL"
+  else
+    if [ "$SIMULAR" = 1 ]; then tmp=/tmp/voxa-descarga; else tmp="$(mktemp -d)"; fi
+    run curl -fL --retry 3 -o "$tmp/vosk.zip" "https://alphacephei.com/vosk/models/$VOSK_MODEL.zip"
+    run mkdir -p "$DATA/models"
+    run unzip -q "$tmp/vosk.zip" -d "$DATA/models"
+    run rm -rf "$tmp"
+  fi
+  if [ -f "$DATA/models/piper/$PIPER_VOICE.onnx" ]; then
+    listo "Piper: $PIPER_VOICE"
+  else
+    run "$VENV_PY" -m piper.download_voices "$PIPER_VOICE" --download-dir "$DATA/models/piper"
+  fi
+  # faster-whisper descarga su modelo la primera vez que se usa; mejor ahora que en la primera orden.
+  modelo_whisper="$(sed -n 's/^whisper_model *= *"\(.*\)"/\1/p' "$CONFIG/voxa/config.toml" 2>/dev/null | head -1 || true)"
+  run "$VENV_PY" -c "from faster_whisper import WhisperModel; WhisperModel('${modelo_whisper:-base}', compute_type='int8')"
+fi
+
+# --- 4. Pantalla (Rust) -----------------------------------------------------------
+if [ "$PANTALLA" = 1 ]; then
+  paso "Pantalla de cocina (voxa-ui)"
+  if ! tiene cargo && [ -x "$HOME/.cargo/bin/cargo" ]; then PATH="$HOME/.cargo/bin:$PATH"; fi
+  if tiene cargo; then
+    run cargo build --release --locked --manifest-path "$REPO/ui/Cargo.toml"
+    run mkdir -p "$BIN"
+    run install -m 755 "$REPO/ui/target/release/voxa-ui" "$BIN/voxa-ui"
+    listo "$BIN/voxa-ui"
+  else
+    aviso "Falta Rust para compilar la pantalla. Instálalo con:"
+    aviso "  curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh"
+    aviso "y vuelve a correr este script (lo ya instalado se respeta)."
+  fi
+fi
+
+if [ "$FONDOS" = 1 ]; then
+  paso "Fondos de pantalla (dominio público / CC0)"
+  run "$VENV_PY" "$REPO/scripts/descargar_fondos.py" --destino "$DATA/fondos" || aviso "No se pudieron bajar los fondos; la pantalla usará el fondo liso."
+fi
+
+# --- 5. Audio: bocina Bluetooth en A2DP y sin suspensión --------------------------
+paso "Audio (WirePlumber)"
+version_wp="$(wireplumber --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+' | head -1 || true)"
+case "$version_wp" in
+  0.4)
+    instalar_archivo "$REPO/deploy/wireplumber/0.4/bluetooth.lua.d/51-voxa-bluetooth.lua" "$CONFIG/wireplumber/bluetooth.lua.d/51-voxa-bluetooth.lua"
+    instalar_archivo "$REPO/deploy/wireplumber/0.4/main.lua.d/51-voxa-sin-suspension.lua" "$CONFIG/wireplumber/main.lua.d/51-voxa-sin-suspension.lua"
+    ;;
+  "")
+    aviso "No encontré WirePlumber; la bocina Bluetooth podría cambiar de perfil o dormirse." ;;
+  *)
+    instalar_archivo "$REPO/deploy/wireplumber/0.5/wireplumber.conf.d/51-voxa.conf" "$CONFIG/wireplumber/wireplumber.conf.d/51-voxa.conf" ;;
+esac
+[ -n "$version_wp" ] && run systemctl --user restart wireplumber.service
+
+# --- 6. Arranque automático --------------------------------------------------------
+if [ "$SERVICIOS" = 1 ]; then
+  paso "Arranque automático"
+  instalar_archivo "$REPO/deploy/systemd/voxa.service" "$CONFIG/systemd/user/voxa.service"
+  instalar_archivo "$REPO/deploy/systemd/voxa-ui.service" "$CONFIG/systemd/user/voxa-ui.service"
+  instalar_archivo "$REPO/deploy/autostart/voxa-ui.desktop" "$CONFIG/autostart/voxa-ui.desktop"
+  run systemctl --user daemon-reload
+  run systemctl --user enable voxa.service
+  run systemctl --user restart voxa.service
+  if [ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ] && [ -x "$BIN/voxa-ui" ]; then
+    run systemctl --user import-environment DISPLAY WAYLAND_DISPLAY XAUTHORITY
+    run systemctl --user restart voxa-ui.service
+  fi
+fi
+
+# --- 7. Escritorio: que la cocina no se bloquee ni se duerma -------------------------
+if [ "$ESCRITORIO" = 1 ] && tiene gsettings && gsettings list-schemas 2>/dev/null | grep -q '^org.cinnamon.desktop.session$'; then
+  paso "Escritorio Cinnamon: sin bloqueo ni suspensión"
+  run gsettings set org.cinnamon.desktop.session idle-delay 0
+  run gsettings set org.cinnamon.desktop.screensaver lock-enabled false
+  run gsettings set org.cinnamon.settings-daemon.plugins.power sleep-display-ac 0
+  run gsettings set org.cinnamon.settings-daemon.plugins.power sleep-inactive-ac-timeout 0
+fi
+
+paso "Listo"
+cat <<EOF
+  • Estado:        systemctl --user status voxa voxa-ui
+  • Registro:      journalctl --user -u voxa -f
+  • Probar a mano: voxa texto
+  • Falta a mano:  inicio de sesión automático (Menú → Ventana de inicio de sesión →
+                   Usuarios → Inicio de sesión automático) y, si no lo hiciste,
+                   voxa spotify-login.
+EOF

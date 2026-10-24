@@ -1,0 +1,11 @@
+[Unit]
+Description=VOXA: pantalla de cocina
+After=voxa.service
+# La arranca deploy/autostart/voxa-ui.desktop al iniciar la sesión gráfica,
+# que antes le pasa DISPLAY: un servicio de usuario no lo conoce por sí solo.
+
+[Service]
+Type=simple
+ExecStart=%h/.local/bin/voxa-ui --completa
+Restart=always
+RestartSec=2

@@ -73,6 +73,16 @@ Los fondos ([assets/fondos/catalogo.json](assets/fondos/catalogo.json)) son foto
 
 Sin `--simulado`, usa Spotify, Spotifast y PipeWire reales. Para configurarlos, ver la [guía de la Fase 0](docs/fase0_guia.md#51-probar-voxa-con-spotify-real-modo-texto).
 
+## Instalar en la PC de la cocina
+
+```bash
+git clone <este repositorio> ~/voxa && cd ~/voxa
+bash scripts/install.sh --simular     # ver qué hará, sin cambiar nada
+bash scripts/install.sh               # paquetes, VOXA, modelos, pantalla, fondos, audio y arranque automático
+```
+
+El instalador se puede repetir sin miedo: respeta lo ya instalado y nunca sobrescribe `~/.config/voxa/config.toml`. Deja la bocina Bluetooth fija en alta calidad y sin «dormirse» ([deploy/wireplumber/](deploy/wireplumber/)), VOXA como servicio de usuario (`systemctl --user status voxa`) y la pantalla abriéndose al iniciar sesión. Queda a mano el inicio de sesión automático y `voxa spotify-login`.
+
 ## Pruebas
 
 ```bash
