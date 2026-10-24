@@ -44,6 +44,8 @@ async def main() -> None:
     parser.add_argument("--sin-clima", action="store_true")
     parser.add_argument("--problema", help="muestra un problema, p. ej. «Sin internet»")
     parser.add_argument("--silenciado", action="store_true", help="micrófono apagado")
+    parser.add_argument("--sin-activacion", action="store_true", help="sin «Hey Voxa» (solo tocar)")
+    parser.add_argument("--recordatorio", action="store_true", help="agrega un recordatorio a una hora fija")
     parser.add_argument("--puerto", type=int, default=8766)
     args = parser.parse_args()
 
@@ -54,6 +56,8 @@ async def main() -> None:
     if not args.sin_temporizadores:
         app.timers.add(900, "el arroz").ends_at -= 450
         app.timers.add(180, "los huevos").ends_at -= 108
+        if args.recordatorio:
+            app.timers.add(5 * 3600, "sacar la basura", kind="reminder")
         if args.alarma:
             app.timers.add(0, "el pan")
     if not args.sin_musica:
@@ -66,6 +70,7 @@ async def main() -> None:
     if args.problema:
         service.health.report(Problem("demo", args.problema, "Problema de prueba de la demo"))
     service.display.muted = args.silenciado
+    service.display.wake_word = None if args.sin_activacion or args.silenciado else "Hey Voxa"
 
     async with service.running(args.puerto):
         print(f"Demo lista en el puerto {args.puerto}. Abre la pantalla: voxa-ui (Ctrl+C para salir)")

@@ -27,6 +27,8 @@ pub struct State {
     /// Lo que impide que VOXA funcione bien, el más grave primero: «Sin internet».
     #[serde(default)]
     pub problems: Vec<Problem>,
+    /// «Hey Voxa» si VOXA está escuchando la palabra de activación.
+    pub wake_word: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize, PartialEq)]
@@ -126,9 +128,16 @@ pub struct Timer {
     pub ends_at: f64,
     #[serde(default)]
     pub ringing: bool,
+    /// `timer` («en 10 minutos») o `reminder` («a las 8»).
+    #[serde(default)]
+    pub kind: String,
 }
 
 impl Timer {
+    pub fn is_reminder(&self) -> bool {
+        self.kind == "reminder"
+    }
+
     pub fn remaining(&self, now: f64) -> f64 {
         (self.ends_at - now).max(0.0)
     }
@@ -233,7 +242,7 @@ mod tests {
     fn unknown_phase_and_messages_are_tolerated() {
         let state = parse_state(r#"{"type": "state", "phase": "dancing"}"#).unwrap();
         assert_eq!(state.phase, Phase::Unknown);
-        assert!(!state.muted && state.problems.is_empty() && state.weather.is_none());
+        assert!(!state.muted && state.problems.is_empty() && state.weather.is_none() && state.wake_word.is_none());
         assert!(parse_line(r#"{"type": "hello"}"#).is_none());
         assert!(parse_line("no es json").is_none());
     }

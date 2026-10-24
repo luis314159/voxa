@@ -22,7 +22,9 @@ from voxa.services.spotify_auth import SpotifyAuth
 from voxa.services.video import MpvPlayer, VideoPlayer, VideoSearch, YtDlpSearch
 from voxa.services.weather import OpenMeteo
 from voxa.skills.clock import ClockSkill
+from voxa.skills.kitchen import KitchenSkill
 from voxa.skills.music import MusicSkill
+from voxa.skills.routine import RoutineSkill
 from voxa.skills.system import SystemSkill
 from voxa.skills.timers import TimerSkill
 from voxa.skills.video import VideoSkill
@@ -33,6 +35,7 @@ from voxa.state.timers import Timer, TimerManager
 if TYPE_CHECKING:  # el audio (numpy, sounddevice…) solo se importa al usar la voz
     from voxa.audio.stt import SpeechToText
     from voxa.audio.tts import PiperTts
+    from voxa.audio.wakeword import WakeWordDetector
     from voxa.voice import VoiceSession
 
 
@@ -87,6 +90,22 @@ def build_tts(config: Config) -> PiperTts:
     return PiperTts(model, config.tts_cache_dir, config.voice.speech_rate, lexicon)
 
 
+def build_wake(config: Config) -> WakeWordDetector:
+    """«Hey Voxa». ``SetupError`` si faltan los modelos base (VOXA sigue con «toca para hablar»)."""
+    from voxa.audio.wakeword import DEFAULT_MODEL, WakeWordDetector
+
+    wake = config.wake
+    model = Path(wake.model).expanduser() if wake.model else DEFAULT_MODEL
+    if not model.exists():
+        raise SetupError(f"No encontré el modelo de «Hey Voxa»: {model}.")
+    try:
+        return WakeWordDetector.load(
+            Path(wake.feature_dir).expanduser(), model, wake.threshold or None, patience=wake.patience
+        )
+    except FileNotFoundError as exc:
+        raise SetupError(f"{exc}.") from exc
+
+
 def build_voice(config: Config, app: App, *, simulated: bool = False) -> VoiceSession:
     from voxa.audio.devices import SpeakerOutput
     from voxa.audio.ducking import NoDucking, PipeWireDucker
@@ -139,6 +158,8 @@ def build_app(config: Config, *, simulated: bool = False, on_ring: Callable[[Tim
         "clock": ClockSkill(),
         "weather": WeatherSkill(weather),
         "system": SystemSkill(),
+        "kitchen": KitchenSkill(),
+        "routine": RoutineSkill(timers, weather, music, config.routine.morning_music),
     }
     player = None
     if video is not None:

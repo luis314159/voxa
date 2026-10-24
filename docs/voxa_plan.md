@@ -127,7 +127,7 @@ Audio ──► Wake word ──► VAD/fin de frase ──► STT ──► NLU
 | Etapa | Elección | Alternativa | Notas |
 |---|---|---|---|
 | Captura | `sounddevice` sobre PipeWire, 16 kHz mono, bloques de 80 ms | ALSA directo | Lee de la fuente con cancelación de eco |
-| Wake word | **openWakeWord** con modelo propio «hey voxa» + verificador familiar | Porcupine (revisar licencia y modelo en español); Vosk con gramática como último recurso | Se entrena con voces sintéticas + negativos; se valida con audio real de la cocina |
+| Wake word | **Esquema de openWakeWord** (sus modelos base + clasificador propio «hey voxa», ejecutado con onnxruntime sin el paquete `openwakeword`) + verificador familiar | Porcupine (revisar licencia y modelo en español); Vosk con gramática como último recurso | Se entrena con voces sintéticas + negativos (`scripts/hey_voxa/`); se valida con audio real de la cocina |
 | Fin de frase | **Silero VAD** | `webrtcvad` | Corta tras ~700 ms de silencio; máximo 8 s |
 | STT | **Híbrido:** Vosk (es) en streaming para comandos + **faster-whisper** (base/small, int8) para texto libre | Solo uno de los dos, según el benchmark | Los nombres de canciones y videos son vocabulario abierto: Vosk con gramática no basta |
 | NLU | Reglas en YAML (patrones con *slots*) + `rapidfuzz` + números en palabras (`text2num`) | IA con *tool calling* si las reglas fallan | Normaliza acentos, muletillas («este…», «oye») y diminutivos |
@@ -157,12 +157,14 @@ Audio ──► Wake word ──► VAD/fin de frase ──► STT ──► NLU
 | **Música** | poner artista / canción / álbum / playlist («mi playlist de cocina»), pausa, sigue, siguiente, anterior, qué suena, aleatorio, «me gusta», «ponla en la sala» | Spotify Web API + Connect (búsqueda y reproducción en «VOXA Cocina» o en otro dispositivo); CLI de Spotifast y MPRIS para controles locales (ver 6.1) |
 | **Volumen** | sube, baja, «a treinta», silencio | `wpctl` sobre el sink Bluetooth |
 | **Temporizadores** | crear (con nombre y duración), consultar, cancelar, varios a la vez, detener la alarma | Propios, persistentes, alarma con ducking y repetición cada 30 s hasta que alguien la detenga |
+| **Recordatorios y despertador** | «recuérdame sacar la basura a las 8 de la noche», «despiértame mañana a las 6 y media», «pon una alarma a mediodía», qué recordatorios tengo, cancelar | Los mismos temporizadores con hora fija (12 h ambiguas → la próxima ocurrencia) |
+| **Conversiones de cocina** | «¿cuántos gramos es una taza de harina?», «¿cuántas cucharadas son un cuarto de taza?», «350 Fahrenheit en centígrados» | Local, sin IA: tazas de 240 ml y gramos por taza de recetario |
 | **Video** | poner un video de X, pausa, sigue, adelanta/atrasa N, cierra, más fuerte | yt-dlp (`ytsearch1:`) + mpv con IPC; `show-text` de mpv para mostrar estados encima del video |
 | **Hora y fecha** | qué hora es, qué día es | Local |
 | **Clima** | cómo está el clima, va a llover | Open-Meteo (gratis, sin llave) |
-| **Sistema** | deja de escuchar, ayuda, «¿estás ahí?», reinicia | Local |
+| **Sistema** | deja de escuchar, ayuda, «¿estás ahí?» / «¿estás bien?» (dice qué falla), reinicia | Local |
 
-**Fase IA (opcional):** preguntas abiertas, conversiones de cocina («¿cuántos gramos son una taza de harina?»), lista del súper y recordatorios.
+**Fase IA (opcional):** preguntas abiertas y lista del súper.
 
 ### 6.1 Spotify: Connect + Web API como base, Spotifast como reproductor
 
@@ -295,6 +297,8 @@ Cada fase termina con un **criterio de salida** verificable.
 - Entrenar el modelo de openWakeWord y el verificador familiar.
 - Cancelación de eco + ducking + umbral adaptativo.
 - Gramática sin activación para detener alarmas.
+
+**Hecho sin el equipo real:** detector propio con los modelos base de openWakeWord y onnxruntime (el paquete `openwakeword` pide `tflite-runtime`, que no existe para Python 3.12); clasificador «Hey Voxa»/«Oye Voxa» entrenado con ~2,400 voces sintéticas y ruido de cocina simulado (`scripts/hey_voxa/`); la orden pegada («Hey Voxa, pon música») no pierde su inicio; mientras suena una alarma, «para», «ya» o «gracias» la apagan sin «Hey Voxa»; cancelación de eco de PipeWire opcional (`install.sh --cancelar-eco`); `voxa probar-activacion` para calibrar. **Falta en la cocina:** medir con la familia (con y sin música), ajustar el umbral y entrenar el verificador familiar.
 
 **Salida:** se cumplen las métricas de activación de la sección 10.
 

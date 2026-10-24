@@ -7,12 +7,14 @@ Lo comparten ``voxa texto``, ``voxa voz`` y ``voxa servicio``; cambia solo de d�
 from __future__ import annotations
 
 import asyncio
+import collections
 import contextlib
 import logging
 from typing import TYPE_CHECKING, AsyncIterator
 
 from voxa import diagnostics
 from voxa.app import App
+from voxa.core.assistant import STOPS_ALARM
 from voxa.core.types import Response
 from voxa.display import Display, DisplayServer
 from voxa.health import Health, Problem
@@ -21,6 +23,7 @@ from voxa.state.timers import Timer
 
 if TYPE_CHECKING:
     from voxa.audio.devices import Microphone
+    from voxa.audio.wakeword import WakeWordDetector
     from voxa.voice import TurnResult, VoiceSession
 
 log = logging.getLogger(__name__)
@@ -29,6 +32,14 @@ MUTE_ACTION = "mic.mute"
 _MIC_RETRY_SECONDS = 30.0
 # Lo que se ve encima del video mientras VOXA escucha o piensa (el video tapa la pantalla).
 _VIDEO_OSD = {"listening": "🎙 Te escucho…", "thinking": "Un momento…"}
+WAKE_PHRASE = "Hey Voxa"
+
+
+def _alarm_endpoint():
+    """Durante la alarma solo interesan frases cortas («para», «ya, gracias»)."""
+    from voxa.audio.endpoint import EndpointConfig
+
+    return EndpointConfig(end_silence_ms=480, max_ms=2400, no_speech_timeout_ms=30000)
 
 
 class Service:
@@ -38,9 +49,14 @@ class Service:
         self.health = health or display.health or Health(app.health_checks)
         display.health = self.health
         self.health.on_change = display.publish
+        system = app.assistant.skill("system")
+        if system is not None and hasattr(system, "problems"):
+            system.problems = lambda: self.health.problems  # «¿estás bien?» dice qué falla
         self.session: VoiceSession | None = None
         self.mic: Microphone | None = None
         self.muted = False
+        self.wake: WakeWordDetector | None = None
+        self.wake_count = 0
         self._turn = asyncio.Lock()
         self._tasks: set[asyncio.Task] = set()
         if app.video is not None:
@@ -58,6 +74,18 @@ class Service:
         self.session, self.mic = session, mic
         if not self.muted:
             self._open_microphone()
+        self._sync_wake()
+
+    def attach_wake(self, detector: WakeWordDetector) -> None:
+        self.wake = detector
+        self._sync_wake()
+
+    def _sync_wake(self) -> None:
+        listening = self.wake is not None and self.session is not None and not self.muted
+        phrase = WAKE_PHRASE if listening else None
+        if phrase != self.display.wake_word:
+            self.display.wake_word = phrase
+            self.display.publish()
 
     def _open_microphone(self) -> bool:
         if self.mic is None:
@@ -70,7 +98,7 @@ class Service:
         self.health.clear("microfono")
         return True
 
-    async def talk(self) -> TurnResult | None:
+    async def talk(self, *, after_wake: bool = False) -> TurnResult | None:
         """Un turno de voz. Si ya hay uno en curso (dos toques seguidos), no hace nada.
 
         Con el micrófono apagado, tocar el anillo lo vuelve a encender y escucha de una vez.
@@ -83,7 +111,7 @@ class Service:
             if not self.mic.is_open and not self._open_microphone():
                 await self.session.say(Response("No encuentro el micrófono.", sound="error"))
                 return None
-            result = await self.session.turn(self.mic)
+            result = await self.session.turn(self.mic, after_wake=after_wake)
         await self._apply(result.response)
         return result
 
@@ -112,6 +140,7 @@ class Service:
                 self._open_microphone()
         self.display.muted = on
         self.display.publish()
+        self._sync_wake()
         if acknowledge:
             await self._acknowledge("cancel" if on else "ok")
 
@@ -173,6 +202,56 @@ class Service:
         self._tasks.add(task)
         task.add_done_callback(self._tasks.discard)
 
+    async def _listen_for_wake(self) -> None:
+        """Escucha «Hey Voxa» todo el tiempo (menos con el micrófono apagado o durante un turno).
+
+        Mientras suena una alarma, además, entiende «para», «ya», «gracias»… sin «Hey Voxa».
+        """
+        from voxa.audio.endpoint import State, UtteranceCollector
+
+        recent: collections.deque = collections.deque(maxlen=2)
+        alarm: UtteranceCollector | None = None
+        while True:
+            wake, mic = self.wake, self.mic
+            if wake is None or mic is None or self.session is None or self.muted or not mic.is_open or self._turn.locked():
+                recent.clear()
+                alarm = None
+                await asyncio.sleep(0.1)
+                continue
+            frame = await mic.read()
+            if self._turn.locked():
+                wake.reset()  # tocaron la pantalla: ese turno se queda con el micrófono
+                continue
+            recent.append(frame)
+            if await asyncio.to_thread(wake.feed, frame):
+                self.wake_count += 1
+                log.info("«%s» (%.2f)", WAKE_PHRASE, wake.last_score)
+                # El último bloque (ya después de «Voxa») pudo traer el inicio de la orden: se devuelve.
+                # Los anteriores no: traerían la cola de «Voxa» y confundirían al reconocedor.
+                mic.push_back(list(recent)[-1:])
+                recent.clear()
+                alarm = None
+                await self.talk(after_wake=True)
+                mic.clear()  # lo que quedó (la voz de VOXA respondiendo) no debe volver a activarla
+                wake.reset()
+                continue
+            if self.app.timers.ringing:
+                alarm = alarm or UtteranceCollector(_alarm_endpoint())
+                state = alarm.feed(frame)
+                if state is State.DONE:
+                    await self._maybe_stop_alarm(alarm.audio)
+                if state in (State.DONE, State.NO_SPEECH):
+                    alarm = None
+            else:
+                alarm = None
+
+    async def _maybe_stop_alarm(self, audio) -> None:
+        text = await self.session.transcribe(audio)
+        intent = self.app.matcher.match(text) if text else None
+        log.info("Durante la alarma: «%s» → %s", text, intent.name if intent else None)
+        if intent is not None and intent.name in STOPS_ALARM:
+            await self.stop_alarm()
+
     async def _keep_microphone(self) -> None:
         """Si el micrófono no abrió (USB desconectado, PipeWire reiniciando), lo reintenta solo."""
         while True:
@@ -188,6 +267,7 @@ class Service:
             asyncio.create_task(self.display.run()),
             asyncio.create_task(self.health.run()),
             asyncio.create_task(self._keep_microphone()),
+            asyncio.create_task(self._listen_for_wake()),
         ]
         server = None
         if port is not None:

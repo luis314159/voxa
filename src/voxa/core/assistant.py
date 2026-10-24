@@ -19,7 +19,7 @@ _NOT_YET_BY_DOMAIN = {
 FAILED = Response("Algo salió mal. Inténtalo de nuevo.", sound="error")
 
 # Mientras suena una alarma, cualquiera de estas la apaga («para», «ya», «gracias»…).
-_STOPS_ALARM = frozenset(
+STOPS_ALARM = frozenset(
     {"timer.stop_alarm", "media.pause", "system.ack", "system.cancel", "volume.mute", "timer.cancel"}
 )
 
@@ -42,6 +42,9 @@ class Assistant:
         self._video_active = video_active or (lambda: False)
         self.last_response: Response | None = None
 
+    def skill(self, domain: str) -> Skill | None:
+        return self._skills.get(domain)
+
     @property
     def active_media(self) -> str:
         """Qué reproductor reciben «pausa», «siguiente»…: el video mientras hay uno puesto."""
@@ -56,7 +59,7 @@ class Assistant:
         return self._remember(await self.handle_intent(intent))
 
     async def handle_intent(self, intent: Intent) -> Response:
-        if self._timers and self._timers.ringing and intent.name in _STOPS_ALARM:
+        if self._timers and self._timers.ringing and intent.name in STOPS_ALARM:
             return await self._dispatch("timer", Intent("timer.stop_alarm", text=intent.text, raw=intent.raw))
         if intent.name == "system.repeat":
             return self.last_response or Response("No he dicho nada todavía.")

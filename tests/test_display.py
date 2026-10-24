@@ -227,7 +227,8 @@ class FakeSession:
         self.response = response
         self.said = []
 
-    async def turn(self, mic):
+    async def turn(self, mic, after_wake=False):
+        self.after_wake = after_wake
         assert mic.is_open
         return TurnResult("algo", self.response, TurnTimings())
 

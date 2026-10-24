@@ -63,28 +63,33 @@ def of_label(label: str) -> str:
     return "de " + label
 
 
-def time_phrase(now: datetime) -> str:
-    """«Son las 3 y 25 de la tarde», «Es la una en punto de la madrugada»."""
-    hour12 = now.hour % 12 or 12
-    head = "Es la una" if hour12 == 1 else f"Son las {hour12}"
-    minute = now.minute
+def clock_words(hour: int, minute: int, *, on_the_hour: str = " en punto") -> str:
+    """«las 3 y 25 de la tarde», «la una y media de la madrugada», «las 7 de la mañana»."""
+    hour12 = hour % 12 or 12
+    head = "la una" if hour12 == 1 else f"las {hour12}"
     if minute == 0:
-        tail = " en punto"
+        tail = on_the_hour
     elif minute == 15:
         tail = " y cuarto"
     elif minute == 30:
         tail = " y media"
     else:
         tail = f" y {minute}"
-    if 1 <= now.hour < 6:
+    if 1 <= hour < 6:
         period = "de la madrugada"
-    elif 6 <= now.hour < 12:
+    elif 6 <= hour < 12:
         period = "de la mañana"
-    elif 12 <= now.hour < 20:
+    elif 12 <= hour < 20:
         period = "de la tarde"
     else:
         period = "de la noche"
-    return f"{head}{tail} {period}."
+    return f"{head}{tail} {period}"
+
+
+def time_phrase(now: datetime) -> str:
+    """«Son las 3 y 25 de la tarde», «Es la una en punto de la madrugada»."""
+    words = clock_words(now.hour, now.minute)
+    return f"{'Es' if words.startswith('la ') else 'Son'} {words}."
 
 
 def date_phrase(now: datetime) -> str:

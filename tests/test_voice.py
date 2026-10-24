@@ -17,8 +17,8 @@ class FakeMic:
         self.audio = audio
         self.skipped = None
 
-    async def record_utterance(self, collector, skip_ms=0):
-        self.skipped = skip_ms
+    async def record_utterance(self, collector, skip_ms=0, clear=True):
+        self.skipped, self.cleared = skip_ms, clear
         return self.audio
 
 
@@ -99,4 +99,15 @@ async def test_alarm_announcement():
     await voice.announce("¡Terminó el temporizador del arroz!")
     assert output.played[0] is SOUNDS["alarm"]
     assert tts.said == ["¡Terminó el temporizador del arroz!"]
+    assert ducker.events == ["duck", "restore"]
+
+
+async def test_turn_after_wake_word_keeps_the_queued_audio():
+    """«Hey Voxa, pon Soda Stereo» de corrido: lo que ya está en la cola es la orden."""
+    voice, output, ducker, music = session("pon soda stereo", FakeTts())
+    mic = FakeMic(np.ones(16000, dtype=np.int16))
+    result = await voice.turn(mic, after_wake=True)
+    assert result.response.speech == "Soda Stereo."
+    assert (mic.skipped, mic.cleared) == (0, False)
+    assert output.played[0] is SOUNDS["listening"]
     assert ducker.events == ["duck", "restore"]

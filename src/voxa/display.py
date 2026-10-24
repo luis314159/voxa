@@ -67,6 +67,7 @@ class Display:
         self.weather: Weather | None = None
         self.muted = False
         self.video_title: str | None = None
+        self.wake_word: str | None = None
         self._last: dict | None = None
 
     # --- TurnObserver (voxa.voice) ----------------------------------------
@@ -90,6 +91,7 @@ class Display:
                 "total": t.duration,
                 "ends_at": t.ends_at,
                 "ringing": t.ringing_since is not None,
+                "kind": t.kind,
             }
             for t in [*self._timers.ringing, *self._timers.active]
         ]
@@ -106,6 +108,7 @@ class Display:
             "muted": self.muted,
             "problems": [{"id": p.id, "text": p.text} for p in self.health.problems] if self.health else [],
             "video": {"title": self.video_title} if self.video_title else None,
+            "wake_word": self.wake_word,
         }
 
     def _weather_snapshot(self) -> dict | None:

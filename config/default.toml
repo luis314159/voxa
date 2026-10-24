@@ -55,6 +55,19 @@ duck_level = 0.2
 # Silencio que marca el fin de una orden.
 end_silence_ms = 720
 
+[wake]
+# «Hey Voxa»: activar VOXA con la voz, sin tocar la pantalla.
+enabled = true
+# Vacío = el modelo que trae VOXA. Aquí iría uno propio (scripts/hey_voxa/).
+model = ""
+# Modelos base que descarga el instalador.
+feature_dir = "~/.local/share/voxa/models/wakeword"
+# 0 = el recomendado por el modelo. Más alto si se activa sola; más bajo si no te oye.
+#   voxa probar-activacion   ← muestra en vivo qué tanto «cree» oír «Hey Voxa»
+threshold = 0.0
+# Bloques de 80 ms seguidos sobre el umbral para activarse.
+patience = 2
+
 [display]
 # Canal local (solo 127.0.0.1) por el que la pantalla de cocina (voxa-ui) recibe el estado.
 enabled = true
@@ -67,6 +80,11 @@ ytdlp = "yt-dlp"
 mpv = ["mpv"]
 # Calidad máxima: 720 va bien en un All-in-One; 480 si la PC tiene 2 GB de RAM.
 max_height = 720
+
+[routine]
+# «Buenos días»: además de la hora, el clima y los recordatorios del día, pone esta música.
+# Ejemplo: morning_music = "mi playlist de la mañana"   (vacío = sin música)
+morning_music = ""
 
 [weather]
 # Ubicación de la casa para el clima (Open-Meteo). Ejemplo: Ciudad de México.

@@ -96,14 +96,26 @@ class VoiceSession:
         if self._tts is not None and hasattr(self._tts, "warm_up"):
             self._tts.warm_up(phrases)
 
-    async def turn(self, mic: Microphone) -> TurnResult:
+    async def turn(self, mic: Microphone, *, after_wake: bool = False) -> TurnResult:
+        """Un turno. ``after_wake``: lo disparó «Hey Voxa» y la orden puede venir pegada.
+
+        En ese caso el sonido «escuchando» suena mientras ya se graba (sin descartar su eco):
+        perder el «pon» de «Hey Voxa, pon música» sería peor que un pitido en el audio.
+        """
         timings = TurnTimings()
         await self._ducker.duck()
         try:
             self.observer.phase("listening")
-            await self._output.play(self._sounds["listening"])
             start = time.perf_counter()
-            audio = await mic.record_utterance(UtteranceCollector(self._endpoint), skip_ms=self._echo_guard_ms)
+            collector = UtteranceCollector(self._endpoint)
+            if after_wake:
+                chime = asyncio.ensure_future(self._output.play(self._sounds["listening"]))
+                audio = await mic.record_utterance(collector, clear=False)
+                await chime
+            else:
+                await self._output.play(self._sounds["listening"])
+                start = time.perf_counter()
+                audio = await mic.record_utterance(collector, skip_ms=self._echo_guard_ms)
             timings.listen = time.perf_counter() - start
             if audio is None:
                 await self._output.play(self._sounds["cancel"])
@@ -112,6 +124,9 @@ class VoiceSession:
         finally:
             self.observer.phase("idle")
             await self._ducker.restore()
+
+    async def transcribe(self, audio) -> str:
+        return await asyncio.to_thread(self._stt.transcribe, audio)
 
     async def respond_to_audio(self, audio, timings: TurnTimings | None = None) -> TurnResult:
         timings = timings or TurnTimings()

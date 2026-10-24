@@ -2,7 +2,7 @@
 
 # VOXA
 
-Asistente de voz familiar para la cocina, sobre una PC All-in-One con Linux Mint: música de Spotify, videos de recetas, temporizadores, volumen, hora y clima, todo por voz y en español.
+Asistente de voz familiar para la cocina, sobre una PC All-in-One con Linux Mint: música de Spotify, videos de recetas, temporizadores, recordatorios, conversiones de cocina, volumen, hora y clima, todo por voz y en español.
 
 - **Plan del proyecto:** [docs/voxa_plan.md](docs/voxa_plan.md)
 - **Fase 0 (diagnóstico del equipo):** [docs/fase0_guia.md](docs/fase0_guia.md)
@@ -13,7 +13,8 @@ Asistente de voz familiar para la cocina, sobre una PC All-in-One con Linux Mint
 | Parte | Estado |
 |---|---|
 | NLU en español (gramática, números, duraciones, corrección de errores del STT) | ✅ |
-| Temporizadores persistentes con alarma | ✅ |
+| Temporizadores persistentes con alarma; recordatorios y despertador a una hora fija | ✅ |
+| Conversiones de cocina sin internet (tazas, cucharadas, gramos, °F/°C) | ✅ |
 | Música: Web API + Connect → CLI de Spotifast → MPRIS | ✅ (falta probar en el equipo real) |
 | Volumen (PipeWire), hora, clima (Open-Meteo) | ✅ |
 | Modo texto (`voxa texto`) | ✅ |
@@ -22,7 +23,7 @@ Asistente de voz familiar para la cocina, sobre una PC All-in-One con Linux Mint
 | Avisos de problemas (sin internet, sin micrófono, Spotifast cerrado…) y micrófono apagable | ✅ |
 | Videos de YouTube (yt-dlp + mpv) controlados por voz | ✅ (falta probar en el equipo real) |
 | Servicios systemd e instalador | ✅ (falta probar en el equipo real) |
-| «Hey Voxa» (detector de palabra de activación) | ⏳ Fase 3 |
+| «Hey Voxa»: detector propio, alarmas que se apagan con «ya», cancelación de eco opcional | ✅ (falta calibrar con la familia) |
 
 ## Probarlo (sin micrófono)
 
@@ -39,6 +40,10 @@ VOXA: 10 minutos para el arroz.
 VOXA: Faltan 10 minutos.
 > pon Soda Stereo
 VOXA: Soda Stereo.
+> recuérdame sacar la basura a las 8 de la noche
+VOXA: A las 8 de la noche te recuerdo sacar la basura.
+> cuántos gramos es una taza de harina
+VOXA: Una taza de harina son unos 125 gramos.
 > pon un video de cómo hacer pan de elote
 VOXA: Poniendo: Cómo hacer pan de elote.
 > pausa
@@ -62,6 +67,8 @@ voxa escuchar grabacion.wav                 # procesar una grabación
 ```
 
 `scripts/evaluar_voz.py` mide la cadena voz → intención: Piper «dice» todo el corpus (con ruido opcional) y compara Vosk, Whisper y el híbrido. Con voces sintéticas (más difíciles que una voz real) el híbrido llega a 81 % con Whisper *base* y a 87 % con *small*. La elección final sale del benchmark de la Fase 0 en el equipo real.
+
+**«Hey Voxa».** Con `voxa voz` o `voxa servicio`, VOXA escucha «Hey Voxa» (u «Oye Voxa») todo el tiempo y se puede decir la orden de corrido: «Hey Voxa, pon música». Mientras suena una alarma basta con «para», «ya» o «gracias». `voxa probar-activacion` muestra en vivo qué tan seguro está de oírlo, para ajustar `threshold` en `[wake]`. Cómo se entrenó y cómo reentrenarlo: [scripts/hey_voxa/](scripts/hey_voxa/README.md).
 
 Si VOXA pronuncia mal un nombre, agrégalo a `~/.config/voxa/pronunciacion.yaml` (formato en [src/voxa/audio/pronunciacion.yaml](src/voxa/audio/pronunciacion.yaml)).
 

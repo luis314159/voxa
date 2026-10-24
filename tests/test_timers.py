@@ -113,3 +113,65 @@ def test_ring_phrase():
     manager, _, _ = make()
     assert ring_phrase(manager.add(600, "el arroz")) == "¡Terminó el temporizador del arroz!"
     assert ring_phrase(manager.add(300)) == "¡Terminaron los 5 minutos!"
+
+
+# --- recordatorios a una hora fija ---------------------------------------------------------
+from datetime import datetime  # noqa: E402
+
+import pytest  # noqa: E402
+
+from voxa.nlu.numbers import parse_clock  # noqa: E402
+from voxa.skills.timers import next_occurrence  # noqa: E402
+
+NOW = datetime(2026, 10, 24, 15, 20)  # sábado, 3:20 de la tarde
+
+
+@pytest.mark.parametrize(
+    ("said", "tomorrow", "expected"),
+    [
+        ("siete", False, datetime(2026, 10, 24, 19, 0)),  # sin «de la…»: la próxima vez que sean las 7
+        ("tres", False, datetime(2026, 10, 25, 3, 0)),  # las 15:00 ya pasaron
+        ("siete de la manana", False, datetime(2026, 10, 25, 7, 0)),
+        ("ocho y media de la noche", False, datetime(2026, 10, 24, 20, 30)),
+        ("siete menos cuarto", False, datetime(2026, 10, 24, 18, 45)),
+        ("19 45", False, datetime(2026, 10, 24, 19, 45)),
+        ("mediodia", False, datetime(2026, 10, 25, 12, 0)),
+        ("medianoche", False, datetime(2026, 10, 25, 0, 0)),
+        ("una de la madrugada", False, datetime(2026, 10, 25, 1, 0)),
+        ("una de la tarde", False, datetime(2026, 10, 25, 13, 0)),
+        ("siete", True, datetime(2026, 10, 25, 7, 0)),  # «mañana a las 7»: la primera de mañana
+        ("diez de la noche", True, datetime(2026, 10, 25, 22, 0)),
+    ],
+)
+def test_next_occurrence(said, tomorrow, expected):
+    assert next_occurrence(parse_clock(said), NOW, tomorrow=tomorrow) == expected
+
+
+def test_impossible_hours_are_rejected():
+    assert next_occurrence((15, 0, "manana"), NOW) is None
+    assert parse_clock("veinticinco") is None
+
+
+async def test_reminder_conversation():
+    timers = TimerManager(clock=lambda: NOW.timestamp())
+    skill = TimerSkill(timers, now=lambda: NOW)
+    said = await skill.handle(Intent("timer.remind", {"time": (8, 0, "noche"), "name": "sacar la basura"}))
+    assert said.speech == "A las 8 de la noche te recuerdo sacar la basura."
+    said = await skill.handle(Intent("timer.remind", {"time": (7, 0, None), "day": "manana"}))
+    assert said.speech == "Alarma para mañana a las 7 de la mañana."
+    said = await skill.handle(Intent("timer.remind", {"time": (5, 30, "tarde")}))
+    assert said.speech == "Alarma para las 5 y media de la tarde."
+    basura, alarma, tarde = timers.active[1], timers.active[2], timers.active[0]
+    assert basura.is_reminder and basura.ends_at == datetime(2026, 10, 24, 20, 0).timestamp()
+    assert ring_phrase(basura) == "Te recuerdo: sacar la basura."
+    assert ring_phrase(alarma) == "¡Son las 7 de la mañana!"
+    assert ring_phrase(tarde) == "¡Son las 5 y media de la tarde!"
+    said = await skill.handle(Intent("timer.cancel", {"name": "basura"}))
+    assert "basura" in said.speech and len(timers.active) == 2
+
+
+def test_reminders_survive_restart(tmp_path):
+    store = tmp_path / "timers.json"
+    TimerManager(store, clock=lambda: 1000.0).add(3600, "regar", kind="reminder")
+    loaded = TimerManager(store, clock=lambda: 1000.0).active[0]
+    assert loaded.is_reminder and loaded.label == "regar"

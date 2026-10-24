@@ -55,3 +55,16 @@ async def test_spotify_and_player_checks(tmp_path):
 
     assert (await player_check(missing, "spotifast")()).id == "musica"
     assert await player_check(playing, "spotifast")() is None
+
+
+async def test_are_you_ok_reports_problems():
+    from voxa.app import build_app
+    from voxa.config import Config
+    from voxa.service import Service
+
+    service = Service.create(build_app(Config(), simulated=True))
+    assert (await service.handle_text("¿estás bien?")).speech == "Aquí estoy."
+    service.health.report(Problem("internet", "Sin internet"))
+    service.health.report(Problem("musica", "Spotifast no responde"))
+    said = await service.handle_text("¿estás bien?")
+    assert said.speech == "Aquí estoy, pero no tengo internet y Spotifast no responde."

@@ -105,6 +105,11 @@ def collect(service: Service) -> dict:
         mic = "abierto"
     else:
         mic = "no disponible"
+    if service.wake is None:
+        wake = "desactivado" if not config.wake.enabled else "no disponible"
+    else:
+        times = "1 vez" if service.wake_count == 1 else f"{service.wake_count} veces"
+        wake = f"umbral {service.wake.threshold:.2f} · {times}"
     music = display.music
     sections = [
         (
@@ -123,6 +128,7 @@ def collect(service: Service) -> dict:
                 ("Reconocimiento", f"{voice.stt} · Whisper {voice.whisper_model}"),
                 ("Voz", Path(voice.piper_voice).stem or "—"),
                 ("Micrófono", mic),
+                ("«Hey Voxa»", wake),
                 ("Entrada", voice.input_device or "predeterminada"),
                 ("Salida", voice.output_device or "predeterminada"),
             ],

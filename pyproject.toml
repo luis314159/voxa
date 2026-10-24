@@ -14,14 +14,15 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-# Pipeline de voz (Fase 1/3). Versiones a fijar con los resultados de la Fase 0.
+# Pipeline de voz. Versiones a fijar con los resultados de la Fase 0.
+# «Hey Voxa» usa onnxruntime directamente: el paquete openwakeword pide tflite-runtime,
+# que no existe para Python 3.12 (Mint 22), y silero-vad arrastra PyTorch (varios GB).
 audio = [
     "numpy",
     "sounddevice",
     "vosk",
     "faster-whisper",
-    "openwakeword",
-    "silero-vad",
+    "onnxruntime",
     "piper-tts",
 ]
 dev = [
@@ -37,7 +38,7 @@ voxa = "voxa.main:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-voxa = ["nlu/*.yaml", "audio/*.yaml"]
+voxa = ["nlu/*.yaml", "audio/*.yaml", "audio/*.npz"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -46,6 +46,12 @@ class Timer:
     label: str | None = None
     ringing_since: float | None = None
     last_rang_at: float | None = None
+    kind: str = "timer"
+    """``timer`` («en 10 minutos») o ``reminder`` («a las 8»: recordatorio o alarma de despertador)."""
+
+    @property
+    def is_reminder(self) -> bool:
+        return self.kind == "reminder"
 
 
 class TimerManager:
@@ -85,8 +91,16 @@ class TimerManager:
         return exact or [t for t in self.active if t.label and key in label_key(t.label)]
 
     # --- cambios ---------------------------------------------------------
-    def add(self, seconds: int, label: str | None = None) -> Timer:
-        timer = Timer(self._next_id, seconds, self._clock() + seconds, label)
+    def add(self, seconds: int, label: str | None = None, *, kind: str = "timer") -> Timer:
+        timer = Timer(self._next_id, seconds, self._clock() + seconds, label, kind=kind)
+        self._next_id += 1
+        self._timers.append(timer)
+        self._save()
+        return timer
+
+    def add_at(self, ends_at: float, label: str | None = None, *, kind: str = "reminder") -> Timer:
+        """A una hora fija (epoch): la hora exacta que se dijo, no «ahora + segundos»."""
+        timer = Timer(self._next_id, max(1, round(ends_at - self._clock())), ends_at, label, kind=kind)
         self._next_id += 1
         self._timers.append(timer)
         self._save()
@@ -150,6 +164,7 @@ class TimerManager:
         for item in data:
             timer = Timer(**item)
             if timer.ringing_since is None and now - timer.ends_at > _MAX_OVERDUE_ON_LOAD:
+                log.info("Se omite %s «%s»: venció hace mucho con VOXA apagada", timer.kind, timer.label)
                 continue
             # Una alarma que sonaba antes del reinicio vuelve a sonar desde ahora.
             if timer.ringing_since is not None:

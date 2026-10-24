@@ -57,6 +57,32 @@
 - {text: "ponla en la sala", intent: music.transfer, slots: {device: sala}}
 - {text: "pasa la música a la bocina del cuarto", intent: music.transfer, slots: {device: bocina del cuarto}}
 
+# --- recordatorios y alarmas a una hora ---
+- {text: "despiértame a las siete", intent: timer.remind}
+- {text: "despiértame mañana a las seis y media", intent: timer.remind, slots: {day: manana}}
+- {text: "recuérdame sacar la basura a las ocho de la noche", intent: timer.remind, slots: {name: sacar la basura}}
+- {text: "recuérdame a las cinco que llame a mi mamá", intent: timer.remind, slots: {name: llame a mi mamá}}
+- {text: "recuérdame sacar la basura mañana a las 8", intent: timer.remind, slots: {name: sacar la basura, day: manana}}
+- {text: "pon una alarma a las 7:30 de la mañana", intent: timer.remind}
+- {text: "pon una alarma para mañana a las seis", intent: timer.remind, slots: {day: manana}}
+- {text: "pon un recordatorio para regar las plantas a las 6 de la tarde", intent: timer.remind, slots: {name: regar las plantas}}
+- {text: "pon una alarma a mediodía", intent: timer.remind}
+- {text: "qué recordatorios tengo", intent: timer.query}
+- {text: "cancela el recordatorio de la basura", intent: timer.cancel, slots: {name: basura}}
+
+# --- conversiones de cocina ---
+- {text: "¿cuántos gramos es una taza de harina?", intent: kitchen.convert, slots: {unit: gramos, query: una taza de harina}}
+- {text: "cuántas cucharadas son un cuarto de taza", intent: kitchen.convert, slots: {unit: cucharadas, query: un cuarto de taza}}
+- {text: "cuántas tazas son 500 gramos de azúcar", intent: kitchen.convert, slots: {unit: tazas, query: 500 gramos de azúcar}}
+- {text: "200 gramos de mantequilla en tazas", intent: kitchen.convert, slots: {unit: tazas, query: 200 gramos de mantequilla}}
+- {text: "350 grados Fahrenheit en centígrados", intent: kitchen.temperature, slots: {number: 350, from: f}}
+- {text: "180 grados a Fahrenheit", intent: kitchen.temperature, slots: {number: 180, from: c}}
+
+# --- rutinas ---
+- {text: "buenos días", intent: routine.good_morning}
+- {text: "Hey Voxa, buenos días", intent: routine.good_morning}
+- {text: "buenas noches", intent: routine.good_night}
+
 # --- volumen ---
 - {text: "volumen a treinta", intent: volume.set, slots: {number: 30}}
 - {text: "pon el volumen al 50 por ciento", intent: volume.set, slots: {number: 50}}

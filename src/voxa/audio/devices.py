@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from collections import deque
 from typing import Protocol
 
 import numpy as np
@@ -20,6 +21,7 @@ class Microphone:
     def __init__(self, device: str | int | None = None) -> None:
         self._device = device
         self._queue: asyncio.Queue[np.ndarray] = asyncio.Queue(maxsize=200)
+        self._pushed_back: deque[np.ndarray] = deque()
         self._stream = None
         self._loop: asyncio.AbstractEventLoop | None = None
 
@@ -72,15 +74,28 @@ class Microphone:
         self._queue.put_nowait(frame)
 
     def clear(self) -> None:
+        self._pushed_back.clear()
         while not self._queue.empty():
             self._queue.get_nowait()
 
+    def push_back(self, frames: list[np.ndarray]) -> None:
+        """Devuelve bloques ya leídos: lo que se dijo justo después de «Hey Voxa» es parte de la orden."""
+        self._pushed_back.extendleft(reversed(frames))
+
     async def read(self) -> np.ndarray:
+        if self._pushed_back:
+            return self._pushed_back.popleft()
         return await self._queue.get()
 
-    async def record_utterance(self, collector: UtteranceCollector, skip_ms: int = 0) -> np.ndarray | None:
-        """Graba una frase. ``skip_ms`` descarta el inicio (eco del sonido «escuchando» por la bocina)."""
-        self.clear()
+    async def record_utterance(
+        self, collector: UtteranceCollector, skip_ms: int = 0, *, clear: bool = True
+    ) -> np.ndarray | None:
+        """Graba una frase. ``skip_ms`` descarta el inicio (eco del sonido «escuchando» por la bocina).
+
+        Tras «Hey Voxa» va ``clear=False``: la orden puede venir pegada y ya estar en la cola.
+        """
+        if clear:
+            self.clear()
         for _ in range(skip_ms // 80):
             await self.read()
         while True:

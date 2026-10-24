@@ -7,6 +7,7 @@
 #   {slot}      texto libre: query, name, device
 #   {duration}  duración («diez minutos», «hora y media»)
 #   {number}    número («treinta», «80»)
+#   {time}      hora del día («ocho y media de la noche», «7 30 p m», «mediodía»)
 #
 # El ORDEN IMPORTA: gana la primera intención que coincide. Las más específicas
 # van arriba y music.play («pon …») va casi al final.
@@ -22,6 +23,25 @@
   patterns:
     - "(cancela|quita|borra|elimina) (todos|todas) [los|las] (temporizadores|timers|alarmas)"
 
+# Recordatorios y alarmas a una hora fija. Los de «mañana» van primero: si no, «mañana»
+# quedaría dentro del nombre («sacar la basura mañana»).
+- intent: timer.remind
+  patterns:
+    - pattern: "(despiertame|levantame) manana (a la|a las|a|al) {time}"
+      set: {day: manana}
+    - "(despiertame|levantame) (a la|a las|a|al) {time}"
+    - pattern: "(pon|ponme|programa|crea|activa) [una|un] (alarma|despertador) (para manana|manana) (a la|a las|a|al) {time} [(para|de|que) {name}]"
+      set: {day: manana}
+    - "(pon|ponme|programa|crea|activa) [una|un] (alarma|despertador) (a la|a las|a|al|para la|para las|para el) {time} [(para|de|que) {name}]"
+    - pattern: "(recuerdame|acuerdame|avisame) manana (a la|a las) {time} [(que|de|para)] {name}"
+      set: {day: manana}
+    - pattern: "(recuerdame|acuerdame|avisame) [que] {name} manana (a la|a las) {time}"
+      set: {day: manana}
+    - "(recuerdame|acuerdame|avisame) (a la|a las) {time} [(que|de|para)] {name}"
+    - "(recuerdame|acuerdame|avisame) [que] {name} (a la|a las) {time}"
+    - "(pon|ponme|crea|agrega|programa) [un] recordatorio (a la|a las|para la|para las) {time} [(para|de|que)] {name}"
+    - "(pon|ponme|crea|agrega|programa) [un] recordatorio (para|de|que) {name} (a la|a las) {time}"
+
 - intent: timer.set
   patterns:
     - "(pon|ponme|crea|programa|inicia|activa|empieza) [un|una|el|la] (temporizador|timer|cronometro|alarma|cuenta regresiva) (de|por|en|a) {duration} [(para|de|del|pa) {name}]"
@@ -34,11 +54,11 @@
   patterns:
     - "cuanto [tiempo] (falta|queda|le falta|le queda|les falta|les queda) [(al|a la|a los|a las|a|del|de la|de los|de las|de|para) {name}]"
     - "(como va|como van) [el|la|los|las|mi|mis] (temporizador|temporizadores|timer|timers|alarma|alarmas) [(del|de la|de|para) {name}]"
-    - "(que|cuales|cuantos) (temporizadores|timers|alarmas) (hay|tengo|tienes|llevas)"
+    - "(que|cuales|cuantos) (temporizadores|timers|alarmas|recordatorios) (hay|tengo|tienes|llevas)"
 
 - intent: timer.cancel
   patterns:
-    - "(cancela|quita|borra|elimina|deten|para|apaga) [el|la|mi] (temporizador|timer|cronometro|alarma) [(del|de la|de|para) {name}]"
+    - "(cancela|quita|borra|elimina|deten|para|apaga) [el|la|mi] (temporizador|timer|cronometro|alarma|recordatorio|despertador) [(del|de la|de|para) {name}]"
     - "(cancela|quita|borra|elimina) (el|la) (del|de la|de los|de las|de|para) {name}"
 
 - intent: system.mute_mic
@@ -127,6 +147,49 @@
     - "(ponla|ponlo|pasala|pasalo|mandala|mandalo|cambiala|cambialo|muevela|muevelo) (en|a|al|para) [la|el] {device}"
     - "(pasa|manda|cambia|mueve|transfiere|pon) [la|el] (musica|cancion|spotify) (en|a|al|para) [la|el] {device}"
 
+# Conversiones de cocina («¿cuántos gramos es una taza de harina?»).
+- intent: kitchen.temperature
+  patterns:
+    - pattern: "{number} [grados] (fahrenheit|farenheit|farenhait) (en|a) [grados] (celsius|centigrados|centigrado)"
+      set: {from: f}
+    - pattern: "(cuantos|a cuantos) grados (celsius|centigrados) (son|es|equivalen) {number} [grados] (fahrenheit|farenheit|farenhait)"
+      set: {from: f}
+    - pattern: "{number} [grados] [(celsius|centigrados)] (en|a) [grados] (fahrenheit|farenheit|farenhait)"
+      set: {from: c}
+    - pattern: "(cuantos|a cuantos) grados (fahrenheit|farenheit|farenhait) (son|es|equivalen) {number} [grados] [(celsius|centigrados)]"
+      set: {from: c}
+
+- intent: kitchen.convert
+  patterns:
+    - pattern: "(cuantos|cuantas) gramos (es|son|hay en|tiene|tienen|lleva|llevan|equivale a|equivalen a|caben en|cabe en|pesa|pesan) {query}"
+      set: {unit: gramos}
+    - pattern: "{query} (en|a) gramos"
+      set: {unit: gramos}
+    - pattern: "(cuantos|cuantas) (kilos|kilogramos) (es|son|hay en|tiene|tienen|lleva|llevan|equivale a|equivalen a|caben en|cabe en|pesa|pesan) {query}"
+      set: {unit: kilos}
+    - pattern: "(cuantas|cuantos) tazas (es|son|hay en|tiene|tienen|lleva|llevan|equivale a|equivalen a|caben en|cabe en|pesa|pesan) {query}"
+      set: {unit: tazas}
+    - pattern: "{query} (en|a) tazas"
+      set: {unit: tazas}
+    - pattern: "(cuantas|cuantos) cucharadas (es|son|hay en|tiene|tienen|lleva|llevan|equivale a|equivalen a|caben en|cabe en|pesa|pesan) {query}"
+      set: {unit: cucharadas}
+    - pattern: "{query} (en|a) cucharadas"
+      set: {unit: cucharadas}
+    - pattern: "(cuantas|cuantos) cucharaditas (es|son|hay en|tiene|tienen|lleva|llevan|equivale a|equivalen a|caben en|cabe en|pesa|pesan) {query}"
+      set: {unit: cucharaditas}
+    - pattern: "(cuantos|cuantas) mililitros (es|son|hay en|tiene|tienen|lleva|llevan|equivale a|equivalen a|caben en|cabe en|pesa|pesan) {query}"
+      set: {unit: mililitros}
+    - pattern: "{query} (en|a) mililitros"
+      set: {unit: mililitros}
+    - pattern: "(cuantos|cuantas) litros (es|son|hay en|tiene|tienen|lleva|llevan|equivale a|equivalen a|caben en|cabe en|pesa|pesan) {query}"
+      set: {unit: litros}
+    - pattern: "(cuantas|cuantos) onzas (es|son|hay en|tiene|tienen|lleva|llevan|equivale a|equivalen a|caben en|cabe en|pesa|pesan) {query}"
+      set: {unit: onzas}
+    - pattern: "{query} (en|a) onzas"
+      set: {unit: onzas}
+    - pattern: "(cuantas|cuantos) libras (es|son|hay en|tiene|tienen|lleva|llevan|equivale a|equivalen a|caben en|cabe en|pesa|pesan) {query}"
+      set: {unit: libras}
+
 - intent: video.close
   patterns:
     - "(cierra|quita|apaga|deten) [el] (video|youtube)"
@@ -157,6 +220,14 @@
     - "(como esta|como va|que tal|como sigue) el (clima|tiempo)"
     - "(que|cual es la) (clima|temperatura) (hace|hay|tenemos)"
     - "(cuantos grados hace|cuantos grados hay|que temperatura hace|hace frio|hace calor|el clima|clima)"
+
+- intent: routine.good_morning
+  patterns:
+    - "(buenos dias|buen dia|buenas tardes|buenos dias a todos|buenos dias familia)"
+
+- intent: routine.good_night
+  patterns:
+    - "(buenas noches|ya me voy a dormir|me voy a dormir|hasta manana)"
 
 - intent: system.help
   patterns:

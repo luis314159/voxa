@@ -6,7 +6,7 @@
 #   bash scripts/install.sh --simular     # muestra qué haría, sin cambiar nada
 #
 # Opciones: --sin-apt  --sin-modelos  --sin-pantalla  --sin-fondos  --sin-video  --sin-servicios
-#           --sin-ajustes-escritorio
+#           --sin-ajustes-escritorio  --cancelar-eco (experimental: oír «Hey Voxa» con música fuerte)
 set -euo pipefail
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -14,9 +14,15 @@ DATA="${XDG_DATA_HOME:-$HOME/.local/share}/voxa"
 CONFIG="${XDG_CONFIG_HOME:-$HOME/.config}"
 BIN="$HOME/.local/bin"
 VOSK_MODEL="vosk-model-small-es-0.42"
+# Modelos base de «Hey Voxa» (openWakeWord v0.5.1), con su huella para no instalar algo alterado.
+WAKE_URL="https://github.com/dscripka/openWakeWord/releases/download/v0.5.1"
+WAKE_MODELS=(
+  "melspectrogram.onnx ba2b0e0f8b7b875369a2c89cb13360ff53bac436f2895cced9f479fa65eb176f"
+  "embedding_model.onnx 70d164290c1d095d1d4ee149bc5e00543250a7316b59f31d056cff7bd3075c1f"
+)
 PIPER_VOICE="es_MX-claude-high"
 
-SIMULAR=0 APT=1 MODELOS=1 PANTALLA=1 FONDOS=1 VIDEO=1 SERVICIOS=1 ESCRITORIO=1
+SIMULAR=0 APT=1 MODELOS=1 PANTALLA=1 FONDOS=1 VIDEO=1 SERVICIOS=1 ESCRITORIO=1 ECO=0
 for arg in "$@"; do
   case "$arg" in
     --simular) SIMULAR=1 ;;
@@ -25,6 +31,7 @@ for arg in "$@"; do
     --sin-pantalla) PANTALLA=0 ;;
     --sin-fondos) FONDOS=0 ;;
     --sin-video) VIDEO=0 ;;
+    --cancelar-eco) ECO=1 ;;
     --sin-servicios) SERVICIOS=0 ;;
     --sin-ajustes-escritorio) ESCRITORIO=0 ;;
     -h|--help|--ayuda) sed -n '2,10p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
@@ -109,6 +116,22 @@ if [ "$MODELOS" = 1 ]; then
   else
     run "$VENV_PY" -m piper.download_voices "$PIPER_VOICE" --download-dir "$DATA/models/piper"
   fi
+  for entrada in "${WAKE_MODELS[@]}"; do
+    read -r archivo huella <<<"$entrada"
+    destino="$DATA/models/wakeword/$archivo"
+    if [ -f "$destino" ] && [ "$(sha256sum "$destino" | cut -d' ' -f1)" = "$huella" ]; then
+      listo "«Hey Voxa»: $archivo"
+      continue
+    fi
+    run mkdir -p "$DATA/models/wakeword"
+    run curl -fL --retry 3 -o "$destino.parcial" "$WAKE_URL/$archivo"
+    if [ "$SIMULAR" = 0 ] && [ "$(sha256sum "$destino.parcial" | cut -d' ' -f1)" != "$huella" ]; then
+      rm -f "$destino.parcial"
+      aviso "La huella de $archivo no coincide: no se instaló («Hey Voxa» no estará disponible)."
+      continue
+    fi
+    run mv "$destino.parcial" "$destino"
+  done
   # faster-whisper descarga su modelo la primera vez que se usa; mejor ahora que en la primera orden.
   modelo_whisper="$(sed -n 's/^whisper_model *= *"\(.*\)"/\1/p' "$CONFIG/voxa/config.toml" 2>/dev/null | head -1 || true)"
   run "$VENV_PY" -c "from faster_whisper import WhisperModel; WhisperModel('${modelo_whisper:-base}', compute_type='int8')"
@@ -164,6 +187,29 @@ case "$version_wp" in
     instalar_archivo "$REPO/deploy/wireplumber/0.5/wireplumber.conf.d/51-voxa.conf" "$CONFIG/wireplumber/wireplumber.conf.d/51-voxa.conf" ;;
 esac
 [ -n "$version_wp" ] && run systemctl --user restart wireplumber.service
+
+if [ "$ECO" = 1 ]; then
+  paso "Cancelación de eco (micrófono sin la música de la bocina)"
+  instalar_archivo "$REPO/deploy/pipewire/pipewire.conf.d/60-voxa-eco.conf" "$CONFIG/pipewire/pipewire.conf.d/60-voxa-eco.conf"
+  run systemctl --user restart pipewire.service wireplumber.service
+  if [ "$SIMULAR" = 1 ]; then
+    printf '  $ wpctl set-default <id de voxa_mic_sin_eco>\n'
+  else
+    sleep 2
+    id_eco="$(pw-dump 2>/dev/null | python3 -c '
+import json, sys
+for obj in json.load(sys.stdin):
+    if (obj.get("info") or {}).get("props", {}).get("node.name") == "voxa_mic_sin_eco":
+        print(obj["id"])
+' || true)"
+    if [ -n "$id_eco" ]; then
+      wpctl set-default "$id_eco"
+      listo "Micrófono predeterminado: VOXA: micrófono sin eco"
+    else
+      aviso "No apareció «VOXA: micrófono sin eco»; revisa: journalctl --user -u pipewire"
+    fi
+  fi
+fi
 
 # --- 7. Arranque automático --------------------------------------------------------
 if [ "$SERVICIOS" = 1 ]; then

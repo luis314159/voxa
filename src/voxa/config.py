@@ -74,6 +74,20 @@ class VideoConfig:
 
 
 @dataclass(frozen=True)
+class RoutineConfig:
+    morning_music: str = ""
+
+
+@dataclass(frozen=True)
+class WakeConfig:
+    enabled: bool = True
+    model: str = ""
+    feature_dir: str = "~/.local/share/voxa/models/wakeword"
+    threshold: float = 0.0
+    patience: int = 2
+
+
+@dataclass(frozen=True)
 class DisplayConfig:
     enabled: bool = True
     port: int = 8766
@@ -87,6 +101,8 @@ class Config:
     timers: TimersConfig = field(default_factory=TimersConfig)
     weather: WeatherConfig = field(default_factory=WeatherConfig)
     voice: VoiceConfig = field(default_factory=VoiceConfig)
+    wake: WakeConfig = field(default_factory=WakeConfig)
+    routine: RoutineConfig = field(default_factory=RoutineConfig)
     display: DisplayConfig = field(default_factory=DisplayConfig)
     video: VideoConfig = field(default_factory=VideoConfig)
     config_dir: Path = field(default_factory=lambda: _xdg("XDG_CONFIG_HOME", ".config"))

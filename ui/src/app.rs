@@ -27,9 +27,10 @@ const NIGHT_DARKNESS: f32 = 0.68;
 const LONG_PRESS: Duration = Duration::from_millis(1200);
 const DIAGNOSTICS_REFRESH: Duration = Duration::from_secs(5);
 const DIAGNOSTICS_CLOSE: Duration = Duration::from_secs(120);
-const HINTS: [&str; 7] = [
+const HINTS: [&str; 8] = [
     "«Pon un temporizador de 10 minutos para el arroz»",
     "«¿Cuánto le falta al arroz?»",
+    "«Recuérdame sacar la basura a las 8 de la noche»",
     "«Pon a Juan Gabriel»",
     "«Pon un video de cómo hacer pozole»",
     "«Súbele a la música»",
@@ -173,7 +174,7 @@ impl eframe::App for VoxaApp {
         self.timers(ui, &painter, &f, timers_area, &state);
         let mut footer = rect.bottom() - f.px(28.0);
         if let Some(place) = self.backgrounds.as_ref().and_then(Backgrounds::caption) {
-            let shown = widgets::shadow_text(&painter, 
+            let shown = widgets::shadow_text(&painter,
                 pos2(right.right(), footer),
                 Align2::RIGHT_BOTTOM,
                 place,
@@ -183,7 +184,7 @@ impl eframe::App for VoxaApp {
             footer = shown.top() - f.px(6.0);
         }
         if !connected {
-            widgets::shadow_text(&painter, 
+            widgets::shadow_text(&painter,
                 pos2(right.right(), footer),
                 Align2::RIGHT_BOTTOM,
                 "Sin conexión con VOXA · reintentando…",
@@ -225,7 +226,7 @@ impl VoxaApp {
             theme::TEXT,
         );
         if let Some(suffix) = suffix {
-            widgets::shadow_text(painter, 
+            widgets::shadow_text(painter,
                 pos2(clock.right() + f.px(18.0), clock.bottom() - f.px(58.0)),
                 Align2::LEFT_BOTTOM,
                 suffix,
@@ -401,7 +402,11 @@ impl VoxaApp {
                 let text = if more > 0 { format!("{} · y {more} más", problem.text) } else { problem.text.clone() };
                 widgets::shadow_text(painter, below, Align2::RIGHT_TOP, text, font, theme::ALARM);
             } else {
-                widgets::shadow_text(painter, below, Align2::RIGHT_TOP, "Toca para hablar", font, theme::TEXT_DIM);
+                let invite = match &state.wake_word {
+                    Some(phrase) => format!("Di «{phrase}» o toca aquí"),
+                    None => "Toca para hablar".to_owned(),
+                };
+                widgets::shadow_text(painter, below, Align2::RIGHT_TOP, invite, font, theme::TEXT_DIM);
             }
         }
         mic_center.x - size / 2.0
@@ -409,7 +414,7 @@ impl VoxaApp {
 
     fn timers(&mut self, ui: &mut Ui, painter: &Painter, f: &Frame, area: Rect, state: &State) {
         if state.timers.is_empty() {
-            self.hints(painter, f, area);
+            self.hints(painter, f, area, state.wake_word.as_deref());
             return;
         }
         let gap = f.px(24.0);
@@ -433,13 +438,22 @@ impl VoxaApp {
         let radius = CornerRadius::same(f.px(28.0) as u8);
         let response = ui.interact(card, ui.scope_id().with(("temporizador", timer.id)), Sense::click());
         let pad = f.px(32.0);
-        let label = timer.label.as_deref().map(format::capitalize).unwrap_or_else(|| "Temporizador".into());
+        let fallback = if timer.is_reminder() { "Alarma" } else { "Temporizador" };
+        let label = timer.label.as_deref().map(format::capitalize).unwrap_or_else(|| fallback.into());
+        // Un recordatorio muestra a qué hora suena («8:00 p. m.»), no una cuenta de horas.
+        let rings_at = chrono::DateTime::from_timestamp(timer.ends_at as i64, 0)
+            .map(|at| format::clock(at.with_timezone(&chrono::Local).time(), self.options.twenty_four_hours));
 
         if timer.ringing {
             let glow = widgets::pulse(f.time, 1.2);
             painter.rect_filled(card, radius, theme::lerp(theme::ALARM_DIM, theme::lerp(theme::CARD, theme::ALARM, 0.45), glow));
             painter.rect_stroke(card, radius, egui::Stroke::new(f.px(3.0), theme::ALARM), egui::StrokeKind::Inside);
-            widgets::shadow_text(painter, card.left_top() + vec2(pad, pad * 0.8), Align2::LEFT_TOP, format!("¡{label} listo!"), theme::strong(f.px(52.0)), theme::TEXT);
+            let title = match (timer.is_reminder(), &timer.label, &rings_at) {
+                (true, Some(_), _) => label.clone(),
+                (true, None, Some((time, suffix))) => format!("¡Son las {time}{}!", suffix.map(|s| format!(" {s}")).unwrap_or_default()),
+                _ => format!("¡{label} listo!"),
+            };
+            widgets::fitted_text(painter, card.left_top() + vec2(pad, pad * 0.8), Align2::LEFT_TOP, &title, theme::strong(f.px(52.0)), theme::TEXT, card.width() - pad * 2.0);
             widgets::shadow_text(painter, card.left_bottom() + vec2(pad, -pad * 0.8), Align2::LEFT_BOTTOM, "Toca para detener la alarma", theme::regular(f.px(30.0)), theme::TEXT);
             if response.clicked() {
                 self.send(Command::StopAlarm);
@@ -450,26 +464,43 @@ impl VoxaApp {
         painter.rect_filled(card, radius, if response.hovered() { theme::CARD_HOVER } else { theme::CARD });
         let label_font = theme::regular(f.px(36.0));
         widgets::fitted_text(painter, card.left_top() + vec2(pad, pad * 0.75), Align2::LEFT_TOP, &label, label_font, theme::TEXT_DIM, card.width() * 0.45);
-        widgets::shadow_text(painter, 
+        let subtitle = if timer.is_reminder() {
+            format!("en {}", format::duration((timer.remaining(f.now) / 60.0).ceil() * 60.0))
+        } else {
+            format::duration(timer.total)
+        };
+        widgets::shadow_text(painter,
             card.left_top() + vec2(pad, pad * 0.75 + f.px(48.0)),
             Align2::LEFT_TOP,
-            format::duration(timer.total),
+            subtitle,
             theme::regular(f.px(26.0)),
             theme::alpha(theme::TEXT_DIM, 0.7),
         );
-        widgets::tabular_text(
-            painter,
-            pos2(card.right() - pad, card.center().y - f.px(10.0)),
-            Align2::RIGHT_CENTER,
-            &format::countdown(timer.remaining(f.now)),
-            theme::strong(f.px(104.0)),
-            theme::TEXT,
-        );
-        let bar = Rect::from_min_max(
-            pos2(card.left() + pad, card.bottom() - pad * 0.75 - f.px(10.0)),
-            pos2(card.right() - pad, card.bottom() - pad * 0.75),
-        );
-        widgets::progress_bar(painter, bar, timer.fraction_left(f.now), None);
+        match (&rings_at, timer.is_reminder()) {
+            (Some((time, suffix)), true) => {
+                let anchor = pos2(card.right() - pad, card.center().y);
+                let suffix_rect = suffix.map(|s| {
+                    widgets::shadow_text(painter, anchor + vec2(0.0, f.px(24.0)), Align2::RIGHT_BOTTOM, s, theme::regular(f.px(34.0)), theme::TEXT_DIM)
+                });
+                let right = suffix_rect.map_or(anchor.x, |r| r.left() - f.px(12.0));
+                widgets::tabular_text(painter, pos2(right, anchor.y), Align2::RIGHT_CENTER, time, theme::strong(f.px(92.0)), theme::TEXT);
+            }
+            _ => {
+                widgets::tabular_text(
+                    painter,
+                    pos2(card.right() - pad, card.center().y - f.px(10.0)),
+                    Align2::RIGHT_CENTER,
+                    &format::countdown(timer.remaining(f.now)),
+                    theme::strong(f.px(104.0)),
+                    theme::TEXT,
+                );
+                let bar = Rect::from_min_max(
+                    pos2(card.left() + pad, card.bottom() - pad * 0.75 - f.px(10.0)),
+                    pos2(card.right() - pad, card.bottom() - pad * 0.75),
+                );
+                widgets::progress_bar(painter, bar, timer.fraction_left(f.now), None);
+            }
+        }
 
         // Cancelar: un toque en la tarjeta muestra la «×» unos segundos; otro en la «×» lo cancela.
         let selected = self.selected.is_some_and(|(id, at)| id == timer.id && at.elapsed() < SELECT_SECONDS);
@@ -489,9 +520,10 @@ impl VoxaApp {
         }
     }
 
-    fn hints(&self, painter: &Painter, f: &Frame, area: Rect) {
+    fn hints(&self, painter: &Painter, f: &Frame, area: Rect, wake_word: Option<&str>) {
         let mut y = area.top() + f.px(40.0);
-        widgets::shadow_text(painter, pos2(area.left(), y), Align2::LEFT_TOP, "Prueba decir:", theme::regular(f.px(34.0)), theme::TEXT_DIM);
+        let title = wake_word.map_or_else(|| "Prueba decir:".to_owned(), |phrase| format!("Prueba decir «{phrase}» y luego:"));
+        widgets::shadow_text(painter, pos2(area.left(), y), Align2::LEFT_TOP, title, theme::regular(f.px(34.0)), theme::TEXT_DIM);
         y += f.px(64.0);
         let n = (f.time / 8.0) as usize;
         for row in 0..3 {

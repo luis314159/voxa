@@ -13,10 +13,11 @@ import threading
 import time
 import urllib.parse
 import webbrowser
+from dataclasses import replace
 from pathlib import Path
 
 from voxa import diagnostics
-from voxa.app import SetupError, build_app, build_tts, build_voice
+from voxa.app import SetupError, build_app, build_tts, build_voice, build_wake
 from voxa.config import Config, load_config
 from voxa.core.types import Response
 from voxa.health import Problem
@@ -82,6 +83,19 @@ async def _with_voice(config: Config, service: Service, simulated: bool):
     return session
 
 
+def _attach_wake(config: Config, service: Service) -> bool:
+    """Carga «Hey Voxa» si está activado; si faltan sus modelos, VOXA sigue con «toca para hablar»."""
+    if not config.wake.enabled:
+        return False
+    try:
+        service.attach_wake(build_wake(config))
+    except SetupError as exc:
+        logging.getLogger(__name__).error("Sin «Hey Voxa»: %s", exc)
+        service.health.report(Problem("activacion", "«Hey Voxa» no está disponible", str(exc)))
+        return False
+    return True
+
+
 async def run_voice_mode(config: Config, simulated: bool) -> None:
     from voxa.audio.devices import Microphone
 
@@ -92,7 +106,8 @@ async def run_voice_mode(config: Config, simulated: bool) -> None:
         if not service.mic.is_open:
             print("No pude abrir el micrófono; revisa input_device en config.toml (python -m sounddevice).")
             return
-        print("Listo. Pulsa Enter y habla (o escribe una orden). «salir» para terminar.")
+        wake = "di «Hey Voxa» o " if _attach_wake(config, service) else ""
+        print(f"Listo: {wake}pulsa Enter y habla (o escribe una orden). «salir» para terminar.")
         while True:
             try:
                 line = await asyncio.to_thread(input, "🎙  ")
@@ -130,8 +145,48 @@ async def run_service(config: Config, simulated: bool) -> None:
             service.health.report(Problem("voz", "Faltan los modelos de voz", str(exc)))
         else:
             service.attach_voice(session, Microphone(_device(config.voice.input_device)))
+            _attach_wake(config, service)
             print("VOXA lista.")
         await asyncio.Event().wait()
+
+
+async def probe_wake_word(config: Config, threshold: float | None, path: Path | None) -> None:
+    """Muestra en vivo qué tan seguro está el detector de oír «Hey Voxa» (para calibrar el umbral)."""
+    from voxa.audio.clip import MIC_RATE, Clip
+    from voxa.audio.wakeword import CHUNK
+
+    if threshold is not None:
+        config = replace(config, wake=replace(config.wake, threshold=threshold))
+    detector = build_wake(config)
+    print(f"Umbral: {detector.threshold:.2f} · bloques seguidos: {config.wake.patience}")
+
+    def show(at: float, detected: bool) -> None:
+        score = detector.last_score
+        bar = "█" * int(score * 40)
+        mark = "  ← «Hey Voxa»" if detected else ""
+        print(f"{at:7.2f}s {score:4.2f} {bar:<40}|{mark}", flush=True)
+
+    if path is not None:  # una grabación: cada activación con su segundo
+        audio = Clip.load(path).resampled(MIC_RATE).to_int16()
+        hits = 0
+        for i in range(0, len(audio) - CHUNK + 1, CHUNK):
+            if detector.feed(audio[i : i + CHUNK]):
+                hits += 1
+                show(i / MIC_RATE, True)
+        print(f"{hits} activaciones en {len(audio) / MIC_RATE:.0f} s")
+        return
+
+    from voxa.audio.devices import Microphone
+
+    print("Di «Hey Voxa» unas cuantas veces, de cerca y de lejos, con y sin música. Ctrl+C para terminar.")
+    async with Microphone(_device(config.voice.input_device)) as mic:
+        started = time.monotonic()
+        while True:
+            frame = await mic.read()
+            detected = detector.feed(frame)
+            if detected or detector.last_score >= 0.1:
+                show(time.monotonic() - started, detected)
+            await asyncio.sleep(0)
 
 
 async def say_text(config: Config, text: str, show_phonemes: bool = False) -> None:
@@ -240,6 +295,9 @@ def main(argv: list[str] | None = None) -> int:
     listen.add_argument("--simulado", action="store_true")
     sounds = sub.add_parser("sonidos", help="reproduce los sonidos de VOXA")
     sounds.add_argument("--guardar", type=Path, metavar="CARPETA", help="guarda los WAV en lugar de reproducirlos")
+    wake = sub.add_parser("probar-activacion", help="muestra en vivo cómo oye VOXA «Hey Voxa» (para calibrar)")
+    wake.add_argument("--umbral", type=float, help="prueba otro umbral (0–1)")
+    wake.add_argument("--archivo", type=Path, help="busca «Hey Voxa» en una grabación WAV en lugar del micrófono")
     sub.add_parser("spotify-login", help="autoriza a VOXA en tu cuenta de Spotify")
     args = parser.parse_args(argv)
 
@@ -261,6 +319,7 @@ def main(argv: list[str] | None = None) -> int:
         "decir": lambda: say_text(config, " ".join(args.texto), args.fonemas),
         "escuchar": lambda: listen_file(config, args.archivo, args.simulado),
         "sonidos": lambda: play_sounds(config, args.guardar),
+        "probar-activacion": lambda: probe_wake_word(config, args.umbral, args.archivo),
     }
     try:
         asyncio.run(commands[args.command]())

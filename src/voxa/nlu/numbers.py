@@ -142,3 +142,56 @@ def parse_duration(text: str, default_unit: int = 60) -> int | None:
 
     seconds = round(total)
     return seconds if seconds > 0 else None
+
+
+#: Palabras de una hora dicha («las ocho y media de la noche», «7 30 p m»).
+CLOCK_WORDS = NUMBER_WORDS | {
+    "media", "cuarto", "menos", "con", "en", "punto", "de", "la", "del", "manana", "tarde", "noche",
+    "madrugada", "dia", "mediodia", "medianoche", "am", "pm", "a", "p", "m",
+}
+_PERIODS = {
+    ("de", "la", "manana"): "manana", ("de", "la", "tarde"): "tarde", ("de", "la", "noche"): "noche",
+    ("de", "la", "madrugada"): "madrugada", ("del", "dia"): "dia", ("am",): "manana", ("a", "m"): "manana",
+    ("pm",): "tarde", ("p", "m"): "tarde",
+}
+
+
+def parse_clock(text: str) -> tuple[int, int, str | None] | None:
+    """«ocho y media de la noche» → (8, 30, "noche"); «19 45» → (19, 45, None); «mediodia» → (12, 0, "dia").
+
+    Los minutos pueden ser negativos («siete menos cuarto» → (7, -15, None)): se resuelven al
+    calcular la hora real. Devuelve ``None`` si el texto no es solo una hora.
+    """
+    tokens = text.split()
+    if tokens in (["mediodia"], ["el", "mediodia"]):
+        return 12, 0, "dia"
+    if tokens in (["medianoche"], ["la", "medianoche"]):
+        return 0, 0, "noche"
+    parsed = parse_number_at(tokens, 0)
+    if parsed is None or parsed[0] != int(parsed[0]) or not 0 <= parsed[0] <= 24:
+        return None
+    hour, i = int(parsed[0]) % 24, parsed[1]
+    minute = 0
+    rest = tokens[i:]
+    if rest[:2] == ["en", "punto"]:
+        i += 2
+    elif rest[:1] in (["y"], ["con"], ["menos"]) and len(rest) > 1:
+        sign = -1 if rest[0] == "menos" else 1
+        if rest[1] == "media" and sign > 0:
+            minute, i = 30, i + 2
+        elif rest[1] == "cuarto":
+            minute, i = 15 * sign, i + 2
+        elif (number := parse_number_at(tokens, i + 1)) and 0 < number[0] < 60:
+            minute, i = int(number[0]) * sign, number[1]
+        else:
+            return None
+    elif (number := parse_number_at(tokens, i)) and 0 <= number[0] < 60:  # «7 30» (Whisper escribe 7:30)
+        minute, i = int(number[0]), number[1]
+    period = None
+    for words, name in _PERIODS.items():
+        if tuple(tokens[i : i + len(words)]) == words:
+            period, i = name, i + len(words)
+            break
+    if i != len(tokens):
+        return None
+    return hour, minute, period
