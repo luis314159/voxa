@@ -81,7 +81,7 @@ fi
 
 # --- 2. Núcleo (Python) -------------------------------------------------------
 paso "Instalando VOXA (núcleo)"
-run pipx install --force "$REPO[audio]"
+run pipx install --force "${REPO}[audio]"
 run pipx ensurepath
 VENV_PY="$(pipx environment --value PIPX_LOCAL_VENVS 2>/dev/null || echo "$HOME/.local/share/pipx/venvs")/voxa/bin/python"
 
