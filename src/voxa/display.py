@@ -68,6 +68,8 @@ class Display:
         self.muted = False
         self.video_title: str | None = None
         self.wake_word: str | None = None
+        self.shopping: list[str] = []
+        """La lista del súper (``voxa.state.shopping``): la misma lista, se lee al tomar la foto."""
         self._last: dict | None = None
 
     # --- TurnObserver (voxa.voice) ----------------------------------------
@@ -109,6 +111,7 @@ class Display:
             "problems": [{"id": p.id, "text": p.text} for p in self.health.problems] if self.health else [],
             "video": {"title": self.video_title} if self.video_title else None,
             "wake_word": self.wake_word,
+            "shopping": list(self.shopping),
         }
 
     def _weather_snapshot(self) -> dict | None:

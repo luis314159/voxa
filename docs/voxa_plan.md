@@ -162,9 +162,11 @@ Audio ──► Wake word ──► VAD/fin de frase ──► STT ──► NLU
 | **Video** | poner un video de X, pausa, sigue, adelanta/atrasa N, cierra, más fuerte | yt-dlp (`ytsearch1:`) + mpv con IPC; `show-text` de mpv para mostrar estados encima del video |
 | **Hora y fecha** | qué hora es, qué día es | Local |
 | **Clima** | cómo está el clima, va a llover | Open-Meteo (gratis, sin llave) |
+| **Lista del súper** | «agrega leche y huevos a la lista», «se acabó el café», qué hay que comprar, quita, borra la lista | Local y persistente; se ve en la pantalla |
+| **Rutinas** | «buenos días» (hora, clima, recordatorios del día y, si se configura, la música de la mañana), «buenas noches» | Local |
 | **Sistema** | deja de escuchar, ayuda, «¿estás ahí?» / «¿estás bien?» (dice qué falla), reinicia | Local |
 
-**Fase IA (opcional):** preguntas abiertas y lista del súper.
+**Fase IA (opcional):** preguntas abiertas y frases que las reglas no entiendan.
 
 ### 6.1 Spotify: Connect + Web API como base, Spotifast como reproductor
 

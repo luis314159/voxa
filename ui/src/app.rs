@@ -413,13 +413,15 @@ impl VoxaApp {
     }
 
     fn timers(&mut self, ui: &mut Ui, painter: &Painter, f: &Frame, area: Rect, state: &State) {
-        if state.timers.is_empty() {
+        if state.timers.is_empty() && state.shopping.is_empty() {
             self.hints(painter, f, area, state.wake_word.as_deref());
             return;
         }
         let gap = f.px(24.0);
         let height = f.px(176.0);
-        let fit = (((area.height() + gap) / (height + gap)).floor() as usize).max(1);
+        // La lista del súper ocupa lo que dejen los temporizadores (mínimo un renglón de cosas).
+        let list_room = if state.shopping.is_empty() { 0.0 } else { f.px(170.0) + gap };
+        let fit = (((area.height() - list_room + gap) / (height + gap)).floor() as usize).max(1);
         let shown = if state.timers.len() > fit { fit - 1 } else { state.timers.len() };
         let mut y = area.top();
         for timer in &state.timers[..shown] {
@@ -431,6 +433,10 @@ impl VoxaApp {
         if hidden > 0 {
             let text = if hidden == 1 { "y 1 temporizador más".to_owned() } else { format!("y {hidden} temporizadores más") };
             widgets::shadow_text(painter, pos2(area.left(), y), Align2::LEFT_TOP, text, theme::regular(f.px(32.0)), theme::TEXT_DIM);
+            y += f.px(56.0);
+        }
+        if !state.shopping.is_empty() && area.bottom() - y >= f.px(150.0) {
+            shopping_card(painter, f, Rect::from_min_max(pos2(area.left(), y), area.max), &state.shopping);
         }
     }
 
@@ -636,6 +642,36 @@ impl VoxaApp {
         if self.pointer_moved.elapsed() > HIDE_CURSOR_AFTER {
             ui.ctx().set_cursor_icon(egui::CursorIcon::None);
         }
+    }
+}
+
+/// La lista del súper: en dos columnas, las que quepan, y «y N más».
+fn shopping_card(painter: &Painter, f: &Frame, area: Rect, items: &[String]) {
+    let pad = f.px(32.0);
+    let row = f.px(46.0);
+    let header = f.px(56.0);
+    let rows_fit = (((area.height() - pad * 1.6 - header) / row).floor() as usize).max(1);
+    let capacity = rows_fit * 2;
+    let shown = if items.len() > capacity { capacity - 1 } else { items.len() };
+    let more = items.len() - shown;
+    // Se llena por columnas; «y N más» ocupa el último lugar, como una cosa más.
+    let slots = shown + usize::from(more > 0);
+    let per_column = slots.div_ceil(2).max(1);
+    let height = (pad * 1.6 + header + per_column as f32 * row).min(area.height());
+    let card = Rect::from_min_size(area.min, vec2(area.width(), height));
+    painter.rect_filled(card, CornerRadius::same(f.px(28.0) as u8), theme::CARD);
+    let title = format!("Lista del súper · {}", items.len());
+    widgets::shadow_text(painter, card.left_top() + vec2(pad, pad * 0.8), Align2::LEFT_TOP, title, theme::regular(f.px(32.0)), theme::TEXT_DIM);
+    let column = (card.width() - pad * 2.0) / 2.0;
+    let font = theme::regular(f.px(36.0));
+    let slot = |n: usize| pos2(card.left() + pad + (n / per_column) as f32 * column, card.top() + pad * 0.8 + header + (n % per_column) as f32 * row);
+    for (n, item) in items[..shown].iter().enumerate() {
+        let at = slot(n);
+        painter.circle_filled(pos2(at.x + f.px(8.0), at.y + row * 0.42), f.px(5.0), theme::CYAN);
+        widgets::fitted_text(painter, at + vec2(f.px(28.0), 0.0), Align2::LEFT_TOP, &format::capitalize(item), font.clone(), theme::TEXT, column - f.px(40.0));
+    }
+    if more > 0 {
+        widgets::shadow_text(painter, slot(shown) + vec2(f.px(28.0), 0.0), Align2::LEFT_TOP, format!("y {more} más"), font, theme::TEXT_DIM);
     }
 }
 

@@ -2,7 +2,7 @@
 
 # VOXA
 
-Asistente de voz familiar para la cocina, sobre una PC All-in-One con Linux Mint: música de Spotify, videos de recetas, temporizadores, recordatorios, conversiones de cocina, volumen, hora y clima, todo por voz y en español.
+Asistente de voz familiar para la cocina, sobre una PC All-in-One con Linux Mint: música de Spotify, videos de recetas, temporizadores, recordatorios, lista del súper, conversiones de cocina, volumen, hora y clima, todo por voz y en español.
 
 - **Plan del proyecto:** [docs/voxa_plan.md](docs/voxa_plan.md)
 - **Fase 0 (diagnóstico del equipo):** [docs/fase0_guia.md](docs/fase0_guia.md)
@@ -15,6 +15,7 @@ Asistente de voz familiar para la cocina, sobre una PC All-in-One con Linux Mint
 | NLU en español (gramática, números, duraciones, corrección de errores del STT) | ✅ |
 | Temporizadores persistentes con alarma; recordatorios y despertador a una hora fija | ✅ |
 | Conversiones de cocina sin internet (tazas, cucharadas, gramos, °F/°C) | ✅ |
+| Lista del súper por voz (y en la pantalla), «buenos días» / «buenas noches» | ✅ |
 | Música: Web API + Connect → CLI de Spotifast → MPRIS | ✅ (falta probar en el equipo real) |
 | Volumen (PipeWire), hora, clima (Open-Meteo) | ✅ |
 | Modo texto (`voxa texto`) | ✅ |
@@ -44,6 +45,8 @@ VOXA: Soda Stereo.
 VOXA: A las 8 de la noche te recuerdo sacar la basura.
 > cuántos gramos es una taza de harina
 VOXA: Una taza de harina son unos 125 gramos.
+> se acabó el café
+VOXA: Agregué café a la lista.
 > pon un video de cómo hacer pan de elote
 VOXA: Poniendo: Cómo hacer pan de elote.
 > pausa

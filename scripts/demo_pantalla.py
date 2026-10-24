@@ -46,6 +46,7 @@ async def main() -> None:
     parser.add_argument("--silenciado", action="store_true", help="micrófono apagado")
     parser.add_argument("--sin-activacion", action="store_true", help="sin «Hey Voxa» (solo tocar)")
     parser.add_argument("--recordatorio", action="store_true", help="agrega un recordatorio a una hora fija")
+    parser.add_argument("--lista", action="store_true", help="llena la lista del súper")
     parser.add_argument("--puerto", type=int, default=8766)
     args = parser.parse_args()
 
@@ -60,6 +61,8 @@ async def main() -> None:
             app.timers.add(5 * 3600, "sacar la basura", kind="reminder")
         if args.alarma:
             app.timers.add(0, "el pan")
+    if args.lista:
+        app.shopping.add(["leche", "huevos", "tortillas", "jabón para trastes", "aguacates", "café", "pan dulce"])
     if not args.sin_musica:
         music.current = NowPlaying(
             "Amor eterno", "Rocío Dúrcal", album="Canta a Juan Gabriel", art_url=args.portada, position=61.0, length=287.0

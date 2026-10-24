@@ -117,6 +117,10 @@ class Config:
         return self.config_dir / "pronunciacion.yaml"
 
     @property
+    def shopping_path(self) -> Path:
+        return self.state_dir / "lista_super.json"
+
+    @property
     def timers_path(self) -> Path:
         return self.state_dir / "timers.json"
 

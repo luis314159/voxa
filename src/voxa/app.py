@@ -25,11 +25,13 @@ from voxa.skills.clock import ClockSkill
 from voxa.skills.kitchen import KitchenSkill
 from voxa.skills.music import MusicSkill
 from voxa.skills.routine import RoutineSkill
+from voxa.skills.shopping import ShoppingSkill
 from voxa.skills.system import SystemSkill
 from voxa.skills.timers import TimerSkill
 from voxa.skills.video import VideoSkill
 from voxa.skills.volume import VolumeSkill
 from voxa.skills.weather import WeatherSkill
+from voxa.state.shopping import ShoppingList
 from voxa.state.timers import Timer, TimerManager
 
 if TYPE_CHECKING:  # el audio (numpy, sounddevice…) solo se importa al usar la voz
@@ -50,6 +52,7 @@ class App:
     video: VideoPlayer | None = None
     health_checks: list[Check] = field(default_factory=list)
     config: Config = field(default_factory=Config)
+    shopping: ShoppingList = field(default_factory=ShoppingList)
 
 
 class SetupError(Exception):
@@ -151,6 +154,7 @@ def build_app(config: Config, *, simulated: bool = False, on_ring: Callable[[Tim
         weather = OpenMeteo(UrllibHttp(), config.weather.latitude, config.weather.longitude)
 
     video = build_video(config, simulated=simulated)
+    shopping = ShoppingList(None if simulated else config.shopping_path)
     skills = {
         "music": MusicSkill(music),
         "volume": VolumeSkill(volume, config.volume.step),
@@ -160,6 +164,7 @@ def build_app(config: Config, *, simulated: bool = False, on_ring: Callable[[Tim
         "system": SystemSkill(),
         "kitchen": KitchenSkill(),
         "routine": RoutineSkill(timers, weather, music, config.routine.morning_music),
+        "shopping": ShoppingSkill(shopping),
     }
     player = None
     if video is not None:
@@ -175,7 +180,7 @@ def build_app(config: Config, *, simulated: bool = False, on_ring: Callable[[Tim
     matcher = load_matcher()
     video_active = (lambda: player.current is not None) if player is not None else None
     assistant = Assistant(matcher, skills, timers, video_active=video_active)
-    return App(assistant, timers, matcher, now_playing, weather, player, checks, config)
+    return App(assistant, timers, matcher, now_playing, weather, player, checks, config, shopping)
 
 
 def build_video(config: Config, *, simulated: bool = False) -> tuple[VideoSearch, VideoPlayer] | None:

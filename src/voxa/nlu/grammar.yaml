@@ -42,6 +42,28 @@
     - "(pon|ponme|crea|agrega|programa) [un] recordatorio (a la|a las|para la|para las) {time} [(para|de|que)] {name}"
     - "(pon|ponme|crea|agrega|programa) [un] recordatorio (para|de|que) {name} (a la|a las) {time}"
 
+# Lista del súper. Va antes que todo lo que empieza con «pon» o «quita».
+- intent: shopping.clear
+  patterns:
+    - "(borra|limpia|vacia|elimina) [toda] (la lista|mi lista|la lista del super|la lista de compras|la lista de la compra|la lista del mandado)"
+    - "ya (compre|compramos) todo"
+
+- intent: shopping.list
+  patterns:
+    - "(que hay en|que tiene|leeme|lee|dime|que dice) (la lista|mi lista|la lista del super|la lista de compras|la lista de la compra|la lista del mandado)"
+    - "que (hay que|tengo que|tenemos que|falta|nos falta) comprar"
+
+- intent: shopping.remove
+  patterns:
+    - "(quita|quitale|borra|elimina|tacha|saca) {query} de (la lista|mi lista|la lista del super|la lista de compras|la lista de la compra|la lista del mandado)"
+    - "ya (compre|compramos) [el|la|los|las] {query}"
+
+- intent: shopping.add
+  patterns:
+    - "(agrega|agregale|anade|apunta|anota|pon|ponle|mete) {query} (a|en) (la lista|mi lista|la lista del super|la lista de compras|la lista de la compra|la lista del mandado)"
+    - "(hay que comprar|necesitamos comprar|tenemos que comprar|necesitamos|compra) {query}"
+    - "(se acabo|se acabaron|se termino|se terminaron|ya no hay|ya no queda|ya no quedan|no hay) [el|la|los|las|mas] {query}"
+
 - intent: timer.set
   patterns:
     - "(pon|ponme|crea|programa|inicia|activa|empieza) [un|una|el|la] (temporizador|timer|cronometro|alarma|cuenta regresiva) (de|por|en|a) {duration} [(para|de|del|pa) {name}]"

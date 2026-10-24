@@ -29,6 +29,9 @@ pub struct State {
     pub problems: Vec<Problem>,
     /// «Hey Voxa» si VOXA está escuchando la palabra de activación.
     pub wake_word: Option<String>,
+    /// Lista del súper.
+    #[serde(default)]
+    pub shopping: Vec<String>,
 }
 
 #[derive(Debug, Clone, Deserialize, PartialEq)]

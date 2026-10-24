@@ -52,6 +52,7 @@ class Service:
         system = app.assistant.skill("system")
         if system is not None and hasattr(system, "problems"):
             system.problems = lambda: self.health.problems  # «¿estás bien?» dice qué falla
+        display.shopping = app.shopping.items  # la pantalla ve la lista tal cual (se republica tras cada orden)
         self.session: VoiceSession | None = None
         self.mic: Microphone | None = None
         self.muted = False

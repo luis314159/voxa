@@ -83,6 +83,16 @@
 - {text: "Hey Voxa, buenos días", intent: routine.good_morning}
 - {text: "buenas noches", intent: routine.good_night}
 
+# --- lista del súper ---
+- {text: "agrega leche y huevos a la lista", intent: shopping.add, slots: {query: leche y huevos}}
+- {text: "apunta tortillas en la lista del súper", intent: shopping.add, slots: {query: tortillas}}
+- {text: "se acabó el café", intent: shopping.add, slots: {query: café}}
+- {text: "hay que comprar jabón para trastes", intent: shopping.add, slots: {query: jabón para trastes}}
+- {text: "qué hay en la lista", intent: shopping.list}
+- {text: "qué hay que comprar", intent: shopping.list}
+- {text: "quita la leche de la lista", intent: shopping.remove, slots: {query: la leche}}
+- {text: "borra la lista del súper", intent: shopping.clear}
+
 # --- volumen ---
 - {text: "volumen a treinta", intent: volume.set, slots: {number: 30}}
 - {text: "pon el volumen al 50 por ciento", intent: volume.set, slots: {number: 50}}
