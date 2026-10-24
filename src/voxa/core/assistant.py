@@ -14,7 +14,7 @@ log = logging.getLogger(__name__)
 NOT_UNDERSTOOD = Response("No te entendí. Puedes preguntarme «¿qué puedes hacer?».", sound="error")
 NOT_YET = Response("Todavía no sé hacer eso.", sound="error")
 _NOT_YET_BY_DOMAIN = {
-    "video": Response("Todavía no sé poner videos; llegarán en una próxima versión.", sound="error"),
+    "video": Response("Todavía no sé poner videos: falta instalar mpv y yt-dlp.", sound="error"),
 }
 FAILED = Response("Algo salió mal. Inténtalo de nuevo.", sound="error")
 
@@ -33,14 +33,19 @@ class Assistant:
         skills: Mapping[str, Skill],
         timers: TimerManager | None = None,
         fallback: Fallback | None = None,
+        video_active: Callable[[], bool] | None = None,
     ) -> None:
         self._matcher = matcher
         self._skills = dict(skills)
         self._timers = timers
         self._fallback = fallback
-        self.active_media = "music"
-        """Qué reproductor reciben «pausa», «siguiente»…: ``music`` o ``video``."""
+        self._video_active = video_active or (lambda: False)
         self.last_response: Response | None = None
+
+    @property
+    def active_media(self) -> str:
+        """Qué reproductor reciben «pausa», «siguiente»…: el video mientras hay uno puesto."""
+        return "video" if self._video_active() else "music"
 
     async def handle_text(self, text: str) -> Response:
         intent = self._matcher.match(text)
@@ -58,6 +63,8 @@ class Assistant:
         if intent.name == "system.cancel":
             return OK
 
+        if intent.name == "music.play" and self._video_active():
+            await self._dispatch("video", Intent("video.close", text=intent.text, raw=intent.raw))
         domain = self.active_media if intent.domain == "media" else intent.domain
         return await self._dispatch(domain, intent)
 

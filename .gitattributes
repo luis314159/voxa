@@ -11,3 +11,4 @@
 *.yaml text eol=lf
 *.json text eol=lf
 *.rs text eol=lf
+*.timer text eol=lf

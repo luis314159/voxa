@@ -66,6 +66,14 @@ class VoiceConfig:
 
 
 @dataclass(frozen=True)
+class VideoConfig:
+    enabled: bool = True
+    ytdlp: str = "yt-dlp"
+    mpv: tuple[str, ...] = ("mpv",)
+    max_height: int = 720
+
+
+@dataclass(frozen=True)
 class DisplayConfig:
     enabled: bool = True
     port: int = 8766
@@ -80,6 +88,7 @@ class Config:
     weather: WeatherConfig = field(default_factory=WeatherConfig)
     voice: VoiceConfig = field(default_factory=VoiceConfig)
     display: DisplayConfig = field(default_factory=DisplayConfig)
+    video: VideoConfig = field(default_factory=VideoConfig)
     config_dir: Path = field(default_factory=lambda: _xdg("XDG_CONFIG_HOME", ".config"))
     state_dir: Path = field(default_factory=lambda: _xdg("XDG_STATE_HOME", ".local/state"))
 

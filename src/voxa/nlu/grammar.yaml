@@ -135,7 +135,8 @@
   patterns:
     - "(pon|ponme|busca|buscame|reproduce|quiero ver|muestrame|ensename) [un|el|unos|los] (video|videos) (de|del|sobre|para|con|que) {query}"
     - "(busca|buscame|pon|ponme) en youtube {query}"
-    - "(como se hace|como hacer|como preparar|receta de|receta para) {query}"
+    - pattern: "(como se hace|como se hacen|como hacer|como preparar|como se prepara|receta de|receta para) {query}"
+      set: {kind: recipe}
 
 - intent: clock.time
   patterns:

@@ -6,7 +6,7 @@ use std::sync::{Arc, Mutex, MutexGuard};
 use std::thread;
 use std::time::Duration;
 
-use crate::protocol::{self, Command, State};
+use crate::protocol::{self, Command, Diagnostics, Incoming, State};
 
 const RETRY: Duration = Duration::from_secs(1);
 
@@ -14,6 +14,7 @@ const RETRY: Duration = Duration::from_secs(1);
 struct Shared {
     state: State,
     connected: bool,
+    diagnostics: Option<Diagnostics>,
 }
 
 #[derive(Clone)]
@@ -48,13 +49,20 @@ impl Link {
                 on_change();
                 for line in BufReader::new(stream).lines() {
                     let Ok(line) = line else { break };
-                    if let Some(state) = protocol::parse_line(&line) {
-                        if state.v > protocol::PROTOCOL_VERSION && !warned {
-                            eprintln!("voxa-ui: VOXA usa una versión más nueva del protocolo; actualiza la pantalla");
-                            warned = true;
+                    match protocol::parse_line(&line) {
+                        Some(Incoming::State(state)) => {
+                            if state.v > protocol::PROTOCOL_VERSION && !warned {
+                                eprintln!("voxa-ui: VOXA usa una versión más nueva del protocolo; actualiza la pantalla");
+                                warned = true;
+                            }
+                            lock(&self.shared).state = state;
+                            on_change();
                         }
-                        lock(&self.shared).state = state;
-                        on_change();
+                        Some(Incoming::Diagnostics(report)) => {
+                            lock(&self.shared).diagnostics = Some(report);
+                            on_change();
+                        }
+                        _ => {}
                     }
                 }
                 *lock(&self.writer) = None;
@@ -69,6 +77,11 @@ impl Link {
     pub fn snapshot(&self) -> (State, bool) {
         let shared = lock(&self.shared);
         (shared.state.clone(), shared.connected)
+    }
+
+    /// El último reporte de diagnóstico recibido (se pide con `Command::Diagnostics`).
+    pub fn diagnostics(&self) -> Option<Diagnostics> {
+        lock(&self.shared).diagnostics.clone()
     }
 
     /// Envía una orden; `false` si no hay conexión.

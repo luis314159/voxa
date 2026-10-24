@@ -5,9 +5,11 @@ Protocolo: JSON, un mensaje por línea, sobre TCP en 127.0.0.1 (nunca hacia fuer
 - VOXA → pantalla: ``{"type": "state", ...}`` con la foto completa cada vez que algo cambia.
   Los temporizadores llevan su hora de fin y la música su posición con la hora en que se midió:
   la pantalla cuenta los segundos por su cuenta, sin un mensaje por segundo.
+  También van el clima, los problemas («Sin internet») y si el micrófono está apagado.
 - Pantalla → VOXA: ``{"type": "talk"}`` (tocar el anillo), ``{"type": "say", "text": "pausa"}``
-  (botones de música: misma ruta que una orden hablada), ``{"type": "cancel_timer", "id": 3}``
-  y ``{"type": "stop_alarm"}``.
+  (botones de música: misma ruta que una orden hablada), ``{"type": "cancel_timer", "id": 3}``,
+  ``{"type": "stop_alarm"}``, ``{"type": "mute", "on": true}`` y ``{"type": "diagnostics"}``,
+  que VOXA contesta solo a esa pantalla con ``{"type": "diagnostics", ...}``.
 """
 
 from __future__ import annotations
@@ -20,7 +22,9 @@ import time
 from typing import Awaitable, Callable, Protocol
 
 from voxa.core.types import Response
+from voxa.health import Health
 from voxa.services.music_backend import BackendUnavailable, NowPlaying
+from voxa.services.weather import Weather, WeatherUnavailable
 from voxa.state.timers import TimerManager, display_label
 
 log = logging.getLogger(__name__)
@@ -29,8 +33,11 @@ PROTOCOL_VERSION = 1
 DEFAULT_PORT = 8766
 _MAX_SAY_CHARS = 200
 _POSITION_DRIFT = 2.5  # segundos de diferencia que justifican reenviar la posición de la canción
+_WEATHER_EVERY = 15 * 60
+_WEATHER_RETRY = 2 * 60
 
 NowPlayingSource = Callable[[], Awaitable[NowPlaying | None]]
+WeatherSource = Callable[[], Awaitable[Weather]]
 
 
 class Display:
@@ -41,10 +48,14 @@ class Display:
         timers: TimerManager,
         now_playing: NowPlayingSource | None = None,
         *,
+        weather: WeatherSource | None = None,
+        health: Health | None = None,
         clock: Callable[[], float] = time.time,
     ) -> None:
         self._timers = timers
         self._now_playing = now_playing
+        self._weather = weather
+        self.health = health
         self._clock = clock
         self._subscribers: set[asyncio.Queue[dict]] = set()
         self.current_phase = "idle"
@@ -53,6 +64,9 @@ class Display:
         self.exchange_at: float | None = None
         self.music: NowPlaying | None = None
         self._music_at: float | None = None
+        self.weather: Weather | None = None
+        self.muted = False
+        self.video_title: str | None = None
         self._last: dict | None = None
 
     # --- TurnObserver (voxa.voice) ----------------------------------------
@@ -88,6 +102,24 @@ class Display:
             "exchange_at": self.exchange_at,
             "timers": timers,
             "music": self._music_snapshot(),
+            "weather": self._weather_snapshot(),
+            "muted": self.muted,
+            "problems": [{"id": p.id, "text": p.text} for p in self.health.problems] if self.health else [],
+            "video": {"title": self.video_title} if self.video_title else None,
+        }
+
+    def _weather_snapshot(self) -> dict | None:
+        w = self.weather
+        if w is None:
+            return None
+        return {
+            "temperature": round(w.temperature),
+            "high": round(w.high),
+            "low": round(w.low),
+            "rain_probability": w.rain_probability,
+            "code": w.code,
+            "is_day": w.is_day,
+            "description": w.description,
         }
 
     def _music_snapshot(self) -> dict | None:
@@ -140,13 +172,27 @@ class Display:
             self.music = None
         self._music_at = self._clock()
 
+    async def refresh_weather(self) -> bool:
+        if self._weather is None:
+            return True
+        try:
+            self.weather = await self._weather()
+        except WeatherUnavailable as exc:
+            log.info("Clima para la pantalla no disponible: %s", exc)
+            return False  # se queda el último dato: el clima no cambia tan rápido
+        return True
+
     async def run(self, music_every: float = 2.0) -> None:
         """Revisa temporizadores cada segundo y la música cada ``music_every`` s mientras alguien mira."""
         last_music = 0.0
+        next_weather = 0.0
         while True:
-            if self.watched and time.monotonic() - last_music >= music_every:
-                last_music = time.monotonic()
+            now = time.monotonic()
+            if self.watched and now - last_music >= music_every:
+                last_music = now
                 await self.refresh_music()
+            if self.watched and self._weather is not None and now >= next_weather:
+                next_weather = now + (_WEATHER_EVERY if await self.refresh_weather() else _WEATHER_RETRY)
             self.publish()
             await asyncio.sleep(1.0)
 
@@ -184,7 +230,6 @@ def _put_latest(queue: asyncio.Queue[dict], state: dict) -> None:
     queue.put_nowait(state)
 
 
-
 class DisplayCommands(Protocol):
     """Lo que la pantalla puede pedir (``voxa.service.Service``)."""
 
@@ -192,6 +237,8 @@ class DisplayCommands(Protocol):
     async def handle_text(self, text: str) -> object: ...
     async def cancel_timer(self, timer_id: int) -> None: ...
     async def stop_alarm(self) -> None: ...
+    async def set_muted(self, on: bool) -> None: ...
+    def diagnostics(self) -> dict: ...
 
 
 class DisplayServer:
@@ -236,7 +283,7 @@ class DisplayServer:
         self._writers.add(writer)
         try:
             while line := await reader.readline():
-                self._dispatch(line)
+                self._dispatch(line, writer)
         except (ConnectionError, asyncio.LimitOverrunError, ValueError) as exc:
             log.info("Pantalla desconectada: %s", exc)
         finally:
@@ -254,7 +301,11 @@ class DisplayServer:
                 writer.write(json.dumps(state, ensure_ascii=False).encode() + b"\n")
                 await writer.drain()
 
-    def _dispatch(self, line: bytes) -> None:
+    @property
+    def clients(self) -> int:
+        return len(self._writers)
+
+    def _dispatch(self, line: bytes, writer: asyncio.StreamWriter | None = None) -> None:
         try:
             message = json.loads(line)
         except (json.JSONDecodeError, UnicodeDecodeError):
@@ -272,6 +323,11 @@ class DisplayServer:
             action = commands.cancel_timer(message["id"])
         elif kind == "stop_alarm":
             action = commands.stop_alarm()
+        elif kind == "mute" and isinstance(message.get("on"), bool):
+            action = commands.set_muted(message["on"])
+        elif kind == "diagnostics" and writer is not None:
+            report = {"type": "diagnostics", "v": PROTOCOL_VERSION, **commands.diagnostics()}
+            writer.write(json.dumps(report, ensure_ascii=False).encode() + b"\n")
         else:
             log.debug("Mensaje de la pantalla ignorado: %s", message)
         if action is not None:

@@ -12,6 +12,8 @@ ExecStart=%h/.local/bin/voxa servicio
 Restart=on-failure
 RestartSec=3
 Environment=PYTHONUNBUFFERED=1
+# yt-dlp y deno (para los videos) se instalan con pipx en ~/.local/bin.
+Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
 
 [Install]
 WantedBy=default.target

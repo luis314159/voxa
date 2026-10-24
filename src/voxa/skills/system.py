@@ -6,6 +6,7 @@ HELP = (
     "Puedo poner música de Spotify, por ejemplo «pon Soda Stereo»; "
     "poner temporizadores, como «temporizador de diez minutos para el arroz»; "
     "subir o bajar el volumen, decirte la hora y el clima. "
+    "También pongo videos de recetas: «pon un video de cómo hacer pozole». "
     "Si quieres que deje de escuchar, di «deja de escuchar»."
 )
 

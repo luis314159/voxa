@@ -2,11 +2,15 @@
 
 from __future__ import annotations
 
+import time
 from dataclasses import dataclass
+from typing import Callable
 
 from voxa.services.http import Http, HttpError
 
 FORECAST_URL = "https://api.open-meteo.com/v1/forecast"
+# La pantalla y las preguntas comparten la misma consulta: el pronóstico no cambia minuto a minuto.
+MAX_AGE_SECONDS = 10 * 60
 
 
 class WeatherUnavailable(Exception):
@@ -20,6 +24,7 @@ class Weather:
     high: float
     low: float
     rain_probability: int
+    is_day: bool = True
 
     @property
     def description(self) -> str:
@@ -50,16 +55,27 @@ def describe_code(code: int) -> str:
 
 
 class OpenMeteo:
-    def __init__(self, http: Http, latitude: float, longitude: float) -> None:
+    def __init__(
+        self, http: Http, latitude: float, longitude: float, *, clock: Callable[[], float] = time.monotonic
+    ) -> None:
         self._http = http
         self._lat = latitude
         self._lon = longitude
+        self._clock = clock
+        self._cached: tuple[float, Weather] | None = None
 
     async def today(self) -> Weather:
+        if self._cached and self._clock() - self._cached[0] < MAX_AGE_SECONDS:
+            return self._cached[1]
+        weather = await self._fetch()
+        self._cached = (self._clock(), weather)
+        return weather
+
+    async def _fetch(self) -> Weather:
         params = {
             "latitude": self._lat,
             "longitude": self._lon,
-            "current": "temperature_2m,weather_code",
+            "current": "temperature_2m,weather_code,is_day",
             "daily": "temperature_2m_max,temperature_2m_min,precipitation_probability_max",
             "timezone": "auto",
             "forecast_days": 1,
@@ -77,4 +93,5 @@ class OpenMeteo:
             high=daily["temperature_2m_max"][0],
             low=daily["temperature_2m_min"][0],
             rain_probability=daily["precipitation_probability_max"][0] or 0,
+            is_day=bool(current.get("is_day", 1)),
         )

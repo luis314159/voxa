@@ -3,26 +3,29 @@
 from __future__ import annotations
 
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Awaitable, Callable
 
 from voxa.config import Config
 from voxa.core.assistant import Assistant
+from voxa.health import Check, internet_check, player_check, spotify_check
 from voxa.nlu.matcher import Matcher, load_matcher
 from voxa.services.http import UrllibHttp
 from voxa.services.mpris import PlayerctlBackend
 from voxa.services.music_backend import LayeredMusicBackend, MusicBackend, NowPlaying
 from voxa.services.pipewire import VolumeControl, WpctlVolume
-from voxa.services.simulated import SimulatedMusic, SimulatedVolume
+from voxa.services.simulated import SimulatedMusic, SimulatedVideoPlayer, SimulatedVideoSearch, SimulatedVolume
 from voxa.services.spotifast_cli import SpotifastCli
 from voxa.services.spotify_api import SpotifyWebApi
 from voxa.services.spotify_auth import SpotifyAuth
+from voxa.services.video import MpvPlayer, VideoPlayer, VideoSearch, YtDlpSearch
 from voxa.services.weather import OpenMeteo
 from voxa.skills.clock import ClockSkill
 from voxa.skills.music import MusicSkill
 from voxa.skills.system import SystemSkill
 from voxa.skills.timers import TimerSkill
+from voxa.skills.video import VideoSkill
 from voxa.skills.volume import VolumeSkill
 from voxa.skills.weather import WeatherSkill
 from voxa.state.timers import Timer, TimerManager
@@ -40,6 +43,10 @@ class App:
     matcher: Matcher
     # Para la pantalla: lo que suena, preguntado localmente por MPRIS (sin gastar la Web API).
     now_playing: Callable[[], Awaitable[NowPlaying | None]] | None = None
+    weather: OpenMeteo | None = None
+    video: VideoPlayer | None = None
+    health_checks: list[Check] = field(default_factory=list)
+    config: Config = field(default_factory=Config)
 
 
 class SetupError(Exception):
@@ -124,6 +131,7 @@ def build_app(config: Config, *, simulated: bool = False, on_ring: Callable[[Tim
     if config.weather.latitude is not None and config.weather.longitude is not None:
         weather = OpenMeteo(UrllibHttp(), config.weather.latitude, config.weather.longitude)
 
+    video = build_video(config, simulated=simulated)
     skills = {
         "music": MusicSkill(music),
         "volume": VolumeSkill(volume, config.volume.step),
@@ -132,5 +140,30 @@ def build_app(config: Config, *, simulated: bool = False, on_ring: Callable[[Tim
         "weather": WeatherSkill(weather),
         "system": SystemSkill(),
     }
+    player = None
+    if video is not None:
+        search, player = video
+        skills["video"] = VideoSkill(search, player, music)
+    checks: list[Check] = []
+    if not simulated:
+        checks = [
+            internet_check(),
+            spotify_check(config.spotify.client_id, config.spotify_token_path),
+            player_check(now_playing, config.spotifast.mpris_player),
+        ]
     matcher = load_matcher()
-    return App(Assistant(matcher, skills, timers), timers, matcher, now_playing)
+    video_active = (lambda: player.current is not None) if player is not None else None
+    assistant = Assistant(matcher, skills, timers, video_active=video_active)
+    return App(assistant, timers, matcher, now_playing, weather, player, checks, config)
+
+
+def build_video(config: Config, *, simulated: bool = False) -> tuple[VideoSearch, VideoPlayer] | None:
+    """yt-dlp + mpv; el control de mpv usa un socket Unix, así que en Windows solo hay simulación."""
+    if not config.video.enabled:
+        return None
+    if simulated:
+        return SimulatedVideoSearch(), SimulatedVideoPlayer()
+    if sys.platform == "win32":
+        return None
+    video = config.video
+    return YtDlpSearch((video.ytdlp,)), MpvPlayer(video.mpv, video.ytdlp, video.max_height)

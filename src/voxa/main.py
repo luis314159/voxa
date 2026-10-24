@@ -15,10 +15,11 @@ import urllib.parse
 import webbrowser
 from pathlib import Path
 
+from voxa import diagnostics
 from voxa.app import SetupError, build_app, build_tts, build_voice
 from voxa.config import Config, load_config
 from voxa.core.types import Response
-from voxa.display import Display
+from voxa.health import Problem
 from voxa.service import Service
 from voxa.services.http import UrllibHttp
 from voxa.services.spotify_auth import SpotifyAuth, new_verifier
@@ -44,7 +45,7 @@ def _service(config: Config, simulated: bool, on_ring_print: bool = True) -> Ser
             service.on_ring(timer)
 
     app = build_app(config, simulated=simulated, on_ring=on_ring)
-    service = Service(app, Display(app.timers, app.now_playing))
+    service = Service.create(app)
     return service
 
 
@@ -86,8 +87,11 @@ async def run_voice_mode(config: Config, simulated: bool) -> None:
 
     service = _service(config, simulated)
     session = await _with_voice(config, service, simulated)
-    async with Microphone(_device(config.voice.input_device)) as mic, service.running(_display_port(config)):
-        service.attach_voice(session, mic)
+    async with service.running(_display_port(config)):
+        service.attach_voice(session, Microphone(_device(config.voice.input_device)))
+        if not service.mic.is_open:
+            print("No pude abrir el micrófono; revisa input_device en config.toml (python -m sounddevice).")
+            return
         print("Listo. Pulsa Enter y habla (o escribe una orden). «salir» para terminar.")
         while True:
             try:
@@ -115,11 +119,18 @@ async def run_service(config: Config, simulated: bool) -> None:
     """Modo permanente (systemd): sin teclado; las órdenes llegan por la pantalla y, en la Fase 3, «Hey Voxa»."""
     from voxa.audio.devices import Microphone
 
+    log = logging.getLogger(__name__)
     service = _service(config, simulated, on_ring_print=False)
-    session = await _with_voice(config, service, simulated)
-    async with Microphone(_device(config.voice.input_device)) as mic, service.running(_display_port(config)):
-        service.attach_voice(session, mic)
-        logging.getLogger(__name__).warning("VOXA lista.")
+    # La pantalla se conecta desde el principio: si falta la voz, al menos lo dice en ámbar.
+    async with service.running(_display_port(config)):
+        try:
+            session = await _with_voice(config, service, simulated)
+        except SetupError as exc:
+            log.error("Sin voz: %s", exc)
+            service.health.report(Problem("voz", "Faltan los modelos de voz", str(exc)))
+        else:
+            service.attach_voice(session, Microphone(_device(config.voice.input_device)))
+            print("VOXA lista.")
         await asyncio.Event().wait()
 
 
@@ -236,6 +247,7 @@ def main(argv: list[str] | None = None) -> int:
         level=logging.INFO if args.verbose else logging.WARNING,
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",
     )
+    diagnostics.install()
     with contextlib.suppress(AttributeError, ValueError):
         sys.stdout.reconfigure(encoding="utf-8")
     config = load_config()

@@ -202,8 +202,10 @@ Audio ──► Wake word ──► VAD/fin de frase ──► STT ──► NLU
 
 ### 6.2 YouTube: detalles
 
-- `yt-dlp` obtiene el primer resultado y mpv lo reproduce a pantalla completa con `--hwdec=auto` y un formato limitado a 720p (480p con 2 GB).
-- Un temporizador de systemd **actualiza yt-dlp cada semana**, porque YouTube cambia a menudo.
+- `yt-dlp` trae los primeros 5 resultados (`ytsearch5:`) y VOXA elige el primero que no sea transmisión en vivo ni *short* (entre 90 s y 3 h); mpv lo reproduce a pantalla completa con `--hwdec=auto` y un formato limitado a 720p (480p con 2 GB). «Cómo se hace…» y «receta de…» se buscan como «receta de …».
+- Desde finales de 2025, yt-dlp necesita un intérprete de JavaScript para YouTube: se instala **deno** con pipx junto a `yt-dlp[default]`.
+- Un temporizador de systemd (`voxa-ytdlp.timer`) **actualiza yt-dlp y deno cada semana**, porque YouTube cambia a menudo.
+- Mientras hay video, «pausa», «sigue», «adelanta» y «qué es esto» le hablan al video (IPC de mpv); pedir música lo cierra. Tocar la pantalla pausa y dos toques cierran.
 - Cuando el video termina o se cierra, la interfaz de VOXA vuelve al frente.
 - **Nota:** reproducir YouTube fuera de su sitio puede ir contra sus términos de servicio. Si la familia prefiere evitarlo, el plan B es Firefox en modo kiosco con MPRIS (más pesado y menos controlable).
 
@@ -220,7 +222,7 @@ Pensada para leerse a 3 metros y, si la pantalla es táctil, para usarse con el 
 | Error | Anillo ámbar + mensaje claro («Sin internet: la música no está disponible») |
 | Micrófono apagado | Ícono tachado permanente y botón grande para reactivarlo |
 
-- Atenuar la pantalla de noche (horario configurable) y despertarla con la voz o al tocarla.
+- **Hecho:** clima en reposo (Open-Meteo, se consulta cada 15 min y se conserva sin red), anillo ámbar con el problema más grave, botón de micrófono que suelta el dispositivo de verdad, modo noche de 22:00 a 6:30 (un toque la enciende 30 s sin activar botones; alarmas y respuestas la encienden solas) y diagnóstico al mantener presionado el reloj.
 - Programa aparte en **Rust + egui** (`ui/`), que recibe el estado de `voxa-core` como JSON por líneas en 127.0.0.1 (`src/voxa/display.py`). Los segundos de temporizadores y canciones los cuenta la pantalla; solo se repinta una vez por segundo, o a 30 fps mientras el anillo se anima.
 - **Fondos:** fotos de paisajes y pueblos (dominio público/CC0, `scripts/descargar_fondos.py`) o de la familia, que rotan cada 10 minutos con un velo oscuro para que el texto se lea.
 - Durante un video, los estados se muestran con el OSD de mpv.
@@ -229,7 +231,7 @@ Pensada para leerse a 3 metros y, si la pantalla es táctil, para usarse con el 
 
 - **Arranque:** inicio de sesión automático, sin bloqueo de pantalla ni suspensión, y servicios `systemd --user` habilitados.
 - **Recuperación:** reinicio automático de cada servicio. `voxa-core` reintenta Spotify, red y Bluetooth con *backoff* y avisa por voz una sola vez, sin repetirlo en bucle.
-- **Salud:** comando «¿estás bien?», y una pantalla de diagnóstico oculta (mantener pulsado el logo) con micrófono, bocina, red, Spotify y espacio en disco.
+- **Salud:** comando «¿estás bien?», y una pantalla de diagnóstico oculta (mantener presionado el reloj) con versión, voz, micrófono, Spotify, yt-dlp/mpv, red, problemas y los últimos avisos del registro. Cada minuto se revisan internet, la autorización de Spotify y que Spotifast responda; si faltan los modelos de voz o el micrófono, el servicio no se cae: lo avisa en la pantalla y reintenta el micrófono cada 30 s.
 - **Logs:** journald, sin audio ni transcripciones completas por defecto.
 - **Actualizaciones:** `pipx`/`uv` para VOXA y yt-dlp; las actualizaciones del sistema se hacen a mano.
 - **Instalación reproducible:** script `scripts/install.sh` idempotente con paquetes, servicios, configuración de WirePlumber y modelos.
@@ -316,7 +318,7 @@ Cada fase termina con un **criterio de salida** verificable.
 **Salida:** ≥ 80 % de las frases que antes fallaban ahora se resuelven, dentro del presupuesto.
 
 ### Después de la 1.0 (ideas)
-Recordatorios, reconocer quién habla para tener playlists por persona, clima en la pantalla de reposo y rutinas («buenos días»).
+Recordatorios, reconocer quién habla para tener playlists por persona y rutinas («buenos días»).
 
 ## 12. Estructura del repositorio
 
@@ -327,7 +329,7 @@ voxa/
 ├── config/
 │   └── default.toml
 ├── deploy/
-│   ├── systemd/            # voxa-core.service, voxa-ui.service, yt-dlp-update.timer
+│   ├── systemd/            # voxa.service, voxa-ui.service, voxa-ytdlp.timer
 │   └── wireplumber/        # bluetooth (A2DP fijo, sin suspensión), echo-cancel
 ├── scripts/
 │   └── install.sh
@@ -344,7 +346,9 @@ voxa/
 │   ├── services/           # music_backend, spotify_api, spotifast_cli, mpris, mpv_ipc, pipewire, bluetooth
 │   ├── state/              # persistencia (temporizadores)
 │   ├── display.py          # estado y canal local para la pantalla
-│   └── service.py          # voz + pantalla + temporizadores
+│   ├── health.py           # problemas: internet, micrófono, Spotify, Spotifast
+│   ├── diagnostics.py      # reporte de la pantalla de diagnóstico
+│   └── service.py          # voz + pantalla + temporizadores + video
 ├── ui/                     # voxa-ui: pantalla de cocina en Rust + egui
 └── tests/
     ├── data/utterances.yaml

@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+from typing import Callable
+
 from voxa.services.music_backend import NothingFound, NowPlaying, PlayResult
 from voxa.services.pipewire import VolumeState
+from voxa.services.video import Video, VideoNotFound
 
 
 class SimulatedMusic:
@@ -71,3 +74,54 @@ class SimulatedVolume:
 
     async def mute(self, on: bool) -> None:
         self.state = VolumeState(self.state.percent, on)
+
+
+class SimulatedVideoSearch:
+    def __init__(self) -> None:
+        self.queries: list[str] = []
+
+    async def search(self, query: str) -> Video:
+        self.queries.append(query)
+        if "no existe" in query:
+            raise VideoNotFound(query)
+        return Video(f"sim{len(self.queries)}", query[:1].upper() + query[1:], 600.0, "Cocina simulada")
+
+
+class SimulatedVideoPlayer:
+    def __init__(self, on_end: Callable[[], None] | None = None) -> None:
+        self.on_end = on_end
+        self._current: Video | None = None
+        self.paused = False
+        self.calls: list[str] = []
+
+    @property
+    def current(self) -> Video | None:
+        return self._current
+
+    async def play(self, video: Video) -> None:
+        self.calls.append(f"play:{video.id}")
+        self._current, self.paused = video, False
+
+    async def pause(self) -> None:
+        self.calls.append("pause")
+        self.paused = True
+
+    async def resume(self) -> None:
+        self.calls.append("resume")
+        self.paused = False
+
+    async def seek(self, seconds: int) -> None:
+        self.calls.append(f"seek:{seconds}")
+
+    async def close(self) -> None:
+        self.calls.append("close")
+        self._current = None
+
+    async def show_text(self, text: str, seconds: float = 2.0) -> None:
+        self.calls.append(f"osd:{text}")
+
+    def finish(self) -> None:
+        """El video llegó al final (o lo cerraron con dos toques)."""
+        self._current = None
+        if self.on_end:
+            self.on_end()

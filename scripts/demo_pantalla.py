@@ -2,6 +2,8 @@
 
     python scripts/demo_pantalla.py            # y en otra terminal: voxa-ui
     python scripts/demo_pantalla.py --fase listening --alarma
+    python scripts/demo_pantalla.py --problema "Sin internet" --clima 61
+    python scripts/demo_pantalla.py --silenciado
 
 Llena temporizadores, música y una conversación de ejemplo y recorre las fases del anillo.
 Los botones de la pantalla funcionan contra la música y los temporizadores simulados.
@@ -17,9 +19,10 @@ from dataclasses import replace
 from voxa.app import build_app
 from voxa.config import Config
 from voxa.core.types import Response
-from voxa.display import Display
+from voxa.health import Problem
 from voxa.service import Service
 from voxa.services.music_backend import NowPlaying
+from voxa.services.weather import Weather
 
 EXCHANGES = [
     ("cuánto le falta al arroz", "Faltan 7 minutos y 30 segundos."),
@@ -36,11 +39,16 @@ async def main() -> None:
     parser.add_argument("--sin-temporizadores", action="store_true")
     parser.add_argument("--sin-musica", action="store_true")
     parser.add_argument("--portada", help="URL (https:// o file://) de la portada del disco")
+    parser.add_argument("--clima", type=int, default=2, metavar="CODIGO", help="código WMO del clima (0 sol, 61 lluvia…)")
+    parser.add_argument("--noche", action="store_true", help="clima de noche (luna)")
+    parser.add_argument("--sin-clima", action="store_true")
+    parser.add_argument("--problema", help="muestra un problema, p. ej. «Sin internet»")
+    parser.add_argument("--silenciado", action="store_true", help="micrófono apagado")
     parser.add_argument("--puerto", type=int, default=8766)
     args = parser.parse_args()
 
     app = build_app(Config(), simulated=True)
-    service = Service(app, Display(app.timers, app.now_playing))
+    service = Service.create(app)
     music = app.now_playing.__self__  # la música simulada de la demo
 
     if not args.sin_temporizadores:
@@ -52,6 +60,12 @@ async def main() -> None:
         music.current = NowPlaying(
             "Amor eterno", "Rocío Dúrcal", album="Canta a Juan Gabriel", art_url=args.portada, position=61.0, length=287.0
         )
+
+    if not args.sin_clima:
+        service.display.weather = Weather(23.4, args.clima, 26.0, 12.0, 40 if args.clima >= 51 else 10, not args.noche)
+    if args.problema:
+        service.health.report(Problem("demo", args.problema, "Problema de prueba de la demo"))
+    service.display.muted = args.silenciado
 
     async with service.running(args.puerto):
         print(f"Demo lista en el puerto {args.puerto}. Abre la pantalla: voxa-ui (Ctrl+C para salir)")

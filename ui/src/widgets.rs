@@ -6,7 +6,7 @@ use std::sync::Arc;
 
 use egui::{Align2, Color32, CornerRadius, FontId, Galley, Painter, Pos2, Rect, Shape, Stroke, Vec2, pos2, vec2};
 
-use crate::protocol::Phase;
+use crate::protocol::{Phase, Sky};
 use crate::theme;
 
 /// Cómo se ve el anillo: depende de lo que VOXA está haciendo.
@@ -14,6 +14,10 @@ use crate::theme;
 pub enum RingMode {
     Phase(Phase),
     Disconnected,
+    /// Micrófono apagado: gris, como dormido.
+    Muted,
+    /// Algo falla (sin internet, sin micrófono…): ámbar.
+    Problem,
 }
 
 /// El logo de VOXA (anillo abierto, barras de sonido y la V), animado como indicador.
@@ -24,6 +28,8 @@ pub fn voxa_ring(painter: &Painter, center: Pos2, radius: f32, mode: RingMode, t
     let t = time as f32;
     let (brightness, glow) = match mode {
         RingMode::Disconnected => (0.35, 0.0),
+        RingMode::Muted => (0.75, 0.0),
+        RingMode::Problem => (0.9, 0.0),
         RingMode::Phase(Phase::Listening) => (1.0, 0.55 + 0.25 * (t * 4.0).sin()),
         RingMode::Phase(Phase::Speaking) => (1.0, 0.45),
         RingMode::Phase(Phase::Thinking) => (0.55, 0.0),
@@ -33,7 +39,11 @@ pub fn voxa_ring(painter: &Painter, center: Pos2, radius: f32, mode: RingMode, t
         // El degradado del SVG va de arriba-izquierda a abajo-derecha.
         let along = (p.x * 0.8 + p.y * 0.55) / (250.0 * 1.95);
         let color = theme::gradient(0.5 + along);
-        let color = if mode == RingMode::Disconnected { theme::gray(color) } else { color };
+        let color = match mode {
+            RingMode::Disconnected | RingMode::Muted => theme::gray(color),
+            RingMode::Problem => theme::lerp(color, theme::ALARM, 0.8),
+            RingMode::Phase(_) => color,
+        };
         // Opaco (mezclado con el fondo): los trazos se enciman y con transparencia se verían manchas.
         theme::lerp(theme::BG, color, brightness)
     };
@@ -200,6 +210,8 @@ pub enum Icon {
     Previous,
     Close,
     Note,
+    Mic,
+    MicOff,
 }
 
 /// Iconos dibujados con formas simples (no dependen de que la letra tenga esos símbolos).
@@ -233,7 +245,118 @@ pub fn icon(painter: &Painter, center: Pos2, size: f32, icon: Icon, color: Color
             painter.line_segment([center + vec2(-0.08, 0.55) * s, center + vec2(-0.08, -0.75) * s], stroke);
             painter.line_segment([center + vec2(-0.08, -0.75) * s, center + vec2(0.5, -0.45) * s], stroke);
         }
+        Icon::Mic | Icon::MicOff => {
+            let capsule = Rect::from_center_size(center + vec2(0.0, -0.3) * s, vec2(0.62, 1.1) * s);
+            painter.rect_filled(capsule, CornerRadius::same((s * 0.31) as u8), color);
+            let stroke = Stroke::new(s * 0.13, color);
+            let cup: Vec<Pos2> = (0..=12)
+                .map(|i| {
+                    let a = std::f32::consts::PI * i as f32 / 12.0;
+                    center + vec2(-a.cos() * 0.58, -0.25 + a.sin() * 0.62) * s
+                })
+                .collect();
+            painter.add(Shape::line(cup, stroke));
+            painter.line_segment([center + vec2(0.0, 0.37) * s, center + vec2(0.0, 0.8) * s], stroke);
+            painter.line_segment([center + vec2(-0.35, 0.8) * s, center + vec2(0.35, 0.8) * s], stroke);
+            if matches!(icon, Icon::MicOff) {
+                painter.line_segment(
+                    [center + vec2(-0.85, -0.9) * s, center + vec2(0.85, 0.9) * s],
+                    Stroke::new(s * 0.15, color),
+                );
+            }
+        }
     }
+}
+
+const SUN: Color32 = Color32::from_rgb(0xFF, 0xC9, 0x4D);
+const MOON: Color32 = Color32::from_rgb(0xE6, 0xEC, 0xFF);
+const CLOUD: Color32 = Color32::from_rgb(0xDD, 0xE4, 0xF5);
+const STORM_CLOUD: Color32 = Color32::from_rgb(0xA4, 0xAE, 0xC8);
+
+/// Dibujo del clima (sol, luna, nubes, lluvia…) en un cuadrado de lado `size`.
+pub fn sky_icon(painter: &Painter, center: Pos2, size: f32, sky: Sky, is_day: bool) {
+    let s = size / 2.0;
+    let at = |x: f32, y: f32| center + vec2(x, y) * s;
+    let body = |painter: &Painter, c: Pos2, r: f32| {
+        if is_day { sun(painter, c, r) } else { moon(painter, c, r) }
+    };
+    match sky {
+        Sky::Clear => body(painter, center, s * 0.62),
+        Sky::PartlyCloudy => {
+            body(painter, at(-0.28, -0.3), s * 0.5);
+            cloud(painter, at(0.12, 0.25), s * 0.72, CLOUD);
+        }
+        Sky::Cloudy => cloud(painter, center, s, CLOUD),
+        Sky::Fog => {
+            for (n, y) in [-0.45f32, 0.0, 0.45].into_iter().enumerate() {
+                let inset = if n == 1 { 0.0 } else { 0.18 };
+                painter.line_segment([at(-0.85 + inset, y), at(0.85 - inset, y)], Stroke::new(s * 0.16, CLOUD));
+            }
+        }
+        Sky::Rain | Sky::Snow | Sky::Storm => {
+            let tint = if sky == Sky::Storm { STORM_CLOUD } else { CLOUD };
+            cloud(painter, at(0.0, -0.25), s * 0.9, tint);
+            for x in [-0.42f32, 0.0, 0.42] {
+                match sky {
+                    Sky::Rain => {
+                        painter.line_segment([at(x + 0.1, 0.38), at(x - 0.08, 0.85)], Stroke::new(s * 0.11, theme::CYAN));
+                    }
+                    Sky::Snow => {
+                        painter.circle_filled(at(x, 0.6), s * 0.09, Color32::WHITE);
+                    }
+                    _ => {}
+                }
+            }
+            if sky == Sky::Storm {
+                let bolt = [at(0.08, 0.2), at(-0.22, 0.62), at(0.02, 0.62), at(-0.1, 0.98), at(0.3, 0.5), at(0.06, 0.5), at(0.2, 0.2)];
+                let mut mesh = egui::Mesh::default();
+                for p in bolt {
+                    mesh.colored_vertex(p, SUN);
+                }
+                for (a, b, c) in [(0, 1, 5), (0, 5, 6), (1, 2, 5), (2, 4, 5), (2, 3, 4)] {
+                    mesh.add_triangle(a, b, c);
+                }
+                painter.add(Shape::mesh(mesh));
+            }
+        }
+    }
+}
+
+fn sun(painter: &Painter, center: Pos2, r: f32) {
+    painter.circle_filled(center, r * 0.62, SUN);
+    for i in 0..8 {
+        let a = i as f32 * TAU / 8.0;
+        let dir = vec2(a.cos(), a.sin());
+        painter.line_segment([center + dir * r * 0.82, center + dir * r * 1.08], Stroke::new(r * 0.16, SUN));
+    }
+}
+
+/// Luna creciente: la orilla exterior es medio círculo y la interior media elipse.
+fn moon(painter: &Painter, center: Pos2, r: f32) {
+    let steps = 24;
+    let tilt = (-25.0f32).to_radians();
+    let rotate = |v: Vec2| vec2(v.x * tilt.cos() - v.y * tilt.sin(), v.x * tilt.sin() + v.y * tilt.cos());
+    let mut mesh = egui::Mesh::default();
+    for i in 0..=steps {
+        let a = std::f32::consts::FRAC_PI_2 + std::f32::consts::PI * i as f32 / steps as f32;
+        mesh.colored_vertex(center + rotate(vec2(a.cos(), a.sin()) * r), MOON);
+        mesh.colored_vertex(center + rotate(vec2(a.cos() * 0.35, a.sin()) * r), MOON);
+        if i > 0 {
+            let k = (2 * i) as u32;
+            mesh.add_triangle(k - 2, k - 1, k);
+            mesh.add_triangle(k - 1, k, k + 1);
+        }
+    }
+    painter.add(Shape::mesh(mesh));
+}
+
+/// Nube: tres bolas sobre una base redondeada, `w` es la mitad del ancho.
+fn cloud(painter: &Painter, center: Pos2, w: f32, color: Color32) {
+    let base = Rect::from_center_size(center + vec2(0.0, w * 0.22), vec2(w * 1.7, w * 0.6));
+    painter.rect_filled(base, CornerRadius::same((w * 0.3) as u8), color);
+    painter.circle_filled(center + vec2(-0.45, 0.05) * w, w * 0.38, color);
+    painter.circle_filled(center + vec2(0.05, -0.18) * w, w * 0.52, color);
+    painter.circle_filled(center + vec2(0.52, 0.12) * w, w * 0.32, color);
 }
 
 /// Fase de una animación periódica, 0..1.

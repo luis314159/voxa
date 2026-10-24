@@ -5,7 +5,8 @@
 #   bash scripts/install.sh               # todo
 #   bash scripts/install.sh --simular     # muestra qué haría, sin cambiar nada
 #
-# Opciones: --sin-apt  --sin-modelos  --sin-pantalla  --sin-fondos  --sin-servicios  --sin-ajustes-escritorio
+# Opciones: --sin-apt  --sin-modelos  --sin-pantalla  --sin-fondos  --sin-video  --sin-servicios
+#           --sin-ajustes-escritorio
 set -euo pipefail
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -15,7 +16,7 @@ BIN="$HOME/.local/bin"
 VOSK_MODEL="vosk-model-small-es-0.42"
 PIPER_VOICE="es_MX-claude-high"
 
-SIMULAR=0 APT=1 MODELOS=1 PANTALLA=1 FONDOS=1 SERVICIOS=1 ESCRITORIO=1
+SIMULAR=0 APT=1 MODELOS=1 PANTALLA=1 FONDOS=1 VIDEO=1 SERVICIOS=1 ESCRITORIO=1
 for arg in "$@"; do
   case "$arg" in
     --simular) SIMULAR=1 ;;
@@ -23,9 +24,10 @@ for arg in "$@"; do
     --sin-modelos) MODELOS=0 ;;
     --sin-pantalla) PANTALLA=0 ;;
     --sin-fondos) FONDOS=0 ;;
+    --sin-video) VIDEO=0 ;;
     --sin-servicios) SERVICIOS=0 ;;
     --sin-ajustes-escritorio) ESCRITORIO=0 ;;
-    -h|--help|--ayuda) sed -n '2,9p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -h|--help|--ayuda) sed -n '2,10p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) echo "Opción desconocida: $arg" >&2; exit 2 ;;
   esac
 done
@@ -69,6 +71,9 @@ if [ "$APT" = 1 ]; then
   if [ "$PANTALLA" = 1 ]; then
     # Para compilar la pantalla (egui sobre X11/Wayland con OpenGL).
     paquetes+=(build-essential pkg-config libxkbcommon-dev libwayland-dev libgl1-mesa-dev libxcursor-dev libxrandr-dev libxi-dev)
+  fi
+  if [ "$VIDEO" = 1 ]; then
+    paquetes+=(mpv)
   fi
   run sudo apt-get update -qq
   run sudo apt-get install -y "${paquetes[@]}"
@@ -130,7 +135,22 @@ if [ "$FONDOS" = 1 ]; then
   run "$VENV_PY" "$REPO/scripts/descargar_fondos.py" --destino "$DATA/fondos" || aviso "No se pudieron bajar los fondos; la pantalla usará el fondo liso."
 fi
 
-# --- 5. Audio: bocina Bluetooth en A2DP y sin suspensión --------------------------
+# --- 5. Videos: yt-dlp (de pipx: el de apt envejece rápido) y deno, que YouTube ya exige ----
+if [ "$VIDEO" = 1 ]; then
+  paso "Videos de YouTube (yt-dlp + deno + mpv)"
+  instalados="$(pipx list --short 2>/dev/null || true)"
+  for app in "yt-dlp[default]" deno; do
+    nombre="${app%%\[*}"
+    if printf '%s\n' "$instalados" | grep -q "^$nombre "; then
+      listo "$nombre (se actualiza solo cada semana)"
+    else
+      run pipx install "$app"
+    fi
+  done
+  tiene mpv || [ "$SIMULAR" = 1 ] || aviso "Falta mpv: sudo apt install mpv"
+fi
+
+# --- 6. Audio: bocina Bluetooth en A2DP y sin suspensión --------------------------
 paso "Audio (WirePlumber)"
 version_wp="$(wireplumber --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+' | head -1 || true)"
 case "$version_wp" in
@@ -145,13 +165,20 @@ case "$version_wp" in
 esac
 [ -n "$version_wp" ] && run systemctl --user restart wireplumber.service
 
-# --- 6. Arranque automático --------------------------------------------------------
+# --- 7. Arranque automático --------------------------------------------------------
 if [ "$SERVICIOS" = 1 ]; then
   paso "Arranque automático"
   instalar_archivo "$REPO/deploy/systemd/voxa.service" "$CONFIG/systemd/user/voxa.service"
   instalar_archivo "$REPO/deploy/systemd/voxa-ui.service" "$CONFIG/systemd/user/voxa-ui.service"
   instalar_archivo "$REPO/deploy/autostart/voxa-ui.desktop" "$CONFIG/autostart/voxa-ui.desktop"
+  if [ "$VIDEO" = 1 ]; then
+    instalar_archivo "$REPO/deploy/systemd/voxa-ytdlp.service" "$CONFIG/systemd/user/voxa-ytdlp.service"
+    instalar_archivo "$REPO/deploy/systemd/voxa-ytdlp.timer" "$CONFIG/systemd/user/voxa-ytdlp.timer"
+  fi
   run systemctl --user daemon-reload
+  if [ "$VIDEO" = 1 ]; then
+    run systemctl --user enable --now voxa-ytdlp.timer
+  fi
   run systemctl --user enable voxa.service
   run systemctl --user restart voxa.service
   if [ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ] && [ -x "$BIN/voxa-ui" ]; then
@@ -160,7 +187,7 @@ if [ "$SERVICIOS" = 1 ]; then
   fi
 fi
 
-# --- 7. Escritorio: que la cocina no se bloquee ni se duerma -------------------------
+# --- 8. Escritorio: que la cocina no se bloquee ni se duerma -------------------------
 if [ "$ESCRITORIO" = 1 ] && tiene gsettings && gsettings list-schemas 2>/dev/null | grep -q '^org.cinnamon.desktop.session$'; then
   paso "Escritorio Cinnamon: sin bloqueo ni suspensión"
   run gsettings set org.cinnamon.desktop.session idle-delay 0

@@ -5,9 +5,12 @@ from voxa.app import build_app
 from voxa.config import Config
 from voxa.core.types import Response
 from voxa.display import Display, DisplayServer
+from voxa.health import Health, Problem
 from voxa.service import Service
 from voxa.services.music_backend import NowPlaying
+from voxa.services.weather import Weather, WeatherUnavailable
 from voxa.state.timers import TimerManager
+from voxa.voice import TurnResult, TurnTimings
 
 
 class Clock:
@@ -105,6 +108,12 @@ class RecordingCommands:
     async def stop_alarm(self):
         self.calls.append("stop")
 
+    async def set_muted(self, on):
+        self.calls.append(f"mute:{on}")
+
+    def diagnostics(self):
+        return {"sections": [], "problems": [], "log": ["⚠ 12:00 algo"]}
+
 
 async def test_server_sends_state_and_receives_commands():
     display, _, _ = make_display()
@@ -119,16 +128,21 @@ async def test_server_sends_state_and_receives_commands():
         writer.write(
             b'{"type": "say", "text": "  pausa  "}\nno es json\n[1, 2]\n{"type": "talk"}\n'
             b'{"type": "cancel_timer", "id": "3"}\n{"type": "cancel_timer", "id": 3}\n{"type": "stop_alarm"}\n'
+            b'{"type": "mute", "on": 1}\n{"type": "mute", "on": true}\n'
         )
         await writer.drain()
         display.phase("listening")
         update = json.loads(await asyncio.wait_for(reader.readline(), 2))
         assert update["phase"] == "listening"
         for _ in range(50):
-            if len(commands.calls) == 4:
+            if len(commands.calls) == 5:
                 break
             await asyncio.sleep(0.01)
-        assert commands.calls == ["say:pausa", "talk", "cancel:3", "stop"]
+        assert commands.calls == ["say:pausa", "talk", "cancel:3", "stop", "mute:True"]
+
+        writer.write(b'{"type": "diagnostics"}\n')
+        report = json.loads(await asyncio.wait_for(reader.readline(), 2))
+        assert report["type"] == "diagnostics" and report["log"] == ["⚠ 12:00 algo"]
         writer.close()
     finally:
         await server.close()
@@ -161,3 +175,123 @@ async def test_service_cancels_timer_and_stops_alarm_from_screen():
     await service.cancel_timer(timer.id)
     assert app.timers.active == []
     await service.stop_alarm()  # sin alarma sonando no pasa nada
+
+
+def test_snapshot_has_weather_problems_and_mute():
+    display, _, _ = make_display()
+    display.health = Health()
+    display.health.report(Problem("internet", "Sin internet", "detalle que no va a la pantalla"))
+    display.weather = Weather(21.6, 3, 27.4, 11.5, 40, is_day=False)
+    display.muted = True
+    state = display.snapshot()
+    assert state["problems"] == [{"id": "internet", "text": "Sin internet"}]
+    assert state["weather"] == {
+        "temperature": 22, "high": 27, "low": 12, "rain_probability": 40, "code": 3, "is_day": False,
+        "description": "nublado",
+    }
+    assert state["muted"] is True and state["video"] is None
+
+
+async def test_weather_keeps_last_value_when_offline():
+    calls = []
+
+    async def weather():
+        calls.append(1)
+        if len(calls) > 1:
+            raise WeatherUnavailable("sin red")
+        return Weather(20, 0, 25, 10, 0)
+
+    display = Display(TimerManager(), weather=weather)
+    assert await display.refresh_weather() is True
+    assert await display.refresh_weather() is False
+    assert display.snapshot()["weather"]["temperature"] == 20
+
+
+class FakeMic:
+    def __init__(self, fails=False):
+        self.fails, self.is_open, self.opened = fails, False, 0
+
+    def open(self):
+        if self.fails:
+            raise OSError("Error querying device -1")
+        self.is_open = True
+        self.opened += 1
+
+    def close(self):
+        self.is_open = False
+
+
+class FakeSession:
+    def __init__(self, response=None):
+        self.observer = None
+        self.response = response
+        self.said = []
+
+    async def turn(self, mic):
+        assert mic.is_open
+        return TurnResult("algo", self.response, TurnTimings())
+
+    async def say(self, response):
+        self.said.append(response)
+        return 0.0
+
+
+def simulated_service():
+    app = build_app(Config(), simulated=True)
+    return Service.create(app), app
+
+
+async def test_mute_by_voice_releases_the_microphone_and_a_tap_brings_it_back():
+    service, _ = simulated_service()
+    mic, session = FakeMic(), FakeSession()
+    service.attach_voice(session, mic)
+    assert session.observer is service and mic.is_open
+
+    response = await service.handle_text("deja de escuchar")
+    assert response.action == "mic.mute"
+    assert service.muted and not mic.is_open and service.display.snapshot()["muted"] is True
+
+    result = await service.talk()  # tocar el anillo: enciende y escucha
+    assert result.heard == "algo" and not service.muted and mic.is_open
+
+
+async def test_mute_from_the_screen_acknowledges_with_a_sound():
+    service, _ = simulated_service()
+    session = FakeSession()
+    service.attach_voice(session, FakeMic())
+    await service.set_muted(True)
+    await service.set_muted(True)
+    await service.set_muted(False)
+    assert [r.sound for r in session.said] == ["cancel", "ok"]
+
+
+async def test_missing_microphone_is_a_problem_until_it_opens():
+    service, _ = simulated_service()
+    mic, session = FakeMic(fails=True), FakeSession()
+    service.attach_voice(session, mic)
+    assert [p.id for p in service.health.problems] == ["microfono"]
+    assert await service.talk() is None
+    assert session.said[-1].speech == "No encuentro el micrófono."
+    mic.fails = False
+    assert (await service.talk()).heard == "algo"
+    assert service.health.problems == []
+
+
+async def test_video_shows_voxa_on_top_and_reports_its_title():
+    service, app = simulated_service()
+    await service.handle_text("pon un video de cómo hacer pan de elote")
+    assert service.display.snapshot()["video"] == {"title": "Cómo hacer pan de elote"}
+    service.phase("listening")
+    await asyncio.sleep(0)
+    assert "osd:🎙 Te escucho…" in app.video.calls
+    app.video.finish()
+    assert service.display.snapshot()["video"] is None
+
+
+def test_diagnostics_report_is_plain_json():
+    service, _ = simulated_service()
+    report = service.diagnostics()
+    json.dumps(report)
+    titles = [s["title"] for s in report["sections"]]
+    assert titles == ["VOXA", "Voz", "Música y video", "Red"]
+    assert dict(report["sections"][1]["items"])["Micrófono"] == "sin voz cargada"

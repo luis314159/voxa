@@ -1,0 +1,9 @@
+[Unit]
+Description=VOXA: actualiza yt-dlp y deno (YouTube cambia seguido)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=pipx upgrade yt-dlp
+ExecStart=pipx upgrade deno

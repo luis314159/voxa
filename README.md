@@ -2,7 +2,7 @@
 
 # VOXA
 
-Asistente de voz familiar para la cocina, sobre una PC All-in-One con Linux Mint: música de Spotify, temporizadores, volumen, hora y clima, todo por voz y en español.
+Asistente de voz familiar para la cocina, sobre una PC All-in-One con Linux Mint: música de Spotify, videos de recetas, temporizadores, volumen, hora y clima, todo por voz y en español.
 
 - **Plan del proyecto:** [docs/voxa_plan.md](docs/voxa_plan.md)
 - **Fase 0 (diagnóstico del equipo):** [docs/fase0_guia.md](docs/fase0_guia.md)
@@ -18,10 +18,11 @@ Asistente de voz familiar para la cocina, sobre una PC All-in-One con Linux Mint
 | Volumen (PipeWire), hora, clima (Open-Meteo) | ✅ |
 | Modo texto (`voxa texto`) | ✅ |
 | Voz con «pulsar para hablar» (`voxa voz`): micrófono, fin de frase, STT híbrido Vosk/Whisper, Piper, sonidos, ducking | ✅ (falta calibrar en el equipo real) |
-| Pantalla de cocina (`ui/`, Rust + egui): reloj, temporizadores, música, anillo animado, fondos | ✅ (falta probar en el equipo real) |
+| Pantalla de cocina (`ui/`, Rust + egui): reloj, clima, temporizadores, música, anillo animado, fondos, modo noche, diagnóstico | ✅ (falta probar en el equipo real) |
+| Avisos de problemas (sin internet, sin micrófono, Spotifast cerrado…) y micrófono apagable | ✅ |
+| Videos de YouTube (yt-dlp + mpv) controlados por voz | ✅ (falta probar en el equipo real) |
+| Servicios systemd e instalador | ✅ (falta probar en el equipo real) |
 | «Hey Voxa» (detector de palabra de activación) | ⏳ Fase 3 |
-| Servicios systemd e instalador | ⏳ Fase 4 |
-| Videos (mpv + yt-dlp) | ⏳ Fase 5 |
 
 ## Probarlo (sin micrófono)
 
@@ -38,7 +39,13 @@ VOXA: 10 minutos para el arroz.
 VOXA: Faltan 10 minutos.
 > pon Soda Stereo
 VOXA: Soda Stereo.
+> pon un video de cómo hacer pan de elote
+VOXA: Poniendo: Cómo hacer pan de elote.
+> pausa
+VOXA: [sonido: ok]
 ```
+
+Mientras hay un video puesto, «pausa», «sigue», «adelanta 30 segundos» y «cierra el video» le hablan al video; al cerrarlo, vuelven a la música. En el equipo real, yt-dlp busca en YouTube y mpv lo reproduce a pantalla completa (720p como máximo, `[video]` en la configuración); encima del video aparecen «Te escucho…» y las respuestas. Tocar la pantalla pausa y dos toques cierran el video.
 
 ### Con voz
 
@@ -67,7 +74,13 @@ ui/target/release/voxa-ui                    # --completa para pantalla completa
 python scripts/descargar_fondos.py           # ~77 fondos: México, pueblos y paisajes de todo el mundo
 ```
 
-La pantalla se conecta sola a `voxa texto`, `voxa voz` o `voxa servicio` (puerto 8766, solo local) y se reconecta si VOXA se reinicia. Tocar el anillo equivale a pulsar para hablar. Las fotos de `~/.local/share/voxa/fondos/` (también las tuyas) rotan cada 10 minutos (`--cambio-fondo`).
+La pantalla se conecta sola a `voxa texto`, `voxa voz` o `voxa servicio` (puerto 8766, solo local) y se reconecta si VOXA se reinicia. Las fotos de `~/.local/share/voxa/fondos/` (también las tuyas) rotan cada 10 minutos (`--cambio-fondo`).
+
+- **Anillo:** tocarlo equivale a pulsar para hablar. Se pone **ámbar** con el problema debajo cuando algo falla («Sin internet», «No encuentro el micrófono», «Spotifast no responde», «Falta conectar Spotify»).
+- **Micrófono:** el botón junto al anillo (o decir «deja de escuchar») lo apaga de verdad: VOXA suelta el micrófono. Tocar el anillo lo vuelve a encender.
+- **Clima:** con `latitude` y `longitude` en `[weather]`, se ve el clima del momento y el del día.
+- **Modo noche:** de 22:00 a 6:30 la pantalla se oscurece (`--noche 23:00-07:00` para cambiarlo, `--sin-noche` para quitarlo). Un toque la enciende 30 s sin activar ningún botón; las alarmas y las respuestas la encienden solas.
+- **Diagnóstico:** mantener presionado el reloj muestra versión, voz, micrófono, música, red, problemas y los últimos avisos del registro.
 
 Los fondos ([assets/fondos/catalogo.json](assets/fondos/catalogo.json)) son fotos de Wikimedia Commons en **dominio público o CC0**. El script vuelve a consultar en Commons la licencia de cada una antes de bajarla y, por precaución, omite las importadas de Unsplash que Commons aún no revisa a mano (`--incluir-sin-revisar` las agrega).
 
@@ -78,10 +91,10 @@ Sin `--simulado`, usa Spotify, Spotifast y PipeWire reales. Para configurarlos, 
 ```bash
 git clone <este repositorio> ~/voxa && cd ~/voxa
 bash scripts/install.sh --simular     # ver qué hará, sin cambiar nada
-bash scripts/install.sh               # paquetes, VOXA, modelos, pantalla, fondos, audio y arranque automático
+bash scripts/install.sh               # paquetes, VOXA, modelos, pantalla, fondos, videos, audio y arranque automático
 ```
 
-El instalador se puede repetir sin miedo: respeta lo ya instalado y nunca sobrescribe `~/.config/voxa/config.toml`. Deja la bocina Bluetooth fija en alta calidad y sin «dormirse» ([deploy/wireplumber/](deploy/wireplumber/)), VOXA como servicio de usuario (`systemctl --user status voxa`) y la pantalla abriéndose al iniciar sesión. Queda a mano el inicio de sesión automático y `voxa spotify-login`.
+El instalador se puede repetir sin miedo: respeta lo ya instalado y nunca sobrescribe `~/.config/voxa/config.toml`. Deja la bocina Bluetooth fija en alta calidad y sin «dormirse» ([deploy/wireplumber/](deploy/wireplumber/)), VOXA como servicio de usuario (`systemctl --user status voxa`), la pantalla abriéndose al iniciar sesión y yt-dlp actualizándose cada semana (`voxa-ytdlp.timer`), porque YouTube cambia seguido. Si al servicio le faltan los modelos de voz o el micrófono, no se cae: la pantalla lo avisa en ámbar. Queda a mano el inicio de sesión automático y `voxa spotify-login`.
 
 ## Pruebas
 
@@ -97,11 +110,13 @@ El corpus [tests/data/utterances.yaml](tests/data/utterances.yaml) guarda frases
 src/voxa/
 ├── nlu/        normalización, números/duraciones, grammar.yaml, matcher
 ├── core/       asistente (enrutamiento), tipos, frases en español
-├── skills/     música, volumen, temporizadores, hora, clima, sistema
-├── services/   Spotify (Web API, auth PKCE), Spotifast CLI, MPRIS, PipeWire, Open-Meteo
+├── skills/     música, video, volumen, temporizadores, hora, clima, sistema
+├── services/   Spotify (Web API, auth PKCE), Spotifast CLI, MPRIS, PipeWire, Open-Meteo, yt-dlp + mpv
 ├── state/      temporizadores persistentes
 ├── display.py  estado para la pantalla y su canal local
-├── service.py  voz + pantalla + temporizadores juntos
+├── health.py   problemas que la pantalla avisa en ámbar
+├── diagnostics.py  reporte de la pantalla de diagnóstico
+├── service.py  voz + pantalla + temporizadores + video juntos
 ├── app.py      arma todo
 └── main.py     CLI: voxa texto | voz | servicio | decir | spotify-login
 ui/             voxa-ui: pantalla de cocina (Rust + egui)

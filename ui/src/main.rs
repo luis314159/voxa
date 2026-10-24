@@ -3,7 +3,10 @@
 //! Se conecta a `voxa servicio` por 127.0.0.1 y dibuja reloj, temporizadores, música y el anillo.
 //!
 //!     voxa-ui [--completa] [--24h] [--puerto 8766] [--fondos CARPETA] [--cambio-fondo MINUTOS]
-//!     voxa-ui --captura pantalla.png [--tamano 1920x1080]   (imagen para documentar y revisar)
+//!             [--noche 22:00-06:30 | --sin-noche]
+//!     voxa-ui --captura pantalla.png [--tamano 1920x1080] [--diagnostico]   (imagen para revisar)
+//!
+//! Mantener presionado el reloj abre el diagnóstico.
 
 mod app;
 mod backgrounds;
@@ -17,10 +20,14 @@ use std::net::{Ipv4Addr, SocketAddr};
 use std::path::PathBuf;
 use std::time::Duration;
 
+use chrono::NaiveTime;
+
 const DEFAULT_PORT: u16 = 8766;
+const DEFAULT_NIGHT: &str = "22:00-06:30";
 
 const USAGE: &str = "uso: voxa-ui [--completa] [--24h] [--puerto 8766] [--fondos CARPETA | --sin-fondos] \
-                     [--cambio-fondo MINUTOS] [--captura archivo.png] [--tamano 1920x1080]";
+                     [--cambio-fondo MINUTOS] [--noche 22:00-06:30 | --sin-noche] \
+                     [--captura archivo.png] [--tamano 1920x1080] [--diagnostico]";
 
 struct Args {
     kiosk: bool,
@@ -30,6 +37,20 @@ struct Args {
     size: [f32; 2],
     backgrounds: Option<PathBuf>,
     background_minutes: f32,
+    night: Option<(NaiveTime, NaiveTime)>,
+    diagnostics: bool,
+}
+
+/// «22:00-06:30» → (22:00, 06:30).
+fn parse_night(value: &str) -> Result<(NaiveTime, NaiveTime), String> {
+    let invalid = || format!("horario inválido: {value} (usa algo como 22:00-06:30)");
+    let (start, end) = value.split_once('-').ok_or_else(invalid)?;
+    let time = |s: &str| NaiveTime::parse_from_str(s.trim(), "%H:%M").map_err(|_| invalid());
+    let (start, end) = (time(start)?, time(end)?);
+    if start == end {
+        return Err(invalid());
+    }
+    Ok((start, end))
 }
 
 /// Carpeta de fondos por defecto: `~/.local/share/voxa/fondos` (o `%LOCALAPPDATA%\voxa\fondos`).
@@ -52,6 +73,8 @@ fn parse_args() -> Result<Args, String> {
         size: [1280.0, 720.0],
         backgrounds: default_backgrounds(),
         background_minutes: 10.0,
+        night: Some(parse_night(DEFAULT_NIGHT).expect("horario por defecto válido")),
+        diagnostics: false,
     };
     let mut iter = std::env::args().skip(1);
     while let Some(arg) = iter.next() {
@@ -79,6 +102,9 @@ fn parse_args() -> Result<Args, String> {
                     .filter(|m| *m > 0.0)
                     .ok_or(format!("minutos inválidos: {value}"))?;
             }
+            "--noche" => args.night = Some(parse_night(&iter.next().ok_or("falta el horario después de --noche")?)?),
+            "--sin-noche" => args.night = None,
+            "--diagnostico" => args.diagnostics = true,
             "-h" | "--help" | "--ayuda" => return Err(USAGE.into()),
             other => return Err(format!("opción desconocida: {other}")),
         }
@@ -120,8 +146,13 @@ fn main() -> eframe::Result {
             egui_extras::install_image_loaders(&cc.egui_ctx);
             let ctx = cc.egui_ctx.clone();
             let link = link::Link::start(addr, move || ctx.request_repaint());
-            let options =
-                app::Options { twenty_four_hours: args.twenty_four_hours, kiosk: args.kiosk, capture: args.capture };
+            let options = app::Options {
+                twenty_four_hours: args.twenty_four_hours,
+                kiosk: args.kiosk,
+                capture: args.capture,
+                night: args.night,
+                diagnostics: args.diagnostics,
+            };
             let interval = Duration::from_secs_f32(args.background_minutes * 60.0);
             let backgrounds = args
                 .backgrounds
@@ -130,4 +161,26 @@ fn main() -> eframe::Result {
             Ok(Box::new(app::VoxaApp::new(link, options, backgrounds)))
         }),
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn at(h: u32, m: u32) -> NaiveTime {
+        NaiveTime::from_hms_opt(h, m, 0).unwrap()
+    }
+
+    #[test]
+    fn night_hours_can_cross_midnight() {
+        let night = parse_night("22:00-06:30").unwrap();
+        assert_eq!(night, (at(22, 0), at(6, 30)));
+        assert!(app::in_night(at(23, 15), night));
+        assert!(app::in_night(at(3, 0), night));
+        assert!(!app::in_night(at(6, 30), night));
+        assert!(!app::in_night(at(12, 0), night));
+        let siesta = parse_night("14:00-16:00").unwrap();
+        assert!(app::in_night(at(15, 0), siesta) && !app::in_night(at(17, 0), siesta));
+        assert!(parse_night("22-6").is_err() && parse_night("10:00-10:00").is_err());
+    }
 }

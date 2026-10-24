@@ -1,0 +1,11 @@
+[Unit]
+Description=VOXA: actualiza yt-dlp cada semana
+
+[Timer]
+OnCalendar=weekly
+# Si la PC estaba apagada a esa hora, se hace al encenderla.
+Persistent=true
+RandomizedDelaySec=2h
+
+[Install]
+WantedBy=timers.target

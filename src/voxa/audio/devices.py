@@ -24,10 +24,24 @@ class Microphone:
         self._loop: asyncio.AbstractEventLoop | None = None
 
     async def __aenter__(self) -> Microphone:
+        self.open()
+        return self
+
+    async def __aexit__(self, *exc) -> None:
+        self.close()
+
+    @property
+    def is_open(self) -> bool:
+        return self._stream is not None
+
+    def open(self) -> None:
+        """Abre el micrófono (``sounddevice.PortAudioError`` si no hay o está ocupado)."""
         import sounddevice as sd
 
+        if self._stream is not None:
+            return
         self._loop = asyncio.get_running_loop()
-        self._stream = sd.InputStream(
+        stream = sd.InputStream(
             samplerate=MIC_RATE,
             channels=1,
             dtype="int16",
@@ -35,13 +49,16 @@ class Microphone:
             device=self._device,
             callback=self._callback,
         )
-        self._stream.start()
-        return self
+        stream.start()
+        self._stream = stream
 
-    async def __aexit__(self, *exc) -> None:
-        if self._stream is not None:
-            self._stream.stop()
-            self._stream.close()
+    def close(self) -> None:
+        """Suelta el micrófono de verdad (modo privado): el sistema deja de mostrarlo en uso."""
+        stream, self._stream = self._stream, None
+        if stream is not None:
+            stream.stop()
+            stream.close()
+        self.clear()
 
     def _callback(self, indata, frames, time_info, status) -> None:
         if status:

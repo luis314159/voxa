@@ -20,6 +20,88 @@ pub struct State {
     #[serde(default)]
     pub timers: Vec<Timer>,
     pub music: Option<Music>,
+    pub weather: Option<Weather>,
+    /// Micrófono apagado («deja de escuchar» o el botón de la pantalla).
+    #[serde(default)]
+    pub muted: bool,
+    /// Lo que impide que VOXA funcione bien, el más grave primero: «Sin internet».
+    #[serde(default)]
+    pub problems: Vec<Problem>,
+}
+
+#[derive(Debug, Clone, Deserialize, PartialEq)]
+pub struct Problem {
+    pub id: String,
+    pub text: String,
+}
+
+#[derive(Debug, Clone, Deserialize, PartialEq)]
+pub struct Weather {
+    pub temperature: i32,
+    pub high: i32,
+    pub low: i32,
+    #[serde(default)]
+    pub rain_probability: u32,
+    /// Código WMO de Open-Meteo.
+    pub code: u32,
+    #[serde(default = "day")]
+    pub is_day: bool,
+    #[serde(default)]
+    pub description: String,
+}
+
+fn day() -> bool {
+    true
+}
+
+/// Qué dibujo le toca a un código WMO.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Sky {
+    Clear,
+    PartlyCloudy,
+    Cloudy,
+    Fog,
+    Rain,
+    Snow,
+    Storm,
+}
+
+impl Weather {
+    pub fn sky(&self) -> Sky {
+        match self.code {
+            0 => Sky::Clear,
+            1 | 2 => Sky::PartlyCloudy,
+            45 | 48 => Sky::Fog,
+            51..=67 | 80..=82 => Sky::Rain,
+            71..=77 | 85 | 86 => Sky::Snow,
+            95.. => Sky::Storm,
+            _ => Sky::Cloudy,
+        }
+    }
+}
+
+/// Respuesta a `Command::Diagnostics`: secciones de «etiqueta: valor», problemas y registro.
+#[derive(Debug, Clone, Default, Deserialize, PartialEq)]
+pub struct Diagnostics {
+    #[serde(default)]
+    pub sections: Vec<Section>,
+    #[serde(default)]
+    pub problems: Vec<ProblemDetail>,
+    #[serde(default)]
+    pub log: Vec<String>,
+}
+
+#[derive(Debug, Clone, Deserialize, PartialEq)]
+pub struct Section {
+    pub title: String,
+    pub items: Vec<(String, String)>,
+}
+
+#[derive(Debug, Clone, Deserialize, PartialEq)]
+pub struct ProblemDetail {
+    pub text: String,
+    #[serde(default)]
+    pub detail: String,
 }
 
 #[derive(Debug, Clone, Copy, Default, Deserialize, PartialEq, Eq)]
@@ -86,19 +168,20 @@ impl Music {
     }
 }
 
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize)]
 #[serde(tag = "type", rename_all = "lowercase")]
-enum Incoming {
+pub enum Incoming {
     State(State),
+    Diagnostics(Diagnostics),
     #[serde(other)]
     Other,
 }
 
 /// Interpreta una línea de VOXA. Mensajes desconocidos o inválidos se ignoran.
-pub fn parse_line(line: &str) -> Option<State> {
+pub fn parse_line(line: &str) -> Option<Incoming> {
     match serde_json::from_str::<Incoming>(line) {
-        Ok(Incoming::State(state)) => Some(state),
-        _ => None,
+        Ok(Incoming::Other) | Err(_) => None,
+        Ok(message) => Some(message),
     }
 }
 
@@ -111,6 +194,10 @@ pub enum Command {
     Say { text: String },
     CancelTimer { id: u64 },
     StopAlarm,
+    /// Apagar o encender el micrófono.
+    Mute { on: bool },
+    /// Pide el reporte para la pantalla de diagnóstico.
+    Diagnostics,
 }
 
 impl Command {
@@ -132,7 +219,7 @@ mod tests {
             "ringing": false}], "music": {"title": "Persiana americana", "artist": "Soda Stereo",
             "album": null, "art_url": null, "playing": true, "position": 10.0, "position_at": 1000.0,
             "length": 290.0}}"#;
-        let state = parse_line(line).unwrap();
+        let state = parse_state(line).unwrap();
         assert_eq!(state.phase, Phase::Listening);
         assert_eq!(state.timers[0].label.as_deref(), Some("arroz"));
         assert_eq!(state.timers[0].remaining(1300.0), 300.0);
@@ -144,10 +231,44 @@ mod tests {
 
     #[test]
     fn unknown_phase_and_messages_are_tolerated() {
-        let state = parse_line(r#"{"type": "state", "phase": "dancing"}"#).unwrap();
+        let state = parse_state(r#"{"type": "state", "phase": "dancing"}"#).unwrap();
         assert_eq!(state.phase, Phase::Unknown);
+        assert!(!state.muted && state.problems.is_empty() && state.weather.is_none());
         assert!(parse_line(r#"{"type": "hello"}"#).is_none());
         assert!(parse_line("no es json").is_none());
+    }
+
+    fn parse_state(line: &str) -> Option<State> {
+        match parse_line(line) {
+            Some(Incoming::State(state)) => Some(state),
+            _ => None,
+        }
+    }
+
+    #[test]
+    fn parses_weather_problems_and_diagnostics() {
+        let line = r#"{"type": "state", "muted": true, "problems": [{"id": "internet", "text": "Sin internet"}],
+            "weather": {"temperature": 22, "high": 27, "low": 12, "rain_probability": 40, "code": 61,
+            "is_day": false, "description": "lloviendo"}, "video": {"title": "Pozole"}}"#;
+        let state = parse_state(line).unwrap();
+        assert!(state.muted);
+        assert_eq!(state.problems[0].text, "Sin internet");
+        let weather = state.weather.unwrap();
+        assert_eq!((weather.temperature, weather.sky(), weather.is_day), (22, Sky::Rain, false));
+
+        let line = r#"{"type": "diagnostics", "v": 1, "sections": [{"title": "Voz", "items": [["Micrófono", "abierto"]]}],
+            "problems": [{"id": "x", "text": "Sin internet", "detail": "DNS"}], "log": ["⚠ 12:00 algo"]}"#;
+        let Some(Incoming::Diagnostics(report)) = parse_line(line) else { panic!("no es diagnóstico") };
+        assert_eq!(report.sections[0].items[0], ("Micrófono".to_owned(), "abierto".to_owned()));
+        assert_eq!(report.problems[0].detail, "DNS");
+    }
+
+    #[test]
+    fn weather_codes_map_to_skies() {
+        let sky = |code| Weather { temperature: 0, high: 0, low: 0, rain_probability: 0, code, is_day: true, description: String::new() }.sky();
+        assert_eq!([sky(0), sky(2), sky(3), sky(45), sky(81), sky(73), sky(95)], [
+            Sky::Clear, Sky::PartlyCloudy, Sky::Cloudy, Sky::Fog, Sky::Rain, Sky::Snow, Sky::Storm
+        ]);
     }
 
     #[test]
@@ -159,5 +280,7 @@ mod tests {
         );
         assert_eq!(Command::CancelTimer { id: 3 }.to_line(), "{\"type\":\"cancel_timer\",\"id\":3}\n");
         assert_eq!(Command::StopAlarm.to_line(), "{\"type\":\"stop_alarm\"}\n");
+        assert_eq!(Command::Mute { on: true }.to_line(), "{\"type\":\"mute\",\"on\":true}\n");
+        assert_eq!(Command::Diagnostics.to_line(), "{\"type\":\"diagnostics\"}\n");
     }
 }
