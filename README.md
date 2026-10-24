@@ -64,7 +64,7 @@ Si VOXA pronuncia mal un nombre, agrégalo a `~/.config/voxa/pronunciacion.yaml`
 cd ui && cargo build --release               # requiere Rust (https://rustup.rs)
 python scripts/demo_pantalla.py              # datos de ejemplo, sin micrófono ni Spotify
 ui/target/release/voxa-ui                    # --completa para pantalla completa
-python scripts/descargar_fondos.py           # 36 fondos: pueblos mágicos, pueblos del mundo y naturaleza
+python scripts/descargar_fondos.py           # ~77 fondos: México, pueblos y paisajes de todo el mundo
 ```
 
 La pantalla se conecta sola a `voxa texto`, `voxa voz` o `voxa servicio` (puerto 8766, solo local) y se reconecta si VOXA se reinicia. Tocar el anillo equivale a pulsar para hablar. Las fotos de `~/.local/share/voxa/fondos/` (también las tuyas) rotan cada 10 minutos (`--cambio-fondo`).
