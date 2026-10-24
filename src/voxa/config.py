@@ -85,6 +85,7 @@ class WakeConfig:
     feature_dir: str = "~/.local/share/voxa/models/wakeword"
     threshold: float = 0.0
     patience: int = 2
+    verifier: str = ""
 
 
 @dataclass(frozen=True)
@@ -115,6 +116,17 @@ class Config:
     @property
     def pronunciation_path(self) -> Path:
         return self.config_dir / "pronunciacion.yaml"
+
+    @property
+    def wake_recordings_dir(self) -> Path:
+        """Grabaciones de la familia para el verificador de «Hey Voxa» (solo en esta PC)."""
+        return _xdg("XDG_DATA_HOME", ".local/share") / "activacion"
+
+    @property
+    def verifier_path(self) -> Path:
+        if self.wake.verifier:
+            return Path(self.wake.verifier).expanduser()
+        return Path(self.wake.feature_dir).expanduser() / "verificador.npz"
 
     @property
     def shopping_path(self) -> Path:

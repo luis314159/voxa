@@ -49,18 +49,24 @@ class Mlp:
         self.v = [np.zeros_like(p) for p in self.w + self.b]
         self.t = 0
 
-    def forward(self, x: np.ndarray) -> tuple[np.ndarray, list[np.ndarray]]:
-        acts = [x]
+    def forward(self, x: np.ndarray, dropout: float = 0.0, rng: np.random.Generator | None = None):
+        acts, masks = [x], []
         h = x
         for i, (w, b) in enumerate(zip(self.w, self.b)):
             h = h @ w + b
             if i < len(self.w) - 1:
                 h = np.maximum(h, 0)
+                if dropout and rng is not None:  # apaga neuronas al azar: no se aprende de memoria
+                    mask = (rng.random(h.shape) >= dropout).astype(np.float32) / (1 - dropout)
+                    h = h * mask
+                    masks.append(mask)
+                else:
+                    masks.append(None)
             acts.append(h)
-        return h[:, 0], acts
+        return h[:, 0], acts, masks
 
-    def step(self, x: np.ndarray, y: np.ndarray, weight: np.ndarray, lr: float, l2: float) -> float:
-        logits, acts = self.forward(x)
+    def step(self, x, y, weight, lr: float, l2: float, dropout: float = 0.0, rng=None) -> float:
+        logits, acts, masks = self.forward(x, dropout, rng)
         p = 1 / (1 + np.exp(-np.clip(logits, -30, 30)))
         loss = -np.sum(weight * (y * np.log(p + 1e-7) + (1 - y) * np.log(1 - p + 1e-7))) / weight.sum()
         grad = ((p - y) * weight / weight.sum())[:, None].astype(np.float32)
@@ -70,6 +76,8 @@ class Mlp:
             grads_b.insert(0, grad.sum(0))
             if i:
                 grad = (grad @ self.w[i].T) * (acts[i] > 0)
+                if masks[i - 1] is not None:
+                    grad = grad * masks[i - 1]
         self.t += 1
         for k, (param, g) in enumerate(zip(self.w + self.b, grads_w + grads_b)):
             self.m[k] = 0.9 * self.m[k] + 0.1 * g
@@ -120,8 +128,11 @@ def main() -> None:
     parser.add_argument("--negativos", type=Path, required=True)
     parser.add_argument("--modelos", type=Path, required=True)
     parser.add_argument("--salida", type=Path, default=Path("src/voxa/audio/hey_voxa.npz"))
-    parser.add_argument("--pasos", type=int, default=24000)
+    parser.add_argument("--pasos", type=int, default=16000)
     parser.add_argument("--capas", default="128,64")
+    parser.add_argument("--peso-negativos", type=float, default=300.0, help="peso final de los negativos (sube al entrenar)")
+    parser.add_argument("--dropout", type=float, default=0.5)
+    parser.add_argument("--l2", type=float, default=1e-4)
     parser.add_argument("--acav", type=int, default=None, help="máximo de filas de ACAV100M a usar")
     parser.add_argument("--max-falsas", type=float, default=0.2, help="activaciones falsas por hora en la validación")
     parser.add_argument("--semilla", type=int, default=3)
@@ -154,10 +165,10 @@ def main() -> None:
         ]).reshape(n_pos + n_hard + n_acav, -1).astype(np.float32)
         y = np.concatenate([np.ones(n_pos), np.zeros(n_hard + n_acav)]).astype(np.float32)
         # Los negativos pesan cada vez más: primero aprende a reconocer, luego a no equivocarse.
-        neg_weight = 1 + 9 * min(1.0, step / (args.pasos * 0.6))
+        neg_weight = 1 + (args.peso_negativos - 1) * min(1.0, step / (args.pasos * 0.6))
         weight = np.concatenate([np.full(n_pos, 4.0), np.full(n_hard + n_acav, neg_weight)]).astype(np.float32)
         lr = 1e-3 * (0.1 ** (step / args.pasos))
-        loss = net.step(x, y, weight, lr, l2=1e-5)
+        loss = net.step(x, y, weight, lr, l2=args.l2, dropout=args.dropout, rng=rng)
         if step % 2000 == 0 or step == args.pasos:
             clf = net.classifier()
             recall = float((predict(clf, pos_test) >= 0.5).mean())

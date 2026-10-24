@@ -31,6 +31,16 @@ python scripts/hey_voxa/entrenar.py --datos datos/ --negativos negativos/ --mode
 
 `entrenar.py` entrena con numpy (sin PyTorch), mide con voces que nunca vio y con ~11 h de pláticas y música, elige el umbral y guarda `src/voxa/audio/hey_voxa.npz`.
 
+Lo que más importó al entrenar (11 h de validación, activaciones falsas por hora con umbral 0.5):
+
+| Ajuste | Detección (ventanas, voces nuevas) | Falsas/h |
+|---|---|---|
+| Red 128-64, negativos ×10, sin *dropout* | 84 % | 14.8 |
+| Red 64-32, negativos ×100, *dropout* 0.3, L2 1e-4 | 77 % | 0.5 |
+| **Red 128-64, negativos ×300, *dropout* 0.5, L2 1e-4** (el de VOXA) | 62 % | 0.0 |
+
+La «detección por ventana» es pesimista: en vivo el detector ve la frase en varias ventanas seguidas, y el set de prueba incluye «Hey Voxa» dichos muy bajito o con ruido a 0 dB.
+
 ## En la cocina
 
 Las voces sintéticas son un buen comienzo, pero la medida que manda es la de la familia:
@@ -41,4 +51,27 @@ voxa probar-activacion --umbral 0.6    # probar otro umbral
 voxa probar-activacion --archivo grabacion.wav   # contar activaciones en una grabación larga
 ```
 
-Si se activa sola, sube `threshold` en `[wake]` de `~/.config/voxa/config.toml`; si no te oye, bájalo. El plan (§3.4) contempla además un verificador entrenado con grabaciones de la familia.
+Si se activa sola, sube `threshold` en `[wake]` de `~/.config/voxa/config.toml`; si no te oye, bájalo.
+
+### Verificador familiar
+
+Un segundo filtro, pequeño, que aprende cómo dice «Hey Voxa» cada quien en esa cocina. Solo se consulta cuando el detector general se dispara: descarta lo que «sonó parecido» y permite bajar el umbral para que oiga mejor.
+
+```bash
+voxa grabar-activacion --persona mamá    # 8 veces «Hey Voxa» + 30 s de plática normal
+voxa grabar-activacion --persona papá
+voxa entrenar-verificador                # segundos; luego: systemctl --user restart voxa
+```
+
+Las grabaciones se quedan en `~/.local/share/voxa/activacion/` (nunca se suben a ningún lado) y el verificador en `~/.local/share/voxa/models/wakeword/verificador.npz`. El diagnóstico de la pantalla dice si está activo.
+
+## Resultado (modelo incluido)
+
+- Detecta en vivo el **86 %** de los «Hey Voxa» de voces que nunca vio (sintéticas, con ruido de 0 a 30 dB y a veces muy bajito), con umbral 0.4.
+- **0.09 activaciones falsas por hora** en las 11 h de pláticas y música de validación (≈ 1 cada 11 h de plática continua).
+- Se dispara en el 2.4 % de frases parecidas («oye Rosa», «hey, mira», «Oaxaca») dichas por voces nuevas.
+- Cuesta ~1.4 ms de CPU por cada bloque de 80 ms (1.8 % de un núcleo de una laptop Ryzen).
+
+## Licencia del modelo
+
+`hey_voxa.npz` se entrenó con las características de ACAV100M de openWakeWord (CC BY-NC-SA 4.0), así que el modelo se distribuye bajo **CC BY-NC-SA 4.0**: uso no comercial, como VOXA en casa.

@@ -17,8 +17,12 @@ import logging
 from collections import deque
 from dataclasses import dataclass
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import numpy as np
+
+if TYPE_CHECKING:
+    from voxa.audio.verifier import Verifier
 
 log = logging.getLogger(__name__)
 
@@ -150,9 +154,13 @@ class WakeWordDetector:
         threshold: float = 0.5,
         patience: int = 2,
         refractory: float = 2.0,
+        verifier: Verifier | None = None,
     ) -> None:
         self._features = features
         self._classifier = classifier
+        self.verifier = verifier
+        self.rejected = 0
+        """Veces que el verificador familiar descartó una activación del detector general."""
         self.threshold = threshold
         self._patience = patience
         self._refractory_chunks = int(refractory * 16000 / CHUNK)
@@ -162,15 +170,30 @@ class WakeWordDetector:
 
     @classmethod
     def load(
-        cls, feature_dir: Path, model: Path = DEFAULT_MODEL, threshold: float | None = None, **kwargs
+        cls,
+        feature_dir: Path,
+        model: Path = DEFAULT_MODEL,
+        threshold: float | None = None,
+        verifier: Path | None = None,
+        **kwargs,
     ) -> WakeWordDetector:
-        """``threshold=None`` usa el umbral que eligió el entrenamiento (guardado junto al modelo)."""
+        """``threshold=None`` usa el umbral que eligió el entrenamiento (guardado junto al modelo).
+
+        ``verifier``: el verificador familiar (``voxa entrenar-verificador``), si existe.
+        """
         missing = [name for name in FEATURE_MODEL_URLS if not (feature_dir / name).exists()]
         if missing:
             raise FileNotFoundError(f"Faltan {', '.join(missing)} en {feature_dir} (los descarga scripts/install.sh)")
         if threshold is None:
             threshold = recommended_threshold(model)
-        return cls(StreamingFeatures(FeatureModels(feature_dir)), Classifier.load(model), threshold, **kwargs)
+        checker = None
+        if verifier is not None and verifier.exists():
+            from voxa.audio.verifier import Verifier
+
+            checker = Verifier.load(verifier)
+            log.info("«Hey Voxa» con verificador familiar (%s)", verifier)
+        features = StreamingFeatures(FeatureModels(feature_dir))
+        return cls(features, Classifier.load(model), threshold, verifier=checker, **kwargs)
 
     def reset(self) -> None:
         """Tras un turno o con el micrófono apagado: lo anterior ya no cuenta."""
@@ -188,7 +211,10 @@ class WakeWordDetector:
             self.last_score = float(self._classifier.predict(self._features.window()[None])[0])
             self._streak = self._streak + 1 if self.last_score >= self.threshold else 0
             if self._streak >= self._patience and not self._cooldown:
-                detected = True
                 self._streak = 0
+                if self.verifier is not None and not self.verifier.accepts(self._features.window()):
+                    self.rejected += 1
+                    continue  # sonó parecido, pero no es como lo dice la familia
+                detected = True
                 self._cooldown = self._refractory_chunks
         return detected

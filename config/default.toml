@@ -67,6 +67,9 @@ feature_dir = "~/.local/share/voxa/models/wakeword"
 threshold = 0.0
 # Bloques de 80 ms seguidos sobre el umbral para activarse.
 patience = 2
+# Verificador familiar (voxa grabar-activacion + voxa entrenar-verificador).
+# Vacío = feature_dir/verificador.npz, si existe.
+verifier = ""
 
 [display]
 # Canal local (solo 127.0.0.1) por el que la pantalla de cocina (voxa-ui) recibe el estado.

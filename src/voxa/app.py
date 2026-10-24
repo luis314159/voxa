@@ -103,7 +103,11 @@ def build_wake(config: Config) -> WakeWordDetector:
         raise SetupError(f"No encontré el modelo de «Hey Voxa»: {model}.")
     try:
         return WakeWordDetector.load(
-            Path(wake.feature_dir).expanduser(), model, wake.threshold or None, patience=wake.patience
+            Path(wake.feature_dir).expanduser(),
+            model,
+            wake.threshold or None,
+            verifier=config.verifier_path,
+            patience=wake.patience,
         )
     except FileNotFoundError as exc:
         raise SetupError(f"{exc}.") from exc

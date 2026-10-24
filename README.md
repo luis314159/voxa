@@ -71,7 +71,7 @@ voxa escuchar grabacion.wav                 # procesar una grabación
 
 `scripts/evaluar_voz.py` mide la cadena voz → intención: Piper «dice» todo el corpus (con ruido opcional) y compara Vosk, Whisper y el híbrido. Con voces sintéticas (más difíciles que una voz real) el híbrido llega a 81 % con Whisper *base* y a 87 % con *small*. La elección final sale del benchmark de la Fase 0 en el equipo real.
 
-**«Hey Voxa».** Con `voxa voz` o `voxa servicio`, VOXA escucha «Hey Voxa» (u «Oye Voxa») todo el tiempo y se puede decir la orden de corrido: «Hey Voxa, pon música». Mientras suena una alarma basta con «para», «ya» o «gracias». `voxa probar-activacion` muestra en vivo qué tan seguro está de oírlo, para ajustar `threshold` en `[wake]`. Cómo se entrenó y cómo reentrenarlo: [scripts/hey_voxa/](scripts/hey_voxa/README.md).
+**«Hey Voxa».** Con `voxa voz` o `voxa servicio`, VOXA escucha «Hey Voxa» (u «Oye Voxa») todo el tiempo y se puede decir la orden de corrido: «Hey Voxa, pon música». Mientras suena una alarma basta con «para», «ya» o «gracias». `voxa probar-activacion` muestra en vivo qué tan seguro está de oírlo, para ajustar `threshold` en `[wake]`, y `voxa grabar-activacion` + `voxa entrenar-verificador` lo afinan con las voces de la familia. Cómo se entrenó y cómo reentrenarlo: [scripts/hey_voxa/](scripts/hey_voxa/README.md).
 
 Si VOXA pronuncia mal un nombre, agrégalo a `~/.config/voxa/pronunciacion.yaml` (formato en [src/voxa/audio/pronunciacion.yaml](src/voxa/audio/pronunciacion.yaml)).
 

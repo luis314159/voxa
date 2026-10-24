@@ -189,6 +189,61 @@ async def probe_wake_word(config: Config, threshold: float | None, path: Path | 
             await asyncio.sleep(0)
 
 
+async def record_wake_samples(config: Config, person: str, times: int, talk_seconds: int) -> None:
+    """Graba a una persona diciendo «Hey Voxa» y platicando normal (para el verificador familiar)."""
+    import numpy as np
+
+    from voxa.audio.clip import MIC_RATE, Clip
+    from voxa.audio.devices import Microphone
+
+    safe = "".join(c for c in person.lower() if c.isalnum() or c in "-_") or "familia"
+    folder = config.wake_recordings_dir / safe
+    folder.mkdir(parents=True, exist_ok=True)
+    stamp = time.strftime("%Y%m%d-%H%M%S")
+
+    async def record(mic: Microphone, seconds: float) -> np.ndarray:
+        mic.clear()
+        frames = [await mic.read() for _ in range(int(seconds * MIC_RATE / 1280))]
+        return np.concatenate(frames)
+
+    print(f"Grabaciones en {folder} (se quedan en esta PC).")
+    async with Microphone(_device(config.voice.input_device)) as mic:
+        for n in range(1, times + 1):
+            await asyncio.to_thread(input, f"[{n}/{times}] Pulsa Enter y di «Hey Voxa» (como le hablarías desde la cocina)…")
+            audio = await record(mic, 2.5)
+            Clip.from_int16(audio, MIC_RATE).save(folder / f"si_{stamp}_{n:02d}.wav")
+        if talk_seconds:
+            await asyncio.to_thread(
+                input, f"Ahora platica normal o lee algo en voz alta durante {talk_seconds} s, SIN decir «Voxa». Enter para empezar…"
+            )
+            audio = await record(mic, talk_seconds)
+            Clip.from_int16(audio, MIC_RATE).save(folder / f"no_{stamp}.wav")
+    print("Listo. Cuando hayan grabado todos: voxa entrenar-verificador")
+
+
+def train_wake_verifier(config: Config) -> int:
+    from voxa.audio.verifier import train_verifier, windows_from_recordings
+    from voxa.audio.wakeword import DEFAULT_MODEL, Classifier, FeatureModels
+
+    folder = config.wake_recordings_dir
+    feature_dir = Path(config.wake.feature_dir).expanduser()
+    model = Path(config.wake.model).expanduser() if config.wake.model else DEFAULT_MODEL
+    positives, negatives, notes = windows_from_recordings(folder, FeatureModels(feature_dir), Classifier.load(model))
+    for note in notes:
+        print(f"  ⚠ {note}")
+    if len(positives) < 3 * 5 or len(negatives) < 50:
+        print(f"Faltan grabaciones en {folder}: hacen falta al menos 5 «Hey Voxa» y 30 s de plática "
+              "(voxa grabar-activacion --persona NOMBRE).")
+        return 1
+    verifier = train_verifier(positives, negatives)
+    accepted = float((verifier.predict(positives) >= verifier.threshold).mean())
+    rejected = float((verifier.predict(negatives) < verifier.threshold).mean())
+    verifier.save(config.verifier_path)
+    print(f"Verificador: acepta {accepted:.0%} de los «Hey Voxa» grabados y descarta {rejected:.0%} de la plática.")
+    print(f"Guardado en {config.verifier_path}. Reinicia VOXA: systemctl --user restart voxa")
+    return 0
+
+
 async def say_text(config: Config, text: str, show_phonemes: bool = False) -> None:
     from voxa.audio.devices import SpeakerOutput
 
@@ -298,6 +353,11 @@ def main(argv: list[str] | None = None) -> int:
     wake = sub.add_parser("probar-activacion", help="muestra en vivo cómo oye VOXA «Hey Voxa» (para calibrar)")
     wake.add_argument("--umbral", type=float, help="prueba otro umbral (0–1)")
     wake.add_argument("--archivo", type=Path, help="busca «Hey Voxa» en una grabación WAV en lugar del micrófono")
+    record = sub.add_parser("grabar-activacion", help="graba a alguien de la familia diciendo «Hey Voxa» (verificador)")
+    record.add_argument("--persona", required=True, help="nombre (solo para ordenar las grabaciones)")
+    record.add_argument("--veces", type=int, default=8)
+    record.add_argument("--platica", type=int, default=30, metavar="SEGUNDOS", help="segundos de plática normal")
+    sub.add_parser("entrenar-verificador", help="entrena el verificador familiar con las grabaciones")
     sub.add_parser("spotify-login", help="autoriza a VOXA en tu cuenta de Spotify")
     args = parser.parse_args(argv)
 
@@ -312,6 +372,8 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "spotify-login":
         return spotify_login(config)
+    if args.command == "entrenar-verificador":
+        return train_wake_verifier(config)
     commands = {
         "texto": lambda: run_text_mode(config, args.simulado),
         "voz": lambda: run_voice_mode(config, args.simulado),
@@ -320,6 +382,7 @@ def main(argv: list[str] | None = None) -> int:
         "escuchar": lambda: listen_file(config, args.archivo, args.simulado),
         "sonidos": lambda: play_sounds(config, args.guardar),
         "probar-activacion": lambda: probe_wake_word(config, args.umbral, args.archivo),
+        "grabar-activacion": lambda: record_wake_samples(config, args.persona, args.veces, args.platica),
     }
     try:
         asyncio.run(commands[args.command]())

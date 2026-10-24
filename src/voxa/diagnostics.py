@@ -109,7 +109,8 @@ def collect(service: Service) -> dict:
         wake = "desactivado" if not config.wake.enabled else "no disponible"
     else:
         times = "1 vez" if service.wake_count == 1 else f"{service.wake_count} veces"
-        wake = f"umbral {service.wake.threshold:.2f} · {times}"
+        family = " · con verificador" if service.wake.verifier is not None else ""
+        wake = f"umbral {service.wake.threshold:.2f} · {times}{family}"
     music = display.music
     sections = [
         (

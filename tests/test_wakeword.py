@@ -229,3 +229,30 @@ async def test_microphone_reads_pushed_back_frames_first():
     mic.push_back([loud[0]])
     audio = await mic.record_utterance(UtteranceCollector(EndpointConfig(end_silence_ms=480)), clear=False)
     assert audio is not None and np.abs(audio).max() == 9000
+
+
+def test_family_verifier_learns_to_reject_lookalikes():
+    from voxa.audio.verifier import Verifier, train_verifier
+
+    rng = np.random.default_rng(1)
+    family = rng.normal(1.0, 0.3, (30, WINDOW, 96)).astype(np.float32)
+    lookalike = rng.normal(-1.0, 0.3, (200, WINDOW, 96)).astype(np.float32)
+    verifier = train_verifier(family[:20], lookalike[:150])
+    assert (verifier.predict(family[20:]) >= 0.5).all()
+    assert (verifier.predict(lookalike[150:]) < 0.5).all()
+
+
+def test_detector_asks_the_verifier(tmp_path):
+    from voxa.audio.verifier import Verifier
+
+    class Never(Verifier):
+        def __init__(self):
+            pass
+
+        def accepts(self, window):
+            return False
+
+    detector = WakeWordDetector(FakeFeatures(), LastScore(), threshold=0.5, patience=1, verifier=Never())
+    run(detector, [0.0] * WINDOW)
+    assert run(detector, [0.9, 0.9]) == [False, False]
+    assert detector.rejected == 2
