@@ -105,6 +105,7 @@ def main() -> int:
     parser.add_argument("--eco", action="store_true", help="agrega eco de cocina")
     parser.add_argument("--limite", type=int, default=0, help="evaluar solo las primeras N frases")
     args = parser.parse_args()
+    sys.stdout.reconfigure(encoding="utf-8")  # «» y acentos aunque se redirija a un archivo en Windows
 
     matcher = load_matcher()
     cases = [c for c in yaml.safe_load(CORPUS.read_text(encoding="utf-8")) if c["intent"] and c["text"]]
@@ -114,12 +115,13 @@ def main() -> int:
     engines = {}
     if args.vosk:
         engines["vosk"] = VoskStt(args.vosk)
-        engines["vosk-gramatica"] = VoskStt(args.vosk, matcher.vocabulary)
+        engines["vosk-gramatica"] = VoskStt(args.vosk, matcher.vocabulary, model=engines["vosk"].model)
     if args.whisper:
         engines["whisper"] = WhisperStt(args.whisper)
     if args.vosk and args.whisper:
         engines["hibrido"] = HybridStt(
-            engines["vosk"], engines["whisper"], matcher.needs_accurate_stt, matcher.understands
+            engines["vosk"], engines["whisper"], matcher.needs_accurate_stt, matcher.understands,
+            closed=engines["vosk-gramatica"],
         )
     if not engines:
         parser.error("indica al menos --vosk o --whisper")

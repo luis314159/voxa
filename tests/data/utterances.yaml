@@ -194,3 +194,7 @@
 # --- celular ---
 - {text: "conecta mi celular", intent: display.phone}
 - {text: "cierra el código", intent: display.phone_close}
+# --- como lo escribe Whisper ---
+- {text: "Pon una alarma a las 7.30 de la mañana.", intent: timer.remind}
+- {text: "200 gramos de mantequilla en tasas", intent: kitchen.convert, slots: {unit: tazas}}
+- {text: "Cuánto le falta el arroz.", intent: timer.query, slots: {name: arroz}}

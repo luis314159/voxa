@@ -118,6 +118,29 @@ def test_hybrid_sends_unknown_words_to_accurate_engine():
     assert stt.transcribe(np.zeros(10)) == "Pausa la música." and accurate.calls == 1
 
 
+def closed_first(closed_text, fast_text, accurate_text):
+    from voxa.nlu import load_matcher
+
+    matcher = load_matcher()
+    closed = FakeStt("vosk-gramatica", closed_text)
+    fast, accurate = FakeStt("vosk", fast_text), FakeStt("whisper", accurate_text)
+    stt = HybridStt(fast, accurate, matcher.needs_accurate_stt, matcher.understands, closed=closed)
+    return stt, fast, accurate
+
+
+def test_closed_grammar_wins_for_short_commands():
+    stt, fast, accurate = closed_first("pausa", "volsa", "¡Volsar!")
+    assert stt.transcribe(np.zeros(10)) == "pausa" and fast.calls == accurate.calls == 0
+
+
+def test_closed_grammar_is_ignored_with_unknown_words_or_free_text():
+    stt, _, accurate = closed_first(f"pon {UNKNOWN}", "pon soda estero", "Pon Soda Stereo.")
+    assert stt.transcribe(np.zeros(10)) == "Pon Soda Stereo." and accurate.calls == 1
+    # «pon salsa» lleva texto libre (lo que se busca): no se confía en el vocabulario cerrado.
+    stt, _, accurate = closed_first("pon salsa", "pon salsa", "Pon salsa.")
+    assert stt.transcribe(np.zeros(10)) == "Pon salsa." and accurate.calls == 1
+
+
 def test_accent_variants():
     assert {"musica", "música", "musíca"} <= accent_variants("musica")
     assert "añade" in accent_variants("anade")

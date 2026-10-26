@@ -46,12 +46,13 @@ class VoskStt:
     """Con ``vocabulary``, Vosk solo reconoce esas palabras (y ``[unk]`` para lo demás):
     mucho más preciso para comandos, y deja el texto libre a Whisper."""
 
-    def __init__(self, model_dir: Path, vocabulary: list[str] | None = None) -> None:
+    def __init__(self, model_dir: Path, vocabulary: list[str] | None = None, *, model=None) -> None:
         from vosk import KaldiRecognizer, Model, SetLogLevel
 
         SetLogLevel(-2)  # oculta los avisos por cada variante que no existe en el léxico
         self.name = "vosk-gramatica" if vocabulary else "vosk"
-        model = Model(str(model_dir))
+        self.model = model or Model(str(model_dir))  # se puede compartir entre reconocedores
+        model = self.model
         if vocabulary:
             words = sorted({v for w in vocabulary for v in accent_variants(w)})
             # ensure_ascii=False: Vosk no decodifica los escapes \uXXXX y descartaría las palabras con tilde.
@@ -86,6 +87,10 @@ class WhisperStt:
 class HybridStt:
     """Vosk primero; si la frase lleva texto libre (nombres de canciones…), Whisper sobre el mismo audio.
 
+    Con ``closed`` (Vosk limitado al vocabulario de la gramática) se prueba antes: las órdenes cortas
+    («pausa», «ayuda», «modo foto») las reconoce mejor que nadie y en ~0.1 s; solo se acepta si no
+    hubo palabras fuera del vocabulario y la orden se entiende completa, sin texto libre.
+
     Si Whisper entrega algo que no se entiende y Vosk sí, gana Vosk: con frases
     cortas Whisper a veces inventa.
     """
@@ -98,14 +103,21 @@ class HybridStt:
         accurate: SpeechToText,
         needs_accurate: Callable[[str], bool],
         understands: Callable[[str], bool] | None = None,
+        closed: SpeechToText | None = None,
     ) -> None:
         self._fast = fast
         self._accurate = accurate
         self._needs_accurate = needs_accurate
         self._understands = understands or (lambda text: bool(text))
+        self._closed = closed
 
     def transcribe(self, samples: np.ndarray) -> str:
         started = time.perf_counter()
+        if self._closed is not None:
+            command = self._closed.transcribe(samples)
+            if command and UNKNOWN not in command and self._understands(command) and not self._needs_accurate(command):
+                log.info("STT %s (%.2fs): %s", self._closed.name, time.perf_counter() - started, command)
+                return command
         text = self._fast.transcribe(samples)
         if text and UNKNOWN not in text and not self._needs_accurate(text):
             log.info("STT %s (%.2fs): %s", self._fast.name, time.perf_counter() - started, text)

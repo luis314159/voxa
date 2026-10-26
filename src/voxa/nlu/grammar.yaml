@@ -108,7 +108,7 @@
 
 - intent: timer.query
   patterns:
-    - "cuanto [tiempo] (falta|queda|le falta|le queda|les falta|les queda) [(al|a la|a los|a las|a|del|de la|de los|de las|de|para) {name}]"
+    - "cuanto [tiempo] (falta|queda|le falta|le queda|les falta|les queda) [(al|a la|a los|a las|a|del|de la|de los|de las|de|para|el|la|los|las) {name}]"
     - "(como va|como van) [el|la|los|las|mi|mis] (temporizador|temporizadores|timer|timers|alarma|alarmas) [(del|de la|de|para) {name}]"
     - "(que|cuales|cuantos) (temporizadores|timers|alarmas|recordatorios) (hay|tengo|tienes|llevas)"
 

@@ -23,6 +23,10 @@ _STT_FIXES = [
     (re.compile(r"\b(sube|baja|adelanta|atrasa|regresa|dale) (le|lo)\b"), r"\1\2"),
     (re.compile(r"\bcancel a\b"), "cancela"),
     (re.compile(r"\byou tube\b"), "youtube"),
+    # Whisper escribe la hora con punto («a las 7.30») y las tazas con s (seseo).
+    (re.compile(r"\b(las?\s+\d{1,2})\.([0-5]\d)\b"), r"\1 \2"),
+    (re.compile(r"\btasa(s?)\b"), r"taza\1"),
+    (re.compile(r"\bonsa(s?)\b"), r"onza\1"),
     (re.compile(r"\bporciento\b"), "por ciento"),
     (re.compile(r"\b(de|a) el\b"), lambda m: "del" if m.group(1) == "de" else "al"),
     # Ninguna orden empieza con «con», «por» o «pone»: es «pon» mal reconocido.

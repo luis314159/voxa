@@ -92,7 +92,10 @@ def build_stt(config: Config, matcher: Matcher) -> SpeechToText:
         return WhisperStt(voice.whisper_model)
     if voice.stt == "hibrido":
         fast = VoskStt(_existing(voice.vosk_model, "el modelo de Vosk", vosk_hint))
-        return HybridStt(fast, WhisperStt(voice.whisper_model), matcher.needs_accurate_stt, matcher.understands)
+        closed = VoskStt(Path(voice.vosk_model).expanduser(), matcher.vocabulary, model=fast.model)
+        return HybridStt(
+            fast, WhisperStt(voice.whisper_model), matcher.needs_accurate_stt, matcher.understands, closed=closed
+        )
     raise SetupError(f"Motor de STT desconocido: {voice.stt!r} (usa vosk, whisper o hibrido).")
 
 
