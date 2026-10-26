@@ -250,6 +250,8 @@ Pensada para leerse a 3 metros y, si la pantalla es táctil, para usarse con el 
 - No se guarda audio. El modo de depuración que graba se activa explícitamente, se marca en pantalla y se borra con un comando.
 - Las acciones del sistema usan `subprocess` con listas de argumentos (nunca `shell=True`) y una lista cerrada de acciones permitidas.
 - Los secretos nunca se guardan en el repositorio.
+- La página del celular solo escucha en la red de la casa y pide la clave de esa PC (va en el código QR; cookie `HttpOnly` y `SameSite=Strict`); las órdenes solo se aceptan como JSON. Las llaves y tokens que se pegan en Ajustes se guardan cada uno en su archivo `600` y nunca se devuelven al celular.
+- El bot de Telegram solo atiende chats vinculados con un código de 6 dígitos de un solo uso (vence en 10 minutos); el calendario se lee con su dirección iCal, sin acceso a la cuenta.
 
 ## 10. Calidad: cómo sabremos que es excelente
 
@@ -302,7 +304,7 @@ Cada fase termina con un **criterio de salida** verificable.
 - Cancelación de eco + ducking + umbral adaptativo.
 - Gramática sin activación para detener alarmas.
 
-**Hecho sin el equipo real:** detector propio con los modelos base de openWakeWord y onnxruntime (el paquete `openwakeword` pide `tflite-runtime`, que no existe para Python 3.12); clasificador «Hey Voxa»/«Oye Voxa» entrenado con ~2,400 voces sintéticas y ruido de cocina simulado (`scripts/hey_voxa/`); la orden pegada («Hey Voxa, pon música») no pierde su inicio; mientras suena una alarma, «para», «ya» o «gracias» la apagan sin «Hey Voxa»; cancelación de eco de PipeWire opcional (`install.sh --cancelar-eco`); `voxa probar-activacion` para calibrar; verificador familiar (`voxa grabar-activacion` + `voxa entrenar-verificador`). Resultado con voces sintéticas nuevas: detecta 86 % en vivo con 0.09 activaciones falsas por hora de plática y música (umbral 0.4); 1.4 ms de CPU por bloque de 80 ms. **Falta en la cocina:** medir con la familia (con y sin música), ajustar el umbral y grabar el verificador.
+**Hecho sin el equipo real:** detector propio con los modelos base de openWakeWord y onnxruntime (el paquete `openwakeword` pide `tflite-runtime`, que no existe para Python 3.12); clasificador «Hey Voxa»/«Oye Voxa» entrenado con ~2,400 voces sintéticas y ruido de cocina simulado (`scripts/hey_voxa/`); la orden pegada («Hey Voxa, pon música») no pierde su inicio; mientras suena una alarma, «para», «ya» o «gracias» la apagan sin «Hey Voxa»; cancelación de eco de PipeWire opcional (`install.sh --cancelar-eco`); `voxa probar-activacion` para calibrar; verificador familiar guiado por voz («Hey Voxa, aprende mi voz», o desde Ajustes en el celular): VOXA pide «Hey Voxa» 8 veces y 20 s de plática con el micrófono de la cocina, entrena con las voces de todos y lo usa sin reiniciar. Resultado con voces sintéticas nuevas: detecta 86 % en vivo con 0.09 activaciones falsas por hora de plática y música (umbral 0.4); 1.4 ms de CPU por bloque de 80 ms. **Falta en la cocina:** medir con la familia (con y sin música), ajustar el umbral y grabar el verificador.
 
 **Salida:** se cumplen las métricas de activación de la sección 10.
 
@@ -327,8 +329,15 @@ Cada fase termina con un **criterio de salida** verificable.
 
 **Salida:** ≥ 80 % de las frases que antes fallaban ahora se resuelven, dentro del presupuesto.
 
+### Fase 7 — Todo desde la app ✅
+- **Ajustes en el celular** (pestaña de la página que abre el código QR): pendientes de `voxa revisar`, voz de la familia, Spotify (Client ID y autorización PKCE pegando la dirección de regreso), clima buscando la ciudad, calendario, Telegram, IA y funciones. Se guardan en `ajustes.json` encima de `config.toml` y VOXA se reinicia sola. Recién instalada, la pantalla muestra el código para configurarla.
+- **Calendario de la familia** (iCal, solo lectura): «¿qué tengo hoy/mañana?», «¿cuál es mi siguiente cita?» y lo de hoy en «buenos días».
+- **Lista del súper en Telegram**: bot privado, botones para palomear en la tienda.
+
+**Salida:** instalar y dejar lista la cocina sin abrir la terminal (salvo el instalador).
+
 ### Después de la 1.0 (ideas)
-Recordatorios, reconocer quién habla para tener playlists por persona y rutinas («buenos días»).
+Reconocer quién habla para tener playlists por persona; avisos del calendario antes de cada evento.
 
 ## 12. Estructura del repositorio
 
