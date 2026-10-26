@@ -197,8 +197,9 @@ async def record_wake_samples(config: Config, person: str, times: int, talk_seco
     from voxa.audio.clip import MIC_RATE, Clip
     from voxa.audio.devices import Microphone
 
-    safe = "".join(c for c in person.lower() if c.isalnum() or c in "-_") or "familia"
-    folder = config.wake_recordings_dir / safe
+    from voxa.enroll import folder_name
+
+    folder = config.wake_recordings_dir / folder_name(person)
     folder.mkdir(parents=True, exist_ok=True)
     stamp = time.strftime("%Y%m%d-%H%M%S")
 
@@ -332,24 +333,17 @@ async def probe_ai(config: Config, question: str) -> int:
 
 
 def train_wake_verifier(config: Config) -> int:
-    from voxa.audio.verifier import train_verifier, windows_from_recordings
-    from voxa.audio.wakeword import DEFAULT_MODEL, Classifier, FeatureModels
+    from voxa.enroll import NotEnoughRecordings, train_family_verifier
 
-    folder = config.wake_recordings_dir
-    feature_dir = Path(config.wake.feature_dir).expanduser()
-    model = Path(config.wake.model).expanduser() if config.wake.model else DEFAULT_MODEL
-    positives, negatives, notes = windows_from_recordings(folder, FeatureModels(feature_dir), Classifier.load(model))
-    for note in notes:
-        print(f"  ⚠ {note}")
-    if len(positives) < 3 * 5 or len(negatives) < 50:
-        print(f"Faltan grabaciones en {folder}: hacen falta al menos 5 «Hey Voxa» y 30 s de plática "
-              "(voxa grabar-activacion --persona NOMBRE).")
+    try:
+        result = train_family_verifier(config)
+    except NotEnoughRecordings as exc:
+        print(f"Faltan grabaciones: {exc} (di «Hey Voxa, aprende mi voz» o voxa grabar-activacion --persona NOMBRE).")
         return 1
-    verifier = train_verifier(positives, negatives)
-    accepted = float((verifier.predict(positives) >= verifier.threshold).mean())
-    rejected = float((verifier.predict(negatives) < verifier.threshold).mean())
-    verifier.save(config.verifier_path)
-    print(f"Verificador: acepta {accepted:.0%} de los «Hey Voxa» grabados y descarta {rejected:.0%} de la plática.")
+    for note in result.notes:
+        print(f"  ⚠ {note}")
+    print(f"Verificador ({result.people} personas): acepta {result.accepted:.0%} de los «Hey Voxa» grabados "
+          f"y descarta {result.rejected:.0%} de la plática.")
     print(f"Guardado en {config.verifier_path}. Reinicia VOXA: systemctl --user restart voxa")
     return 0
 

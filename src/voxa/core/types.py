@@ -30,6 +30,8 @@ class Response:
     """Efecto para el runtime de audio/UI, p. ej. ``"mic.mute"``."""
     spoken: bool = False
     """Ya se dijo en voz alta mientras llegaba (respuesta de la IA): solo falta mostrarla."""
+    target: str | None = None
+    """Dato para la acción, p. ej. el nombre de quien va a grabar su voz."""
 
 
 OK = Response(sound="ok")

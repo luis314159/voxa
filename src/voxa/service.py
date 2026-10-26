@@ -20,6 +20,7 @@ from voxa.core.types import Response
 from voxa.display import Display, DisplayServer
 from voxa.health import Health, Problem
 from voxa.services.http import UrllibHttp
+from voxa.skills.enroll import ENROLL_ACTION
 from voxa.skills.timers import ring_phrase
 from voxa.state.timers import Timer
 from voxa.telegram import Chats, ShoppingBot, TelegramApi, read_token
@@ -58,6 +59,9 @@ class Service:
         system = app.assistant.skill("system")
         if system is not None and hasattr(system, "problems"):
             system.problems = lambda: self.health.problems  # «¿estás bien?» dice qué falla
+        enroll = app.assistant.skill("voice")
+        if enroll is not None and hasattr(enroll, "ready"):
+            enroll.ready = lambda: self.session is not None and self.mic is not None and self.wake is not None
         display.shopping = app.shopping.items  # la pantalla ve la lista tal cual (se republica tras cada orden)
         display.recipe = app.recipe.snapshot
         recipe = app.assistant.skill("recipe")
@@ -75,6 +79,8 @@ class Service:
         self.wake_count = 0
         self._turn = asyncio.Lock()
         self.web: WebServer | None = None
+        self.enrolling: str | None = None
+        """Quién está grabando su voz ahora («aprende mi voz»)."""
         self._tasks: set[asyncio.Task] = set()
         if app.video is not None:
             app.video.on_end = self._video_ended
@@ -177,6 +183,61 @@ class Service:
             await self.set_photo(PHOTO_ACTIONS[response.action])
         if response is not None and response.action in ("display.phone", "display.phone_close"):
             self.show_phone_code(response.action == "display.phone")
+        if response is not None and response.action == ENROLL_ACTION:
+            self._spawn(self.enroll(response.target or ""))
+
+    async def enroll(self, person: str) -> Response | None:
+        """«Aprende mi voz»: VOXA guía la grabación con el micrófono de la cocina y entrena el verificador."""
+        import numpy as np
+
+        from voxa.audio.clip import MIC_RATE
+        from voxa.enroll import VoiceEnrollment, train_family_verifier
+
+        if self.session is None or self.mic is None or self._turn.locked():
+            return None
+        config, mic, session = self.app.config, self.mic, self.session
+        heard = f"Aprende la voz de {person}" if person else "Aprende mi voz"
+
+        async def record(seconds: float) -> np.ndarray:
+            mic.clear()
+            frames, needed = [], int(seconds * MIC_RATE)
+            while sum(len(f) for f in frames) < needed:
+                frames.append(await mic.read())
+            return np.concatenate(frames)[:needed]
+
+        async def train():
+            result = await asyncio.to_thread(train_family_verifier, config)
+            self._reload_verifier()
+            return result
+
+        def show(text: str) -> None:
+            self.display.exchange(heard, Response(text))
+
+        async with self._turn:
+            if self.muted:
+                await self.set_muted(False, acknowledge=False)
+            if not mic.is_open and not self._open_microphone():
+                await session.say(Response("No encuentro el micrófono.", sound="error"))
+                return None
+            self.enrolling = person or "familia"
+            try:
+                response = await VoiceEnrollment(config.wake_recordings_dir, record, session.say, train, show).run(person)
+            finally:
+                self.enrolling = None
+            self.exchange(heard, response)
+            await session.say(response)
+            mic.clear()
+        if self.wake is not None:
+            self.wake.reset()
+        return response
+
+    def _reload_verifier(self) -> None:
+        """El verificador recién entrenado se usa de inmediato, sin reiniciar."""
+        path = self.app.config.verifier_path
+        if self.wake is not None and path.exists():
+            from voxa.audio.verifier import Verifier
+
+            self.wake.verifier = Verifier.load(path)
 
     def show_phone_code(self, on: bool) -> None:
         """El código QR para abrir VOXA en el celular (unos minutos o hasta que se toque)."""

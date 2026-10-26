@@ -387,6 +387,15 @@
   patterns:
     - "(ya|ok|okay|listo|gracias|muchas gracias|perfecto|ya esta|ya estuvo|bien|esta bien)"
 
+# «Aprende mi voz»: VOXA guía la grabación para el verificador de «Hey Voxa».
+- intent: voice.enroll
+  patterns:
+    - "(aprende|aprendete|graba|grabame) mi voz"
+    - "(aprende|aprendete|graba) la voz de {name}"
+    - "(aprende|aprendete) a (reconocerme|reconocer mi voz)"
+    - "(aprende|aprendete) a reconocer a {name}"
+    - "soy {name} (aprende|aprendete|graba) mi voz"
+
 # Una alarma o un temporizador cuya hora no se entendió: se pregunta otra vez en lugar de
 # buscar «una alarma la media día» en Spotify. Va justo antes de la música genérica.
 - intent: timer.unclear

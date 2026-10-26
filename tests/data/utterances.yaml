@@ -212,3 +212,6 @@
 - {text: "por mi play list de cocina", intent: music.play, slots: {kind: playlist}}
 - {text: "Pon una alarma la media día.", intent: timer.unclear}
 - {text: "pon un temporizador de pasta", intent: timer.unclear}
+# --- aprende mi voz ---
+- {text: "Hey Voxa, aprende mi voz", intent: voice.enroll}
+- {text: "aprende la voz de Ana", intent: voice.enroll, slots: {name: ana}}
