@@ -298,6 +298,16 @@
     - "(quiero|vamos a|voy a|ayudame a|ensename a) (hacer|preparar|cocinar) {query}"
 
 # La pantalla: «modo foto» (solo la imagen de fondo) y de regreso.
+- intent: display.phone
+  patterns:
+    - "(conecta|vincula|agrega|enlaza|configura) [mi|el|un] (celular|telefono|movil)"
+    - "(muestra|muestrame|ensename|pon) el codigo [(del|para el) (celular|telefono)]"
+    - "(como|quiero) (uso|usarte|usar voxa|controlarte) (desde|en) [mi|el] (celular|telefono)"
+
+- intent: display.phone_close
+  patterns:
+    - "(cierra|quita|esconde) el codigo"
+
 - intent: display.photo
   patterns:
     - "(modo foto|solo la foto|solo el fondo|solo la imagen|solo el paisaje|pantalla limpia)"

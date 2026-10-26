@@ -75,7 +75,7 @@ def _memory() -> str | None:
     return None
 
 
-def _local_ip() -> str | None:
+def local_ip() -> str | None:
     """IP de la PC en la red de la casa (un socket UDP «conectado» no envía nada)."""
     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
         try:
@@ -152,7 +152,8 @@ def collect(service: Service) -> dict:
             "Red",
             [
                 ("Internet", "sin conexión" if "internet" in has_problem else "bien"),
-                ("IP local", _local_ip() or "—"),
+                ("IP local", local_ip() or "—"),
+                ("Celular", f"puerto {service.web.port} (di «conecta mi celular»)" if service.web else "apagado ([web])"),
                 ("Clima", _weather_place(config) or "sin ubicación"),
                 ("IA", ai),
                 ("Pantalla", f"puerto {config.display.port}"),

@@ -214,6 +214,34 @@ pub enum Icon {
     MicOff,
 }
 
+/// Un código QR (módulos oscuros sobre blanco, con su margen) del tamaño `size`.
+pub struct Qr {
+    width: usize,
+    dark: Vec<bool>,
+}
+
+impl Qr {
+    pub fn new(text: &str) -> Option<Self> {
+        let code = qrcode::QrCode::with_error_correction_level(text.as_bytes(), qrcode::EcLevel::M).ok()?;
+        let dark = code.to_colors().into_iter().map(|c| c == qrcode::Color::Dark).collect();
+        Some(Self { width: code.width(), dark })
+    }
+
+    pub fn paint(&self, painter: &Painter, center: Pos2, size: f32) {
+        let quiet = 4.0; // margen que piden los lectores, en módulos
+        let module = (size / (self.width as f32 + 2.0 * quiet)).floor().max(1.0);
+        let side = module * (self.width as f32 + 2.0 * quiet);
+        let area = Rect::from_center_size(center, vec2(side, side));
+        painter.rect_filled(area, CornerRadius::same((module * 2.0) as u8), Color32::WHITE);
+        let origin = area.min + vec2(quiet * module, quiet * module);
+        for (n, _) in self.dark.iter().enumerate().filter(|(_, dark)| **dark) {
+            let (x, y) = ((n % self.width) as f32, (n / self.width) as f32);
+            let cell = Rect::from_min_size(origin + vec2(x * module, y * module), vec2(module, module));
+            painter.rect_filled(cell, CornerRadius::ZERO, Color32::BLACK);
+        }
+    }
+}
+
 /// Iconos dibujados con formas simples (no dependen de que la letra tenga esos símbolos).
 pub fn icon(painter: &Painter, center: Pos2, size: f32, icon: Icon, color: Color32) {
     let s = size / 2.0;

@@ -81,6 +81,8 @@ pub struct VoxaApp {
     swallow_touch: bool,
     clock_pressed: Option<Instant>,
     diagnostics: Option<DiagnosticsView>,
+    /// El código QR del celular, calculado una vez por dirección.
+    phone_qr: Option<(String, Option<widgets::Qr>)>,
 }
 
 fn epoch_now() -> f64 {
@@ -103,6 +105,7 @@ impl VoxaApp {
             swallow_touch: false,
             clock_pressed: None,
             diagnostics: None,
+            phone_qr: None,
         }
     }
 
@@ -152,6 +155,7 @@ impl eframe::App for VoxaApp {
         // «Modo foto»: solo la imagen. La información vuelve sola mientras VOXA escucha o habla,
         // si suena una alarma o con el diagnóstico abierto.
         let photo = state.photo
+            && state.phone.is_none()
             && self.backgrounds.is_some()
             && connected
             && state.phase == Phase::Idle
@@ -236,6 +240,8 @@ impl eframe::App for VoxaApp {
         self.night(ui, &painter, rect, &state);
         if self.diagnostics.is_some() {
             self.diagnostics_overlay(ui, &painter, &f, rect, connected);
+        } else if let Some(url) = state.phone.clone() {
+            self.phone_overlay(ui, &painter, &f, rect, &url);
         }
 
         self.manage_cursor(ui);
@@ -730,6 +736,35 @@ impl VoxaApp {
             self.open_diagnostics();
         } else {
             ui.ctx().request_repaint_after(Duration::from_millis(100));
+        }
+    }
+
+    /// «Conecta mi celular»: el código QR con la dirección (y la clave) de VOXA en la red de la casa.
+    fn phone_overlay(&mut self, ui: &mut Ui, painter: &Painter, f: &Frame, rect: Rect, url: &str) {
+        if self.phone_qr.as_ref().is_none_or(|(cached, _)| cached != url) {
+            self.phone_qr = Some((url.to_owned(), widgets::Qr::new(url)));
+        }
+        let touched = ui.interact(rect, ui.scope_id().with("codigo-celular"), Sense::click()).clicked();
+        painter.rect_filled(rect, CornerRadius::ZERO, theme::alpha(theme::BG, 0.94));
+        let center = rect.center();
+        widgets::shadow_text(painter, pos2(center.x, rect.top() + f.px(110.0)), Align2::CENTER_TOP, "VOXA en tu celular", theme::strong(f.px(64.0)), theme::TEXT);
+        if let Some((_, Some(qr))) = &self.phone_qr {
+            qr.paint(painter, pos2(center.x, center.y + f.px(20.0)), f.px(560.0));
+        }
+        // Sin la clave: lo que se lee es solo a dónde se conecta.
+        let host = url.split("/?").next().unwrap_or(url);
+        let lines = [
+            ("Escanéalo con la cámara del celular (en el wifi de la casa).", theme::TEXT),
+            (host, theme::TEXT_DIM),
+            ("Toca para cerrar", theme::TEXT_DIM),
+        ];
+        let mut y = center.y + f.px(330.0);
+        for (text, color) in lines {
+            let shown = widgets::shadow_text(painter, pos2(center.x, y), Align2::CENTER_TOP, text, theme::regular(f.px(32.0)), color);
+            y = shown.bottom() + f.px(10.0);
+        }
+        if touched {
+            self.send(Command::Say { text: "cierra el código".into() });
         }
     }
 

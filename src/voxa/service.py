@@ -10,6 +10,7 @@ import asyncio
 import collections
 import contextlib
 import logging
+import time
 from typing import TYPE_CHECKING, AsyncIterable, AsyncIterator
 
 from voxa import diagnostics
@@ -20,6 +21,7 @@ from voxa.display import Display, DisplayServer
 from voxa.health import Health, Problem
 from voxa.skills.timers import ring_phrase
 from voxa.state.timers import Timer
+from voxa.web import WebServer, load_or_create_key
 
 if TYPE_CHECKING:
     from voxa.audio.devices import Microphone
@@ -30,6 +32,7 @@ log = logging.getLogger(__name__)
 
 MUTE_ACTION = "mic.mute"
 PHOTO_ACTIONS = {"display.photo": True, "display.info": False}
+PHONE_SECONDS = 120.0
 _MIC_RETRY_SECONDS = 30.0
 # Lo que se ve encima del video mientras VOXA escucha o piensa (el video tapa la pantalla).
 _VIDEO_OSD = {"listening": "🎙 Te escucho…", "thinking": "Un momento…"}
@@ -69,6 +72,7 @@ class Service:
         self.wake: WakeWordDetector | None = None
         self.wake_count = 0
         self._turn = asyncio.Lock()
+        self.web: WebServer | None = None
         self._tasks: set[asyncio.Task] = set()
         if app.video is not None:
             app.video.on_end = self._video_ended
@@ -128,11 +132,14 @@ class Service:
         await self._apply(result.response)
         return result
 
-    async def handle_text(self, text: str) -> Response:
-        """Orden escrita o botón de la pantalla: misma ruta que una hablada, con respuesta en voz si la hay."""
+    async def handle_text(self, text: str, *, speak: bool = True) -> Response:
+        """Orden escrita o botón de la pantalla: misma ruta que una hablada, con respuesta en voz si la hay.
+
+        ``speak=False``: desde el celular, sin hablar en la cocina (solo un sonido si no hay texto).
+        """
         response = await self.app.assistant.handle_text(text)
         self.exchange(text, response)
-        if self.session is not None:
+        if self.session is not None and speak:
             await self.session.say(response)
         await self._apply(response)
         return response
@@ -166,6 +173,17 @@ class Service:
             await self.set_muted(True, acknowledge=False)  # la respuesta ya lo dijo
         if response is not None and response.action in PHOTO_ACTIONS:
             await self.set_photo(PHOTO_ACTIONS[response.action])
+        if response is not None and response.action in ("display.phone", "display.phone_close"):
+            self.show_phone_code(response.action == "display.phone")
+
+    def show_phone_code(self, on: bool) -> None:
+        """El código QR para abrir VOXA en el celular (unos minutos o hasta que se toque)."""
+        url = None
+        if on and self.web is not None:
+            url = self.web.url(diagnostics.local_ip() or "127.0.0.1")
+        self.display.phone_url = url
+        self.display.phone_until = time.monotonic() + PHONE_SECONDS if url else None
+        self.display.publish()
 
     async def set_photo(self, on: bool) -> None:
         """«Modo foto»: solo la imagen de fondo; la información vuelve sola al hablar o con una alarma."""
@@ -332,11 +350,24 @@ class Service:
             except OSError as exc:
                 log.warning("No pude abrir el canal de la pantalla en el puerto %d: %s", port, exc)
                 server = None
+        config = self.app.config
+        if config.web.enabled:
+            web = WebServer(self, load_or_create_key(config.web_key_path), config.backgrounds_dir, port=config.web.port)
+            try:
+                await web.start()
+                self.web = web
+            except OSError as exc:
+                log.warning("No pude abrir VOXA para el celular en el puerto %d: %s", config.web.port, exc)
+        screen = self.app.assistant.skill("display")
+        if screen is not None and hasattr(screen, "phone_ready"):
+            screen.phone_ready = lambda: self.web is not None
         try:
             yield self
         finally:
             if server:
                 await server.close()
+            if self.web is not None:
+                await self.web.close()
             if self.app.video is not None:
                 await self.app.video.close()
             if self.mic is not None:

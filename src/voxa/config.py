@@ -106,6 +106,12 @@ class AiConfig:
 
 
 @dataclass(frozen=True)
+class WebConfig:
+    enabled: bool = False
+    port: int = 8770
+
+
+@dataclass(frozen=True)
 class UpdateConfig:
     check: bool = True
     automatic: bool = False
@@ -131,12 +137,21 @@ class Config:
     video: VideoConfig = field(default_factory=VideoConfig)
     ai: AiConfig = field(default_factory=AiConfig)
     update: UpdateConfig = field(default_factory=UpdateConfig)
+    web: WebConfig = field(default_factory=WebConfig)
     config_dir: Path = field(default_factory=lambda: _xdg("XDG_CONFIG_HOME", ".config"))
     state_dir: Path = field(default_factory=lambda: _xdg("XDG_STATE_HOME", ".local/state"))
 
     @property
     def spotify_token_path(self) -> Path:
         return self.config_dir / "spotify_token.json"
+
+    @property
+    def web_key_path(self) -> Path:
+        return self.config_dir / "web_clave"
+
+    @property
+    def backgrounds_dir(self) -> Path:
+        return _xdg("XDG_DATA_HOME", ".local/share") / "fondos"
 
     @property
     def ai_key_path(self) -> Path:

@@ -191,3 +191,6 @@
 # --- actualizaciones ---
 - {text: "hay actualizaciones", intent: update.check}
 - {text: "actualízate", intent: update.install}
+# --- celular ---
+- {text: "conecta mi celular", intent: display.phone}
+- {text: "cierra el código", intent: display.phone_close}

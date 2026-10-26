@@ -94,6 +94,13 @@ morning_music = ""
 # latitude = 19.43
 # longitude = -99.13
 
+[web]
+# VOXA desde el celular, en la misma red de la casa: temporizadores, lista del súper, música,
+# órdenes escritas y fotos para el fondo. Para entrar hace falta la clave de esta PC: di
+# «conecta mi celular» y escanea el código de la pantalla. Apagado por defecto.
+enabled = false
+port = 8770
+
 [update]
 # Revisar cada 6 horas si hay una versión nueva de VOXA (se ve en el diagnóstico y se puede
 # preguntar «¿hay actualizaciones?»; «actualízate» la instala).

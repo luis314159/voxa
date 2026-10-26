@@ -50,17 +50,32 @@ impl Backgrounds {
         if files.is_empty() {
             return None;
         }
-        let captions = read_captions(folder);
+        let mut captions = read_captions(folder);
+        let folder = folder.to_path_buf();
         let (requests, worker_requests) = mpsc::channel::<[u32; 2]>();
         let (worker_loaded, loaded) = mpsc::channel();
         thread::Builder::new()
             .name("voxa-fondos".into())
             .spawn(move || {
+                let mut files = files;
                 let mut order = Shuffled::new(files.len());
+                let mut fresh: Vec<PathBuf> = Vec::new();
                 for size in worker_requests {
+                    // La carpeta se vuelve a leer: las fotos nuevas (p. ej. subidas desde el celular) van primero.
+                    let now = list_images(&folder);
+                    if now != files {
+                        fresh.extend(now.iter().filter(|p| !files.contains(p)).cloned());
+                        files = now;
+                        captions = read_captions(&folder);
+                        order = Shuffled::new(files.len());
+                    }
                     // Hasta encontrar una que se pueda leer (una foto dañada no detiene la rotación).
-                    for _ in 0..files.len() {
-                        let path = &files[order.next()];
+                    for _ in 0..files.len() + fresh.len() {
+                        let path = match fresh.pop() {
+                            Some(path) => path,
+                            None => files[order.next()].clone(),
+                        };
+                        let path = &path;
                         match load(path, size) {
                             Ok(image) => {
                                 let caption = file_name(path).and_then(|name| captions.get(&name).cloned());

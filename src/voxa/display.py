@@ -69,6 +69,9 @@ class Display:
         self.weather: Weather | None = None
         self.muted = False
         self.photo = False
+        self.phone_url: str | None = None
+        """Mientras se muestra el código QR para abrir VOXA en el celular."""
+        self.phone_until: float | None = None
         """«Modo foto»: la pantalla muestra solo la imagen de fondo (vuelve la información al hablar)."""
         self.video_title: str | None = None
         self.wake_word: str | None = None
@@ -122,7 +125,13 @@ class Display:
             "shopping": list(self.shopping),
             "recipe": self.recipe(),
             "photo": self.photo,
+            "phone": self._phone(),
         }
+
+    def _phone(self) -> str | None:
+        if self.phone_until is not None and time.monotonic() > self.phone_until:
+            self.phone_url = self.phone_until = None
+        return self.phone_url
 
     def _weather_snapshot(self) -> dict | None:
         w = self.weather

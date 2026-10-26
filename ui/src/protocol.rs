@@ -37,6 +37,8 @@ pub struct State {
     /// «Modo foto»: solo la imagen de fondo, sin información.
     #[serde(default)]
     pub photo: bool,
+    /// Dirección (con la clave) para abrir VOXA en el celular: se muestra como código QR.
+    pub phone: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize, PartialEq)]

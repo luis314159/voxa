@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b1020">
+<title>VOXA</title>
+<style>
+  :root {
+    --bg: #0b1020; --card: #151c33; --card2: #1c2542; --text: #f8faff; --dim: #b4bcd6;
+    --cyan: #11ddf2; --blue: #3478ff; --alarm: #ffb347; --radius: 18px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 17px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    padding: max(16px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom));
+  }
+  header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  h1 { font-size: 26px; margin: 0; letter-spacing: .02em;
+       background: linear-gradient(90deg, var(--cyan), var(--blue), #d52bff); -webkit-background-clip: text; color: transparent; }
+  #conexion { font-size: 13px; color: var(--dim); }
+  section { background: var(--card); border-radius: var(--radius); padding: 16px; margin-bottom: 14px; }
+  h2 { font-size: 14px; text-transform: uppercase; letter-spacing: .08em; color: var(--dim); margin: 0 0 10px; font-weight: 600; }
+  .fila { display: flex; gap: 10px; align-items: center; }
+  .fila > input { flex: 1; min-width: 0; }
+  input[type=text] {
+    background: var(--card2); border: 1px solid transparent; color: var(--text); border-radius: 12px;
+    padding: 12px 14px; font: inherit; outline: none;
+  }
+  input[type=text]:focus { border-color: var(--cyan); }
+  button {
+    background: var(--card2); color: var(--text); border: 0; border-radius: 12px; padding: 12px 16px;
+    font: inherit; font-weight: 600; cursor: pointer; touch-action: manipulation;
+  }
+  button.principal { background: var(--cyan); color: var(--bg); }
+  button:active { transform: scale(.97); }
+  .vacio { color: var(--dim); margin: 0; }
+  .temporizador { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-top: 1px solid #ffffff12; }
+  .temporizador:first-of-type { border-top: 0; }
+  .nombre { font-weight: 600; }
+  .detalle { color: var(--dim); font-size: 14px; }
+  .cuenta { font-variant-numeric: tabular-nums; font-size: 28px; font-weight: 700; margin-right: 10px; }
+  .sonando .cuenta, .sonando .nombre { color: var(--alarm); }
+  .rapidos { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+  .rapidos button { flex: 1; }
+  ul { list-style: none; margin: 10px 0 0; padding: 0; }
+  li { display: flex; align-items: center; justify-content: space-between; padding: 9px 0; border-top: 1px solid #ffffff12; }
+  li:first-child { border-top: 0; }
+  li button { padding: 6px 12px; font-size: 15px; }
+  #musica .titulo { font-weight: 700; font-size: 19px; }
+  #musica .controles { display: flex; gap: 8px; margin-top: 10px; }
+  #musica .controles button { flex: 1; font-size: 20px; }
+  #respuesta { color: var(--cyan); min-height: 1.4em; margin: 10px 0 0; }
+  label.voz { display: flex; gap: 8px; align-items: center; color: var(--dim); font-size: 14px; margin-top: 10px; }
+  #foto { display: none; }
+  #receta .paso { font-size: 19px; font-weight: 600; margin: 4px 0 10px; }
+</style>
+</head>
+<body>
+<header><h1>VOXA</h1><span id="conexion">conectando…</span></header>
+
+<section id="musica" hidden>
+  <h2>Sonando</h2>
+  <div class="titulo" id="cancion"></div>
+  <div class="detalle" id="artista"></div>
+  <div class="controles">
+    <button data-musica="anterior" aria-label="Anterior">⏮</button>
+    <button data-musica="pausa" id="pausa" aria-label="Pausa">⏸</button>
+    <button data-musica="siguiente" aria-label="Siguiente">⏭</button>
+  </div>
+</section>
+
+<section id="receta" hidden>
+  <h2 id="receta-titulo">Receta</h2>
+  <div class="detalle" id="receta-donde"></div>
+  <div class="paso" id="receta-paso"></div>
+  <div class="fila"><button data-orden="paso anterior">‹ Anterior</button><button class="principal" data-orden="siguiente paso" style="flex:1">Siguiente paso ›</button></div>
+</section>
+
+<section>
+  <h2>Temporizadores</h2>
+  <div id="temporizadores"><p class="vacio">No hay temporizadores.</p></div>
+  <div class="rapidos">
+    <button data-minutos="3">3 min</button><button data-minutos="5">5 min</button>
+    <button data-minutos="10">10 min</button><button data-minutos="15">15 min</button>
+  </div>
+</section>
+
+<section>
+  <h2>Lista del súper</h2>
+  <form class="fila" id="form-lista"><input type="text" id="cosa" placeholder="Agregar…" autocomplete="off" enterkeyhint="done"><button class="principal">+</button></form>
+  <ul id="lista"></ul>
+</section>
+
+<section>
+  <h2>Escríbele a VOXA</h2>
+  <form class="fila" id="form-orden"><input type="text" id="orden" placeholder="«Pon algo tranquilo para cocinar»" autocomplete="off" enterkeyhint="send"><button class="principal">Enviar</button></form>
+  <label class="voz"><input type="checkbox" id="en-voz"> Que lo diga en voz alta en la cocina</label>
+  <p id="respuesta"></p>
+</section>
+
+<section>
+  <h2>Fondo de pantalla</h2>
+  <p class="vacio">Sube fotos de la familia: entran en la rotación de fondos de la cocina.</p>
+  <div class="fila" style="margin-top:10px"><button id="subir" style="flex:1">Subir fotos</button></div>
+  <input type="file" id="foto" accept="image/jpeg,image/png,image/webp" multiple>
+</section>
+
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+let estado = null, recibido = 0;
+
+async function api(ruta, datos) {
+  const opciones = datos === undefined ? {} : { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(datos) };
+  const r = await fetch(ruta, opciones);
+  const json = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(json.error || r.statusText);
+  return json;
+}
+
+function reloj(segundos) {
+  const s = Math.max(0, Math.ceil(segundos)), h = Math.floor(s / 3600), m = Math.floor(s / 60) % 60, r = s % 60;
+  return h ? `${h}:${String(m).padStart(2, "0")}:${String(r).padStart(2, "0")}` : `${m}:${String(r).padStart(2, "0")}`;
+}
+
+function capital(t) { return t ? t[0].toUpperCase() + t.slice(1) : t; }
+
+function el(tag, clase, texto) {
+  const e = document.createElement(tag);
+  if (clase) e.className = clase;
+  if (texto !== undefined) e.textContent = texto;
+  return e;
+}
+
+function pintar() {
+  if (!estado) return;
+  const ahora = estado.now + (Date.now() / 1000 - recibido);
+
+  const m = estado.music;
+  $("musica").hidden = !m;
+  if (m) {
+    $("cancion").textContent = m.title;
+    $("artista").textContent = m.artist || "";
+    $("pausa").textContent = m.playing ? "⏸" : "▶";
+    $("pausa").dataset.musica = m.playing ? "pausa" : "sigue";
+  }
+
+  const rec = estado.recipe;
+  $("receta").hidden = !rec;
+  if (rec) {
+    $("receta-titulo").textContent = rec.title;
+    const paso = rec.current >= 0 ? rec.steps[rec.current] : null;
+    $("receta-donde").textContent = paso ? `Paso ${rec.current + 1} de ${rec.steps.length}` : `${rec.ingredients.length} ingredientes · ${rec.steps.length} pasos`;
+    $("receta-paso").textContent = paso ? paso.text : rec.ingredients.join(" · ");
+  }
+
+  const cont = $("temporizadores");
+  cont.replaceChildren();
+  if (!estado.timers.length) cont.append(el("p", "vacio", "No hay temporizadores."));
+  for (const t of estado.timers) {
+    const fila = el("div", "temporizador" + (t.ringing ? " sonando" : ""));
+    const izq = el("div");
+    izq.append(el("div", "nombre", capital(t.label) || (t.kind === "reminder" ? "Alarma" : "Temporizador")));
+    let detalle = t.repeat ? capital(t.repeat) : t.paused_remaining != null ? "En pausa" : t.ringing ? "¡Sonando!" : "";
+    if (t.kind === "reminder" && !t.ringing) {
+      const hora = new Date(t.ends_at * 1000).toLocaleTimeString("es-MX", { hour: "numeric", minute: "2-digit" });
+      detalle = detalle ? `${detalle} · ${hora}` : hora;
+    }
+    izq.append(el("div", "detalle", detalle));
+    const der = el("div", "fila");
+    if (t.kind !== "reminder") {
+      const restante = t.paused_remaining != null ? t.paused_remaining : t.ends_at - ahora;
+      der.append(el("span", "cuenta", reloj(restante)));
+    }
+    const boton = el("button", "", t.ringing ? "Detener" : "✕");
+    boton.setAttribute("aria-label", t.ringing ? "Detener alarma" : "Cancelar");
+    boton.onclick = () => t.ringing ? orden("ya") : api("/api/temporizador/cancelar", { id: t.id }).then(actualizar);
+    der.append(boton);
+    fila.append(izq, der);
+    cont.append(fila);
+  }
+
+  const lista = $("lista");
+  lista.replaceChildren();
+  for (const cosa of estado.shopping) {
+    const li = el("li");
+    const quitar = el("button", "", "✓");
+    quitar.setAttribute("aria-label", "Quitar " + cosa);
+    quitar.onclick = () => api("/api/lista", { quitar: cosa }).then(actualizar);
+    li.append(el("span", "", capital(cosa)), quitar);
+    lista.append(li);
+  }
+}
+
+async function actualizar() {
+  try {
+    estado = await api("/api/estado");
+    recibido = Date.now() / 1000;
+    $("conexion").textContent = "en línea";
+    pintar();
+  } catch (e) {
+    $("conexion").textContent = "sin conexión con VOXA";
+  }
+}
+
+async function orden(texto) {
+  try {
+    const r = await api("/api/orden", { texto, en_voz: $("en-voz").checked });
+    $("respuesta").textContent = r.respuesta;
+  } catch (e) {
+    $("respuesta").textContent = e.message;
+  }
+  actualizar();
+}
+
+$("form-orden").onsubmit = (ev) => {
+  ev.preventDefault();
+  const texto = $("orden").value.trim();
+  if (texto) { orden(texto); $("orden").value = ""; }
+};
+$("form-lista").onsubmit = (ev) => {
+  ev.preventDefault();
+  const cosa = $("cosa").value.trim();
+  if (cosa) api("/api/lista", { agregar: cosa }).then(() => { $("cosa").value = ""; actualizar(); });
+};
+document.querySelectorAll("[data-minutos]").forEach((b) => {
+  b.onclick = () => api("/api/temporizador", { minutos: Number(b.dataset.minutos) }).then(actualizar);
+});
+document.querySelectorAll("[data-musica]").forEach((b) => {
+  b.onclick = () => api("/api/musica", { accion: b.dataset.musica }).then(actualizar);
+});
+document.querySelectorAll("[data-orden]").forEach((b) => { b.onclick = () => orden(b.dataset.orden); });
+$("subir").onclick = () => $("foto").click();
+$("foto").onchange = async () => {
+  for (const archivo of $("foto").files) {
+    $("respuesta").textContent = `Subiendo ${archivo.name}…`;
+    const r = await fetch("/api/foto", { method: "POST", body: archivo });
+    const json = await r.json().catch(() => ({}));
+    $("respuesta").textContent = json.respuesta || json.error || "No se pudo subir.";
+  }
+  $("foto").value = "";
+};
+
+actualizar();
+setInterval(actualizar, 2000);
+setInterval(pintar, 250);
+</script>
+</body>
+</html>

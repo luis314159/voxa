@@ -46,7 +46,7 @@ voxa = "voxa.main:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-voxa = ["nlu/*.yaml", "audio/*.yaml", "audio/*.npz"]
+voxa = ["nlu/*.yaml", "audio/*.yaml", "audio/*.npz", "telefono.html"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
