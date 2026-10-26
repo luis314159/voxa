@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
 from collections import deque
 from typing import Protocol
 
@@ -11,6 +12,9 @@ import numpy as np
 
 from voxa.audio.clip import MIC_RATE, OUTPUT_RATE, Clip
 from voxa.audio.endpoint import FRAME_SAMPLES, State, UtteranceCollector
+
+# Tras sonar algo, la bocina Bluetooth sigue despierta este tiempo (sin silencio inicial).
+_STILL_AWAKE_SECONDS = 2.0
 
 log = logging.getLogger(__name__)
 
@@ -115,14 +119,20 @@ class SpeakerOutput:
         self._device = device
         self._lead_in_ms = lead_in_ms
         self._lock = asyncio.Lock()
+        self._last_end = float("-inf")
 
     async def play(self, clip: Clip) -> None:
         import sounddevice as sd
 
-        # El silencio inicial le da tiempo a una bocina Bluetooth dormida para despertar.
-        clip = clip.resampled(OUTPUT_RATE).with_silence(before_ms=self._lead_in_ms)
+        # El silencio inicial le da tiempo a una bocina Bluetooth dormida para despertar; si acaba
+        # de sonar algo (el trozo anterior de la misma respuesta), sigue despierta y no hace falta.
+        awake = time.monotonic() - self._last_end < _STILL_AWAKE_SECONDS
+        clip = clip.resampled(OUTPUT_RATE).with_silence(before_ms=0 if awake else self._lead_in_ms)
         async with self._lock:
-            await asyncio.to_thread(self._play_blocking, sd, clip)
+            try:
+                await asyncio.to_thread(self._play_blocking, sd, clip)
+            finally:
+                self._last_end = time.monotonic()
 
     def _play_blocking(self, sd, clip: Clip) -> None:
         sd.play(clip.samples, clip.rate, device=self._device, blocking=True)

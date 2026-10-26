@@ -28,6 +28,8 @@ class Response:
     """Earcon a reproducir: ``"ok"`` o ``"error"``."""
     action: str | None = None
     """Efecto para el runtime de audio/UI, p. ej. ``"mic.mute"``."""
+    spoken: bool = False
+    """Ya se dijo en voz alta mientras llegaba (respuesta de la IA): solo falta mostrarla."""
 
 
 OK = Response(sound="ok")

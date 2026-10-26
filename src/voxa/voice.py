@@ -6,10 +6,11 @@ Lo dispara «pulsar para hablar» (Fase 1) y, más adelante, el detector de «He
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import logging
 import time
 from dataclasses import dataclass, field
-from typing import Protocol
+from typing import AsyncIterable, Protocol
 
 from voxa.audio.clip import Clip
 from voxa.audio.devices import AudioOutput, Microphone
@@ -18,6 +19,7 @@ from voxa.audio.endpoint import EndpointConfig, UtteranceCollector
 from voxa.audio.stt import SpeechToText
 from voxa.audio.tts import TextToSpeech
 from voxa.core.assistant import Assistant
+from voxa.core.speech import speech_chunks
 from voxa.core.types import Response
 
 log = logging.getLogger(__name__)
@@ -148,21 +150,54 @@ class VoiceSession:
         return TurnResult(text, response, timings)
 
     async def say(self, response: Response) -> float:
-        """Reproduce la respuesta; devuelve lo que tardó la síntesis."""
+        """Reproduce la respuesta; devuelve lo que tardó en empezar a sonar (síntesis del primer trozo)."""
+        if response.spoken:
+            return 0.0
+        if response.speech and self._tts:
+            return await self.say_stream(_iterate(speech_chunks(response.speech)))
         async with self._speaking:
-            if response.speech and self._tts:
-                start = time.perf_counter()
-                clip = await asyncio.to_thread(self._tts.synthesize, response.speech)
-                elapsed = time.perf_counter() - start
-                self.observer.phase("speaking")
-                try:
-                    await self._output.play(clip)
-                finally:
-                    self.observer.phase("idle")
-                return elapsed
             if response.sound or response.speech:
                 await self._output.play(self._sounds.get(response.sound or "ok", self._sounds["ok"]))
             return 0.0
+
+    async def say_stream(self, chunks: AsyncIterable[str]) -> float:
+        """Dice los trozos según llegan: mientras suena uno, se sintetiza el siguiente.
+
+        Devuelve lo que tardó el primero en estar listo (lo que se espera en silencio).
+        """
+        if self._tts is None:
+            async for _ in chunks:
+                pass
+            return 0.0
+        clips: asyncio.Queue = asyncio.Queue()
+        first_ready = 0.0
+
+        async def synthesize() -> None:
+            nonlocal first_ready
+            start = time.perf_counter()
+            try:
+                async for chunk in chunks:
+                    if chunk.strip():
+                        clip = await asyncio.to_thread(self._tts.synthesize, chunk)
+                        if not first_ready:
+                            first_ready = time.perf_counter() - start
+                        await clips.put(clip)
+            finally:
+                await clips.put(None)
+
+        async with self._speaking:
+            producer = asyncio.ensure_future(synthesize())
+            try:
+                while (clip := await clips.get()) is not None:
+                    self.observer.phase("speaking")
+                    await self._output.play(clip)
+            finally:
+                self.observer.phase("idle")
+                if not producer.done():
+                    producer.cancel()
+                with contextlib.suppress(asyncio.CancelledError):
+                    await producer
+        return first_ready
 
     async def announce(self, text: str) -> None:
         """Alarma: baja la música, suena el aviso y lo dice en voz alta."""
@@ -173,3 +208,8 @@ class VoiceSession:
             await self.say(Response(text))
         finally:
             await self._ducker.restore()
+
+
+async def _iterate(items: list[str]):
+    for item in items:
+        yield item

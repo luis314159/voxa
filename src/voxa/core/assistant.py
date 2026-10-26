@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from dataclasses import replace
 from typing import Awaitable, Callable, Mapping
 
 from voxa.core.types import OK, Intent, Response, Skill
@@ -70,7 +71,9 @@ class Assistant:
         if self._timers and self._timers.ringing and intent.name in STOPS_ALARM:
             return await self._dispatch("timer", Intent("timer.stop_alarm", text=intent.text, raw=intent.raw))
         if intent.name == "system.repeat":
-            return self.last_response or Response("No he dicho nada todavía.")
+            if self.last_response is None:
+                return Response("No he dicho nada todavía.")
+            return replace(self.last_response, spoken=False)  # repetir es volver a decirlo
         if intent.name == "system.cancel":
             return OK
 

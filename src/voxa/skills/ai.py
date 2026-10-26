@@ -10,14 +10,16 @@ plática corta (las últimas preguntas de los últimos minutos, nada más).
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import re
 import time
 import unicodedata
 from datetime import datetime
-from typing import Awaitable, Callable
+from typing import AsyncIterable, AsyncIterator, Awaitable, Callable
 
 from voxa.core.phrases import clock_words, date_phrase
+from voxa.core.speech import SpeechChunker
 from voxa.core.types import Response
 from voxa.services.ai import COMMAND, AiAnswer, AiError, AiSetupError, ChatModel, Tool, cost_usd
 from voxa.state.ai_usage import AiUsage
@@ -42,7 +44,8 @@ YouTube, la hora, el clima y conversiones de cocina. Si la persona quiere que VO
 usa la herramienta orden_voxa con la orden dicha de forma sencilla, por ejemplo: «pon música de Café \
 Tacvba», «pon un temporizador de 12 minutos para la pasta», «recuérdame sacar el pollo a las 6 de la \
 tarde», «agrega jitomate, cebolla y cilantro a la lista», «pon un video de cómo hacer tamales», \
-«bájale al volumen». No digas que hiciste algo si no usaste la herramienta. No puedes hacer nada fuera \
+«bájale al volumen». Cuando la uses no escribas nada más: VOXA confirma por su cuenta. No digas que \
+hiciste algo si no usaste la herramienta. No puedes hacer nada fuera \
 de esa lista (compras, llamadas, mensajes, luces).
 """
 
@@ -158,6 +161,8 @@ NO_ANSWER = Response("No supe qué responder. ¿Me lo dices de otra forma?", sou
 
 RunCommand = Callable[[str], Awaitable["Response | None"]]
 StartRecipe = Callable[[Recipe], Awaitable[Response]]
+Speak = Callable[[AsyncIterable[str], str], Awaitable[object]]
+MAX_SPOKEN_WORDS = 90
 
 
 class AiFallback:
@@ -180,6 +185,8 @@ class AiFallback:
         """Lo pone la app: si la IA manda una receta desde una pregunta libre, se abre en modo receta."""
         self.extra_context: Callable[[], str] = str
         """Lo pone la app: la receta en curso, para preguntas como «¿cuánto chile le pongo?»."""
+        self.speak: Speak | None = None
+        """Lo pone el servicio cuando hay voz: dice la respuesta por trozos mientras llega."""
         self.chat = chat
         self.usage = usage
         self._run_command = run_command
@@ -205,7 +212,11 @@ class AiFallback:
         question = {"role": "user", "content": f"{self._context_line()}\n{text}"}
         tools: tuple[Tool, ...] = (COMMAND, RECIPE_TOOL) if self.start_recipe else (COMMAND,)
         system = SYSTEM_PROMPT + RECIPE_HINT if self.start_recipe else SYSTEM_PROMPT
-        answer = await self._ask(text, system, [*self._history, question], tools)
+        spoken = ""
+        if self.speak is None:
+            answer = await self._ask(text, system, [*self._history, question], tools)
+        else:
+            answer, spoken = await self._ask_aloud(text, system, [*self._history, question], tools)
         if isinstance(answer, Response):
             return answer
 
@@ -215,12 +226,47 @@ class AiFallback:
         elif answer.refused and not answer.text:
             response = REFUSED
         elif answer.commands:
-            response = await self._run(answer.commands, answer.text)
+            response = await self._run(answer.commands, "" if spoken else answer.text)
+        elif spoken:
+            response = Response(spoken, spoken=True)
         else:
-            spoken = speakable(answer.text)
-            response = Response(spoken) if spoken else NO_ANSWER
+            said = speakable(answer.text)
+            response = Response(said) if said else NO_ANSWER
         self._remember(question, response)
         return response
+
+    async def _ask_aloud(
+        self, text: str, system: str, messages: list[dict[str, str]], tools: tuple[Tool, ...]
+    ) -> tuple[AiAnswer | Response, str]:
+        """Pregunta con transmisión: cada frase que llega se dice mientras la IA sigue escribiendo.
+
+        Devuelve la respuesta y lo que ya se dijo en voz alta.
+        """
+        assert self.speak is not None
+        chunker = SpeechChunker()
+        queue: asyncio.Queue[str | None] = asyncio.Queue()
+        said: list[str] = []
+
+        def push(chunks: list[str]) -> None:
+            for chunk in chunks:
+                clean = speakable(chunk)
+                total = sum(len(s.split()) for s in said) + len(clean.split())
+                if clean and (total <= MAX_SPOKEN_WORDS or not said):
+                    said.append(clean)
+                    queue.put_nowait(clean)
+
+        async def chunks() -> AsyncIterator[str]:
+            while (chunk := await queue.get()) is not None:
+                yield chunk
+
+        speaking = asyncio.ensure_future(self.speak(chunks(), text))
+        try:
+            answer = await self._ask(text, system, messages, tools, on_text=lambda delta: push(chunker.feed(delta)))
+        finally:
+            push(chunker.flush())
+            queue.put_nowait(None)
+            await speaking
+        return answer, " ".join(said)
 
     async def recipe(self, dish: str) -> Recipe | Response:
         """Arma la receta de un platillo (``recipe.start``); si no se pudo, lo que hay que decir."""
@@ -249,7 +295,8 @@ class AiFallback:
         return context_line(self._now(), extra)
 
     async def _ask(
-        self, what: str, system: str, messages: list[dict[str, str]], tools: tuple[Tool, ...], *, max_tokens: int = 2048
+        self, what: str, system: str, messages: list[dict[str, str]], tools: tuple[Tool, ...], *,
+        max_tokens: int = 2048, on_text: Callable[[str], None] | None = None,
     ) -> AiAnswer | Response:
         """Una petición con tope de gasto, registro y avisos; si no hubo respuesta, qué decir."""
         now = self._now()
@@ -259,7 +306,10 @@ class AiFallback:
             case "day":
                 return DAILY_LIMIT
         try:
-            answer = await self.chat.ask(system, messages, tools, max_tokens=max_tokens)
+            if on_text is None:
+                answer = await self.chat.ask(system, messages, tools, max_tokens=max_tokens)
+            else:
+                answer = await self.chat.ask(system, messages, tools, max_tokens=max_tokens, on_text=on_text)
         except AiSetupError as exc:
             log.error("IA: %s", exc)
             if self.on_setup_error:

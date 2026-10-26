@@ -17,7 +17,7 @@ import logging
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Protocol
+from typing import TYPE_CHECKING, Any, Callable, Protocol
 
 if TYPE_CHECKING:
     from voxa.config import AiConfig
@@ -102,14 +102,20 @@ class AiAnswer:
     refused: bool = False
 
 
+OnText = Callable[[str], None]
+
+
 class ChatModel(Protocol):
     name: str
     """Para el diagnóstico: «Claude · claude-opus-5-5»."""
     model: str
 
     async def ask(
-        self, system: str, messages: list[dict[str, str]], tools: tuple[Tool, ...] = (COMMAND,), *, max_tokens: int = 2048
-    ) -> AiAnswer: ...
+        self, system: str, messages: list[dict[str, str]], tools: tuple[Tool, ...] = (COMMAND,), *,
+        max_tokens: int = 2048, on_text: OnText | None = None,
+    ) -> AiAnswer:
+        """``on_text``: recibe el texto según llega (para empezar a hablar antes de que termine)."""
+        ...
 
 
 def _arguments(raw: Any) -> dict | None:
@@ -151,7 +157,8 @@ class ClaudeChat:
         return specs
 
     async def ask(
-        self, system: str, messages: list[dict[str, str]], tools: tuple[Tool, ...] = (COMMAND,), *, max_tokens: int = 2048
+        self, system: str, messages: list[dict[str, str]], tools: tuple[Tool, ...] = (COMMAND,), *,
+        max_tokens: int = 2048, on_text: OnText | None = None,
     ) -> AiAnswer:
         import anthropic
 
@@ -168,13 +175,20 @@ class ClaudeChat:
         try:
             # La búsqueda web puede pausar el turno (pause_turn): se continúa con lo que ya hizo.
             for _ in range(3):
+                extra: dict[str, Any] = {}
+                messages_api = self._client.messages
                 if self.model in _SERVER_FALLBACK:
-                    response = await self._client.beta.messages.create(
-                        **params, messages=conversation,
-                        betas=["server-side-fallback-2026-07-01"], fallbacks="default",
-                    )
+                    messages_api = self._client.beta.messages
+                    extra = {"betas": ["server-side-fallback-2026-07-01"], "fallbacks": "default"}
+                if on_text is None:
+                    response = await messages_api.create(**params, messages=conversation, **extra)
                 else:
-                    response = await self._client.messages.create(**params, messages=conversation)
+                    # Sin eager_input_streaming: las herramientas no se usan a medias, y así la API
+                    # valida sus argumentos completos.
+                    async with messages_api.stream(**params, messages=conversation, **extra) as stream:
+                        async for text in stream.text_stream:
+                            on_text(text)
+                        response = await stream.get_final_message()
                 _add_claude(answer, response)
                 if response.stop_reason != "pause_turn":
                     break
@@ -201,6 +215,8 @@ def _add_claude(answer: AiAnswer, response: Any) -> None:
             _add_call(answer, block.name, block.input)
     answer.text = "".join(parts).strip()
     answer.refused = answer.refused or response.stop_reason == "refusal"
+    if response.stop_reason == "max_tokens":
+        answer.calls.clear()  # una receta cortada a la mitad no sirve
     usage = response.usage
     answer.input_tokens += (usage.input_tokens or 0) + (getattr(usage, "cache_read_input_tokens", 0) or 0) + (
         getattr(usage, "cache_creation_input_tokens", 0) or 0
@@ -225,7 +241,8 @@ class OpenAiChat:
         self._limit_param = "max_completion_tokens" if modern_limit else "max_tokens"
 
     async def ask(
-        self, system: str, messages: list[dict[str, str]], tools: tuple[Tool, ...] = (COMMAND,), *, max_tokens: int = 2048
+        self, system: str, messages: list[dict[str, str]], tools: tuple[Tool, ...] = (COMMAND,), *,
+        max_tokens: int = 2048, on_text: OnText | None = None,
     ) -> AiAnswer:
         import openai
 
@@ -241,6 +258,8 @@ class OpenAiChat:
         if self._reasoning_effort:
             params["reasoning_effort"] = self._reasoning_effort
         try:
+            if on_text is not None:
+                return await self._stream(params, on_text)
             response = await self._client.chat.completions.create(**params)
         except (openai.AuthenticationError, openai.PermissionDeniedError) as exc:
             raise AiSetupError(f"{self.name} rechazó la llave ({exc.status_code})") from exc
@@ -263,9 +282,41 @@ class OpenAiChat:
             if function is not None:
                 _add_call(answer, function.name, function.arguments)
         answer.refused = choice.finish_reason == "content_filter"
+        if choice.finish_reason == "length":
+            answer.calls.clear()
         if response.usage is not None:
             answer.input_tokens = response.usage.prompt_tokens or 0
             answer.output_tokens = response.usage.completion_tokens or 0
+        return answer
+
+    async def _stream(self, params: dict[str, Any], on_text: OnText) -> AiAnswer:
+        """Lo mismo, transmitido: el texto se entrega según llega; las herramientas se arman por pedazos."""
+        params = {**params, "stream": True}
+        if self._limit_param == "max_completion_tokens":  # OpenAI y Azure; los compatibles no siempre lo aceptan
+            params["stream_options"] = {"include_usage": True}
+        answer = AiAnswer()
+        text: list[str] = []
+        calls: dict[int, list[str]] = {}
+        finish = None
+        async for chunk in await self._client.chat.completions.create(**params):
+            if getattr(chunk, "usage", None) is not None:
+                answer.input_tokens = chunk.usage.prompt_tokens or 0
+                answer.output_tokens = chunk.usage.completion_tokens or 0
+            for choice in chunk.choices or []:
+                delta = choice.delta
+                if delta is not None and delta.content:
+                    text.append(delta.content)
+                    on_text(delta.content)
+                for call in (delta.tool_calls if delta is not None else None) or []:
+                    name, arguments = calls.setdefault(call.index or 0, ["", ""])
+                    if call.function is not None:
+                        calls[call.index or 0] = [name + (call.function.name or ""), arguments + (call.function.arguments or "")]
+                finish = choice.finish_reason or finish
+        answer.text = "".join(text).strip()
+        if finish != "length":
+            for name, arguments in calls.values():
+                _add_call(answer, name, arguments)
+        answer.refused = finish == "content_filter"
         return answer
 
 

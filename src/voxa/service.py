@@ -10,7 +10,7 @@ import asyncio
 import collections
 import contextlib
 import logging
-from typing import TYPE_CHECKING, AsyncIterator
+from typing import TYPE_CHECKING, AsyncIterable, AsyncIterator
 
 from voxa import diagnostics
 from voxa.app import App
@@ -82,6 +82,8 @@ class Service:
     def attach_voice(self, session: VoiceSession, mic: Microphone) -> None:
         session.observer = self
         self.session, self.mic = session, mic
+        if self.app.ai is not None:
+            self.app.ai.speak = self._speak_as_it_arrives
         if not self.muted:
             self._open_microphone()
         self._sync_wake()
@@ -133,6 +135,19 @@ class Service:
             await self.session.say(response)
         await self._apply(response)
         return response
+
+    async def _speak_as_it_arrives(self, chunks: AsyncIterable[str], heard: str) -> None:
+        """La respuesta de la IA por trozos: se dice y se va mostrando en la pantalla según llega."""
+        said: list[str] = []
+
+        async def shown() -> AsyncIterator[str]:
+            async for chunk in chunks:
+                said.append(chunk)
+                self.display.exchange(heard, Response(" ".join(said)))
+                yield chunk
+
+        if self.session is not None:
+            await self.session.say_stream(shown())
 
     async def _say_meanwhile(self, text: str) -> None:
         """Algo que decir mientras se espera a la IA («Déjame ver la receta…»); luego sigue «pensando»."""

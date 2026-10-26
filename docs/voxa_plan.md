@@ -150,6 +150,8 @@ Audio ──► Wake word ──► VAD/fin de frase ──► STT ──► NLU
 | Fin de la orden → acción (búsqueda Spotify/YouTube) | < 2.5 s |
 | Fin de la orden → inicio de la respuesta hablada | < 1.5 s |
 
+Las respuestas largas se dicen por trozos: mientras suena uno, Piper sintetiza el siguiente, y el primero es corto (se corta en una coma). Con la IA, además, cada frase se dice en cuanto llega. En la laptop de desarrollo, una respuesta de 47 palabras pasó de 0.67 s de silencio a 0.15 s.
+
 ## 6. Habilidades v1
 
 | Habilidad | Intenciones | Implementación |
