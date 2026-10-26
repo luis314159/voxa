@@ -97,9 +97,16 @@ ui/target/release/voxa-ui                    # --completa para pantalla completa
 python scripts/descargar_fondos.py           # ~77 fondos: México, pueblos y paisajes de todo el mundo
 ```
 
-**Desde el celular (opcional).** Con `enabled = true` en `[web]`, «conecta mi celular» muestra un código QR: al escanearlo (en el wifi de la casa) el celular abre una página para ver y cancelar temporizadores, poner temporizadores rápidos, manejar la lista del súper y la música, escribirle órdenes a VOXA (sin que hable en la cocina, salvo que se pida) y subir fotos de la familia al fondo de pantalla. El código lleva la clave de esa PC (`~/.config/voxa/web_clave`); sin ella, nadie más en la red puede usarlo.
+**Desde el celular.** «Conecta mi celular» muestra un código QR: al escanearlo (en el wifi de la casa) el celular abre una página para ver y cancelar temporizadores, poner temporizadores rápidos, manejar la lista del súper y la música, escribirle órdenes a VOXA (sin que hable en la cocina, salvo que se pida) y subir fotos de la familia al fondo de pantalla, además de los **Ajustes** de arriba. El código lleva la clave de esa PC (`~/.config/voxa/web_clave`); sin ella, nadie más en la red puede usarlo. Se apaga con `enabled = false` en `[web]`.
 
-**La lista del súper en Telegram (opcional).** Para apuntar cosas desde la calle: se crea un bot con @BotFather, `voxa telegram-vincular` guarda su token (`~/.config/voxa/telegram_token`, 600) y da un código de 6 dígitos que cada persona (o el grupo de la familia) le manda al bot; luego `enabled = true` en `[telegram]`. Al bot se le escribe «leche, huevos y tortillas» o «quita la leche», y «/lista» manda la lista con un botón por cosa para ir palomeando en la tienda; la pantalla de la cocina se actualiza al momento. Solo contesta a los chats vinculados.
+**Calendario de la familia (opcional).** «¿Qué tengo hoy?», «¿qué tengo mañana?», «¿cuál es mi siguiente cita?», y lo de hoy en «buenos días». Lee la dirección secreta iCal del calendario (Google Calendar, iCloud, Outlook), sin pedir acceso a la cuenta y solo para leer. Entiende eventos de todo el día, zonas horarias, eventos que se repiten y sus cambios. Se refresca cada 15 minutos y, sin internet, responde con la última copia.
+
+**La lista del súper en Telegram (opcional).** Para apuntar cosas desde la calle:
+
+1. Se crea un bot con @BotFather.
+2. Se pega su token en Ajustes → Telegram (o con `voxa telegram-vincular`). Se guarda en `~/.config/voxa/telegram_token` (600).
+3. «Vincular un chat» da un código de 6 dígitos que cada persona, o el grupo de la familia, le manda al bot.
+ Al bot se le escribe «leche, huevos y tortillas» o «quita la leche», y «/lista» manda la lista con un botón por cosa para ir palomeando en la tienda; la pantalla de la cocina se actualiza al momento. Solo contesta a los chats vinculados.
 
 **Modo foto.** «Modo foto», «solo el fondo» o un doble toque en una parte vacía de la pantalla dejan solo la imagen de fondo, sin información; tocar la pantalla o «muestra la información» la regresan. Mientras VOXA escucha o habla, o si suena una alarma, la información aparece sola.
 
@@ -124,6 +131,19 @@ curl -fLO https://github.com/luis314159/voxa/releases/latest/download/instalar-v
 bash instalar-voxa.sh                 # opciones: --simular, --sin-video, --cancelar-eco… (se recuerdan)
 voxa revisar                          # qué falta configurar
 ```
+
+**Lo demás se configura desde el celular.** Al arrancar sin configurar, la pantalla de la cocina muestra un código QR (también con «Hey Voxa, configura VOXA» o «conecta mi celular»). Al escanearlo, en la pestaña **Ajustes** están:
+
+- **Pendientes**: lo mismo que `voxa revisar`, como lista.
+- **Voz de la familia**: «Grabar» guía a cada persona en la cocina para que VOXA la reconozca.
+- **Spotify**: el Client ID y «Conectar con Spotify». Se acepta en el celular y se pega la dirección de regreso.
+- **Clima**: se busca la ciudad por nombre.
+- **Calendario**: la dirección iCal.
+- **Telegram**: el token del bot y el código para vincular cada chat.
+- **IA**: proveedor, modelo, llave, tope de gasto y «Probar».
+- **Funciones**: videos y actualizaciones automáticas, y la precisión del reconocimiento.
+
+Lo que se elige ahí se guarda en `~/.config/voxa/ajustes.json` (600) encima de `config.toml`. Las llaves y tokens van cada uno en su archivo 600 y nunca regresan al celular. Al guardar, VOXA se reinicia sola.
 
 Después, `voxa actualizar` instala la versión más reciente (`--revisar` solo avisa; `--version 0.1.0` regresa a una anterior: se guardan la actual y la previa en `~/.local/share/voxa/app/`). El instalador revisa la huella del paquete contra `SHA256SUMS` del release. VOXA también revisa sola cada 6 horas si hay versión nueva: lo dice el diagnóstico de la pantalla, se puede preguntar «¿hay actualizaciones?» y «actualízate» la instala; con `automatic = true` en `[update]` se actualiza sola de madrugada (3 a 5 a. m.) si la cocina está quieta.
 

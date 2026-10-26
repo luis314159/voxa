@@ -6,7 +6,7 @@ import pytest
 
 from voxa.app import build_app
 from voxa.audio.wakeword import CHUNK, WINDOW, Classifier, WakeWordDetector, recommended_threshold
-from voxa.config import Config
+from voxa.config import Config, WebConfig
 from voxa.service import Service
 from voxa.voice import TurnResult, TurnTimings
 
@@ -156,7 +156,7 @@ async def wait_for(condition, seconds=3.0):
 
 
 async def test_wake_word_starts_a_turn_keeping_what_followed():
-    service = Service.create(build_app(Config(), simulated=True))
+    service = Service.create(build_app(Config(web=WebConfig(enabled=False)), simulated=True))
     mic, session, detector = QueueMic(), RecordingSession(), OnceDetector()
     service.attach_voice(session, mic)
     service.attach_wake(detector)
@@ -179,7 +179,7 @@ def speech(level):
 
 
 async def test_saying_ya_stops_a_ringing_alarm_without_the_wake_word():
-    app = build_app(Config(), simulated=True)
+    app = build_app(Config(web=WebConfig(enabled=False)), simulated=True)
     service = Service.create(app)
     mic, session = QueueMic(), RecordingSession(heard="ya")
     service.attach_voice(session, mic)
@@ -195,7 +195,7 @@ async def test_saying_ya_stops_a_ringing_alarm_without_the_wake_word():
 
 
 async def test_other_words_do_not_stop_the_alarm():
-    app = build_app(Config(), simulated=True)
+    app = build_app(Config(web=WebConfig(enabled=False)), simulated=True)
     service = Service.create(app)
     mic, session = QueueMic(), RecordingSession(heard="pon música")
     service.attach_voice(session, mic)

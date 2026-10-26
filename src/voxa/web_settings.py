@@ -84,7 +84,7 @@ class SettingsApi:
             "ia": {
                 "enabled": config.ai.enabled, "provider": config.ai.provider, "model": config.ai.model,
                 "endpoint": config.ai.endpoint, "llave": config.ai_key_path.exists(),
-                "presupuesto": config.ai.monthly_budget_usd,
+                "presupuesto": config.ai.monthly_budget_usd, "listo": app.ai is not None,
                 "estado": f"{app.ai.chat.name} · {app.ai.usage.summary()}" if app.ai else app.ai_problem,
             },
             "telegram": {

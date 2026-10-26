@@ -303,6 +303,9 @@
     - "(conecta|vincula|agrega|enlaza|configura) [mi|el|un] (celular|telefono|movil)"
     - "(muestra|muestrame|ensename|pon) el codigo [(del|para el) (celular|telefono)]"
     - "(como|quiero) (uso|usarte|usar voxa|controlarte) (desde|en) [mi|el] (celular|telefono)"
+    - "(configura|configurar|configuremos) [a] voxa"
+    - "(abre|muestra|muestrame) [los] ajustes"
+    - "(quiero) (configurarte|cambiar los ajustes)"
 
 - intent: display.phone_close
   patterns:

@@ -14,8 +14,9 @@ class ScreenSkill:
         match intent.name:
             case "display.phone":
                 if not self.phone_ready():
-                    return Response("Para usarme desde el celular hay que activarlo en la configuración: enabled en [web].")
-                return Response("Escanea el código con la cámara del celular.", action="display.phone")
+                    return Response("La página del celular está apagada: enabled en [web] de la configuración.")
+                return Response("Escanea el código con la cámara del celular. Ahí también están los ajustes.",
+                                action="display.phone")
             case "display.phone_close":
                 return Response(sound="ok", action="display.phone_close")
             case "display.photo":

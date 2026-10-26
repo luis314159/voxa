@@ -113,8 +113,18 @@ async def test_conecta_mi_celular_shows_the_code(phone):
     service.web = server
     service.app.assistant.skill("display").phone_ready = lambda: True
     said = await service.handle_text("conecta mi celular")
-    assert said.speech == "Escanea el código con la cámara del celular."
+    assert said.speech.startswith("Escanea el código con la cámara del celular.")
     url = service.display.snapshot()["phone"]
     assert url.startswith("http://") and url.endswith(f":{server.port}/?k={KEY}")
     await service.handle_text("cierra el código")
     assert service.display.snapshot()["phone"] is None
+
+
+async def test_a_new_kitchen_shows_the_setup_code(tmp_path):
+    from voxa.config import WebConfig
+
+    config = Config(config_dir=tmp_path, state_dir=tmp_path, web=WebConfig(port=0))
+    service = Service.create(build_app(config, simulated=True))
+    assert service.needs_setup()
+    async with service.running(None):
+        assert service.display.snapshot()["phone"].startswith("http://")

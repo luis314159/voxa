@@ -38,6 +38,7 @@ log = logging.getLogger(__name__)
 MUTE_ACTION = "mic.mute"
 PHOTO_ACTIONS = {"display.photo": True, "display.info": False}
 PHONE_SECONDS = 120.0
+SETUP_SECONDS = 600.0
 _MIC_RETRY_SECONDS = 30.0
 # Lo que se ve encima del video mientras VOXA escucha o piensa (el video tapa la pantalla).
 _VIDEO_OSD = {"listening": "🎙 Te escucho…", "thinking": "Un momento…"}
@@ -244,14 +245,19 @@ class Service:
 
             self.wake.verifier = Verifier.load(path)
 
-    def show_phone_code(self, on: bool) -> None:
+    def show_phone_code(self, on: bool, seconds: float = PHONE_SECONDS) -> None:
         """El código QR para abrir VOXA en el celular (unos minutos o hasta que se toque)."""
         url = None
         if on and self.web is not None:
             url = self.web.url(diagnostics.local_ip() or "127.0.0.1")
         self.display.phone_url = url
-        self.display.phone_until = time.monotonic() + PHONE_SECONDS if url else None
+        self.display.phone_until = time.monotonic() + seconds if url else None
         self.display.publish()
+
+    def needs_setup(self) -> bool:
+        """Falta lo básico (Spotify conectado y la ciudad del clima): se configura desde el celular."""
+        config = self.app.config
+        return not config.spotify_token_path.exists() or config.weather.latitude is None
 
     async def set_photo(self, on: bool) -> None:
         """«Modo foto»: solo la imagen de fondo; la información vuelve sola al hablar o con una alarma."""
@@ -442,6 +448,9 @@ class Service:
         screen = self.app.assistant.skill("display")
         if screen is not None and hasattr(screen, "phone_ready"):
             screen.phone_ready = lambda: self.web is not None
+        if self.web is not None and self.needs_setup():
+            # Recién instalada: el código para configurarla desde el celular, sin tocar la terminal.
+            self.show_phone_code(True, SETUP_SECONDS)
         try:
             yield self
         finally:

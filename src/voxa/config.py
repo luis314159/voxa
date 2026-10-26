@@ -108,7 +108,7 @@ class AiConfig:
 
 @dataclass(frozen=True)
 class WebConfig:
-    enabled: bool = False
+    enabled: bool = True
     port: int = 8770
 
 

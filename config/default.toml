@@ -98,9 +98,10 @@ morning_music = ""
 
 [web]
 # VOXA desde el celular, en la misma red de la casa: temporizadores, lista del súper, música,
-# órdenes escritas y fotos para el fondo. Para entrar hace falta la clave de esta PC: di
-# «conecta mi celular» y escanea el código de la pantalla. Apagado por defecto.
-enabled = false
+# órdenes escritas, fotos para el fondo y Ajustes (Spotify, clima, calendario, Telegram, IA,
+# «aprende mi voz»…). Para entrar hace falta la clave de esta PC: di «conecta mi celular» y
+# escanea el código de la pantalla; sin ella, nadie más en la red puede usarlo.
+enabled = true
 port = 8770
 
 [calendar]

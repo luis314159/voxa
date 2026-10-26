@@ -11,6 +11,7 @@
     --cyan: #11ddf2; --blue: #3478ff; --alarm: #ffb347; --radius: 18px;
   }
   * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
   body {
     margin: 0; background: var(--bg); color: var(--text);
     font: 17px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
@@ -45,9 +46,9 @@
   .rapidos { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
   .rapidos button { flex: 1; }
   ul { list-style: none; margin: 10px 0 0; padding: 0; }
-  li { display: flex; align-items: center; justify-content: space-between; padding: 9px 0; border-top: 1px solid #ffffff12; }
-  li:first-child { border-top: 0; }
-  li button { padding: 6px 12px; font-size: 15px; }
+  ul li { display: flex; align-items: center; justify-content: space-between; padding: 9px 0; border-top: 1px solid #ffffff12; }
+  ul li:first-child { border-top: 0; }
+  ul li button { padding: 6px 12px; font-size: 15px; }
   #musica .titulo { font-weight: 700; font-size: 19px; }
   #musica .controles { display: flex; gap: 8px; margin-top: 10px; }
   #musica .controles button { flex: 1; font-size: 20px; }
@@ -55,10 +56,43 @@
   label.voz { display: flex; gap: 8px; align-items: center; color: var(--dim); font-size: 14px; margin-top: 10px; }
   #foto { display: none; }
   #receta .paso { font-size: 19px; font-weight: 600; margin: 4px 0 10px; }
+  nav { display: flex; gap: 8px; margin-bottom: 14px; }
+  nav button { flex: 1; background: var(--card); color: var(--dim); }
+  nav button[aria-selected=true] { background: var(--card2); color: var(--text); box-shadow: inset 0 -3px 0 var(--cyan); }
+  input[type=password], input[type=url], input[type=number], select {
+    background: var(--card2); border: 1px solid transparent; color: var(--text); border-radius: 12px;
+    padding: 12px 14px; font: inherit; outline: none; width: 100%;
+  }
+  input:focus, select:focus { border-color: var(--cyan); }
+  .fila > input[type=password], .fila > input[type=url] { width: auto; }
+  .ayuda { color: var(--dim); font-size: 14px; margin: 6px 0 10px; }
+  .ayuda a { color: var(--cyan); }
+  .ayuda b { color: var(--text); word-break: break-all; }
+  .estado { font-weight: 600; margin: 0 0 8px; }
+  .ok { color: #4ade80; } .aviso { color: var(--alarm); } .falla { color: #ff6b6b; } .omitido { color: var(--dim); }
+  label.campo { display: block; margin-top: 10px; }
+  label.campo input { width: 100%; }
+  .fila.campo { margin-top: 10px; }
+  ol.ayuda li { margin-bottom: 6px; }
+  .campo > span { display: block; font-size: 13px; color: var(--dim); margin-bottom: 4px; }
+  .interruptor { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid #ffffff12; }
+  .interruptor:first-of-type { border-top: 0; }
+  .interruptor input { width: 24px; height: 24px; flex: none; accent-color: var(--cyan); }
+  .codigo { font-size: 34px; font-weight: 800; letter-spacing: .15em; color: var(--cyan); margin: 6px 0; }
+  .hallazgo { padding: 8px 0; border-top: 1px solid #ffffff12; font-size: 15px; }
+  .hallazgo:first-child { border-top: 0; }
+  .arreglo { color: var(--dim); font-size: 13px; font-family: ui-monospace, monospace; word-break: break-word; }
+  #aviso-ajustes { position: sticky; top: 8px; z-index: 2; background: var(--blue); border-radius: 12px; padding: 10px 14px; margin-bottom: 12px; }
+  .lugar { display: block; width: 100%; text-align: left; margin-top: 6px; font-weight: 500; }
 </style>
 </head>
 <body>
 <header><h1>VOXA</h1><span id="conexion">conectando…</span></header>
+<nav role="tablist">
+  <button role="tab" id="tab-cocina" aria-selected="true">Cocina</button>
+  <button role="tab" id="tab-ajustes" aria-selected="false">Ajustes</button>
+</nav>
+<div id="vista-cocina">
 
 <section id="musica" hidden>
   <h2>Sonando</h2>
@@ -106,6 +140,89 @@
   <div class="fila" style="margin-top:10px"><button id="subir" style="flex:1">Subir fotos</button></div>
   <input type="file" id="foto" accept="image/jpeg,image/png,image/webp" multiple>
 </section>
+</div>
+
+<div id="vista-ajustes" hidden>
+<div id="aviso-ajustes" hidden></div>
+
+<section>
+  <h2>Pendientes</h2>
+  <p class="ayuda">Revisa la instalación y dice qué falta configurar.</p>
+  <button id="revisar" class="principal">Revisar</button>
+  <div id="hallazgos" style="margin-top:10px"></div>
+</section>
+
+<section>
+  <h2>Voz de la familia</h2>
+  <p class="estado" id="voz-estado"></p>
+  <p class="ayuda">Para que VOXA reconozca a cada quien y no se active con la tele. Escribe tu nombre, toca «Grabar» y ve a la cocina: VOXA te guía en voz alta (como un minuto). También se le puede decir «Hey Voxa, aprende mi voz».</p>
+  <form class="fila" id="form-voz"><input type="text" id="voz-nombre" placeholder="Tu nombre" autocomplete="off"><button class="principal">Grabar</button></form>
+  <p class="ayuda" id="voz-respuesta"></p>
+</section>
+
+<section>
+  <h2>Spotify</h2>
+  <p class="estado" id="spotify-estado"></p>
+  <ol class="ayuda" style="padding-left:18px">
+    <li>En <a href="https://developer.spotify.com/dashboard" target="_blank" rel="noopener">developer.spotify.com/dashboard</a> crea una app (marca «Web API») con esta Redirect URI: <b id="spotify-redirect"></b></li>
+    <li>Copia su Client ID aquí y guárdalo.</li>
+    <li>Toca «Conectar con Spotify» y acepta. Cuando el navegador diga que no puede abrir la página, copia la dirección completa y pégala abajo.</li>
+  </ol>
+  <form class="fila" id="form-spotify-id"><input type="text" id="spotify-id" placeholder="Client ID" autocomplete="off"><button>Guardar</button></form>
+  <button id="spotify-conectar" class="principal" style="width:100%;margin-top:10px">Conectar con Spotify</button>
+  <form class="fila campo" id="form-spotify-codigo" hidden><input type="url" id="spotify-direccion" placeholder="http://127.0.0.1:8765/callback?code=…" autocomplete="off"><button class="principal">Listo</button></form>
+  <p class="ayuda" id="spotify-respuesta"></p>
+</section>
+
+<section>
+  <h2>Clima</h2>
+  <p class="estado" id="clima-estado"></p>
+  <form class="fila" id="form-clima"><input type="text" id="clima-texto" placeholder="Ciudad (p. ej. Monterrey)" autocomplete="off"><button>Buscar</button></form>
+  <div id="clima-lugares"></div>
+</section>
+
+<section>
+  <h2>Calendario</h2>
+  <p class="estado" id="cal-estado"></p>
+  <p class="ayuda">Para «¿qué tengo hoy?» y lo de hoy en «buenos días». En Google Calendar (desde una computadora): Configuración → tu calendario → «Dirección secreta en formato iCal». Pégala aquí; VOXA solo lo lee.</p>
+  <form class="fila" id="form-cal"><input type="password" id="cal-url" placeholder="https://calendar.google.com/…/basic.ics" autocomplete="off"><button>Guardar</button></form>
+  <p class="ayuda" id="cal-respuesta"></p>
+</section>
+
+<section>
+  <h2>Lista del súper en Telegram</h2>
+  <p class="estado" id="tg-estado"></p>
+  <p class="ayuda">Para apuntar cosas desde la calle. En Telegram, háblale a @BotFather, manda /newbot y copia el token que te da.</p>
+  <form class="fila" id="form-tg"><input type="password" id="tg-token" placeholder="Token del bot" autocomplete="off"><button>Guardar</button></form>
+  <button id="tg-vincular" style="width:100%;margin-top:10px">Vincular un chat</button>
+  <div id="tg-codigo" hidden><p class="ayuda">Mándale este código al bot desde Telegram (vence en 10 minutos):</p><div class="codigo" id="tg-numero"></div></div>
+  <ul id="tg-chats"></ul>
+  <p class="ayuda" id="tg-respuesta"></p>
+</section>
+
+<section>
+  <h2>Respaldo con IA</h2>
+  <p class="estado" id="ia-estado"></p>
+  <p class="ayuda">Para lo que VOXA no entiende sola (recetas, dudas de cocina). Es de paga, con tope al mes; solo se manda el texto de la frase.</p>
+  <label class="campo"><span>Proveedor</span><select id="ia-proveedor"><option value="claude">Claude (Anthropic)</option><option value="openai">OpenAI</option><option value="azure">Azure OpenAI</option><option value="compatible">Compatible con OpenAI (Gemini, Groq, Ollama…)</option></select></label>
+  <label class="campo"><span>Modelo (vacío: el recomendado)</span><input type="text" id="ia-modelo" autocomplete="off"></label>
+  <label class="campo" id="ia-endpoint-campo"><span>Dirección del servicio</span><input type="url" id="ia-endpoint" autocomplete="off"></label>
+  <label class="campo"><span>Tope al mes (USD)</span><input type="number" id="ia-tope" min="0" step="1"></label>
+  <div class="fila campo"><button id="ia-guardar" style="flex:1">Guardar</button><button id="ia-probar" style="flex:1">Probar</button></div>
+  <form class="fila campo" id="form-ia-llave"><input type="password" id="ia-llave" placeholder="Llave (API key)" autocomplete="off"><button>Guardar llave</button></form>
+  <div class="interruptor"><span>Encendida</span><input type="checkbox" id="ia-encendida"></div>
+  <p class="ayuda" id="ia-respuesta"></p>
+</section>
+
+<section>
+  <h2>Funciones</h2>
+  <div class="interruptor"><span>Videos de YouTube</span><input type="checkbox" data-ajuste="video.enabled"></div>
+  <div class="interruptor"><span>Avisar si hay versión nueva</span><input type="checkbox" data-ajuste="update.check"></div>
+  <div class="interruptor"><span>Actualizarse sola de madrugada</span><input type="checkbox" data-ajuste="update.automatic"></div>
+  <label class="campo"><span>Reconocimiento de voz (más preciso = más lento)</span><select id="whisper"><option value="tiny">Rápido (tiny)</option><option value="base">Normal (base)</option><option value="small">Preciso (small)</option></select></label>
+  <p class="ayuda" id="version"></p>
+</section>
+</div>
 
 <script>
 "use strict";
@@ -242,6 +359,217 @@ $("foto").onchange = async () => {
   }
   $("foto").value = "";
 };
+
+// --- Ajustes -----------------------------------------------------------------------------
+const MARCAS = { ok: "✓", aviso: "⚠", falla: "✖", omitido: "·" };
+const pausa = (ms) => new Promise((r) => setTimeout(r, ms));
+
+function mostrarVista(cual) {
+  $("vista-cocina").hidden = cual !== "cocina";
+  $("vista-ajustes").hidden = cual !== "ajustes";
+  $("tab-cocina").setAttribute("aria-selected", String(cual === "cocina"));
+  $("tab-ajustes").setAttribute("aria-selected", String(cual === "ajustes"));
+  if (cual === "ajustes") cargarAjustes();
+}
+$("tab-cocina").onclick = () => mostrarVista("cocina");
+$("tab-ajustes").onclick = () => mostrarVista("ajustes");
+
+function marca(ok, texto) { return el("span", ok ? "ok" : "aviso", (ok ? "✓ " : "⚠ ") + texto); }
+function decir(id, texto) { $(id).textContent = texto; }
+
+async function cargarAjustes() {
+  let a;
+  try { a = await api("/api/ajustes"); } catch (e) { return; }
+  $("voz-estado").replaceChildren(a.voz.personas.length
+    ? marca(a.voz.verificador, "Conoce a: " + a.voz.personas.map((p) => capital(p.replace(/-/g, " "))).join(", "))
+    : marca(false, "Todavía no conoce la voz de nadie"));
+  if (a.voz.grabando) decir("voz-respuesta", `Grabando a ${a.voz.grabando}…`);
+
+  const sp = a.spotify;
+  $("spotify-estado").replaceChildren(marca(sp.autorizado, sp.autorizado ? "Conectado" : sp.client_id ? "Falta conectar" : "Falta el Client ID"));
+  decir("spotify-redirect", sp.redirect);
+  $("spotify-id").placeholder = sp.client_id ? `Client ID (guardado: ${sp.client_id})` : "Client ID";
+
+  const cl = a.clima;
+  $("clima-estado").replaceChildren(marca(cl.lat != null, cl.lugar || (cl.lat != null ? `${cl.lat}, ${cl.lon}` : "Sin ubicación")));
+
+  const cal = a.calendario;
+  $("cal-estado").replaceChildren(marca(cal.enabled && cal.url, !cal.url ? "Sin calendario" : cal.enabled ? "Conectado" : "Apagado"));
+
+  const tg = a.telegram;
+  $("tg-estado").replaceChildren(marca(tg.enabled && tg.token && tg.chats.length > 0,
+    !tg.token ? "Sin bot" : !tg.enabled ? "Apagado" : tg.chats.length ? `${tg.chats.length} chat(s) vinculados` : "Falta vincular un chat"));
+  $("tg-chats").replaceChildren(...tg.chats.map((c) => {
+    const li = el("li"), quitar = el("button", "", "Quitar");
+    quitar.onclick = () => api("/api/telegram/quitar", { id: c.id }).then(cargarAjustes, (e) => decir("tg-respuesta", e.message));
+    li.append(el("span", "", c.nombre), quitar);
+    return li;
+  }));
+
+  const ia = a.ia;
+  $("ia-estado").replaceChildren(marca(ia.enabled && ia.listo, !ia.enabled ? "Apagada" : ia.estado || "Encendida"));
+  $("ia-proveedor").value = ia.provider;
+  $("ia-modelo").value = ia.model || "";
+  $("ia-endpoint").value = ia.endpoint || "";
+  $("ia-tope").value = ia.presupuesto;
+  $("ia-encendida").checked = ia.enabled;
+  $("ia-endpoint-campo").hidden = !["azure", "compatible"].includes(ia.provider);
+
+  const valores = { "video.enabled": a.funciones.video, "update.check": a.funciones.avisar_version, "update.automatic": a.funciones.actualizar_solo };
+  document.querySelectorAll("[data-ajuste]").forEach((c) => { c.checked = Boolean(valores[c.dataset.ajuste]); });
+  $("whisper").value = a.voz.whisper;
+  decir("version", `VOXA ${a.version}` + (a.nueva ? ` · hay una versión nueva: ${a.nueva} (dile «actualízate»)` : ""));
+}
+
+async function esperarReinicio() {
+  const aviso = $("aviso-ajustes");
+  aviso.hidden = false;
+  aviso.textContent = "VOXA se está reiniciando…";
+  await pausa(4000);
+  for (let i = 0; i < 40; i++) {
+    try {
+      await api("/api/ajustes");
+      aviso.textContent = "Listo: VOXA ya usa los ajustes nuevos.";
+      setTimeout(() => { aviso.hidden = true; }, 3000);
+      cargarAjustes();
+      return;
+    } catch (e) { await pausa(1500); }
+  }
+  aviso.textContent = "VOXA tarda en volver. Revisa la PC de la cocina.";
+}
+
+function despues(r) { if (r.reinicio) esperarReinicio(); else cargarAjustes(); }
+
+async function guardar(seccion, valores, salida) {
+  try {
+    const r = await api("/api/ajustes", { seccion, valores });
+    if (salida) decir(salida, r.respuesta);
+    despues(r);
+    return true;
+  } catch (e) {
+    if (salida) decir(salida, e.message); else alert(e.message);
+    return false;
+  }
+}
+
+async function secreto(tipo, valor, salida) {
+  if (!valor) return false;
+  decir(salida, "Revisando…");
+  try {
+    const r = await api("/api/secreto", { tipo, valor });
+    decir(salida, r.respuesta + (r.bot ? ` Bot: @${r.bot}.` : "") + (r.eventos != null ? ` Trae ${r.eventos} eventos.` : ""));
+    despues(r);
+    return true;
+  } catch (e) { decir(salida, e.message); return false; }
+}
+
+$("revisar").onclick = async () => {
+  const cont = $("hallazgos");
+  cont.textContent = "Revisando…";
+  try {
+    const r = await api("/api/ajustes/revisar", {});
+    const pendientes = r.hallazgos.filter((h) => h.estado !== "ok");
+    if (!pendientes.length) { cont.replaceChildren(el("p", "ok", "✓ Todo en orden.")); return; }
+    cont.replaceChildren(...pendientes.map((h) => {
+      const d = el("div", "hallazgo");
+      d.append(el("span", h.estado, `${MARCAS[h.estado] || ""} ${h.grupo} · ${h.nombre}`));
+      if (h.detalle) d.append(el("div", "detalle", h.detalle));
+      if (h.arreglo) d.append(el("div", "arreglo", h.arreglo));
+      return d;
+    }));
+  } catch (e) { cont.textContent = e.message; }
+};
+
+$("form-voz").onsubmit = async (ev) => {
+  ev.preventDefault();
+  try { decir("voz-respuesta", (await api("/api/voz/aprender", { nombre: $("voz-nombre").value.trim() })).respuesta); }
+  catch (e) { decir("voz-respuesta", e.message); }
+};
+
+$("form-spotify-id").onsubmit = async (ev) => {
+  ev.preventDefault();
+  const id = $("spotify-id").value.trim();
+  if (id && await guardar("spotify", { client_id: id }, "spotify-respuesta")) $("spotify-id").value = "";
+};
+$("spotify-conectar").onclick = async () => {
+  const ventana = window.open("about:blank", "_blank");
+  try {
+    const r = await api("/api/spotify/autorizar", {});
+    if (ventana) ventana.location = r.url; else location.href = r.url;
+    $("form-spotify-codigo").hidden = false;
+    decir("spotify-respuesta", "Después de aceptar, copia la dirección de la página que no abre y pégala aquí.");
+  } catch (e) {
+    if (ventana) ventana.close();
+    decir("spotify-respuesta", e.message);
+  }
+};
+$("form-spotify-codigo").onsubmit = async (ev) => {
+  ev.preventDefault();
+  try {
+    const r = await api("/api/spotify/codigo", { direccion: $("spotify-direccion").value.trim() });
+    decir("spotify-respuesta", r.respuesta);
+    $("form-spotify-codigo").hidden = true;
+    despues(r);
+  } catch (e) { decir("spotify-respuesta", e.message); }
+};
+
+$("form-clima").onsubmit = async (ev) => {
+  ev.preventDefault();
+  const cont = $("clima-lugares");
+  cont.textContent = "Buscando…";
+  try {
+    const r = await api("/api/clima/buscar", { texto: $("clima-texto").value });
+    if (!r.lugares.length) { cont.textContent = "No encontré esa ciudad."; return; }
+    cont.replaceChildren(...r.lugares.map((l) => {
+      const b = el("button", "lugar", l.nombre);
+      b.onclick = async () => {
+        cont.textContent = "Guardando…";
+        if (await guardar("weather", { latitude: l.lat, longitude: l.lon, place: l.nombre })) cont.replaceChildren();
+      };
+      return b;
+    }));
+  } catch (e) { cont.textContent = e.message; }
+};
+
+$("form-cal").onsubmit = async (ev) => {
+  ev.preventDefault();
+  if (await secreto("calendario", $("cal-url").value.trim(), "cal-respuesta")) $("cal-url").value = "";
+};
+$("form-tg").onsubmit = async (ev) => {
+  ev.preventDefault();
+  if (await secreto("telegram", $("tg-token").value.trim(), "tg-respuesta")) $("tg-token").value = "";
+};
+$("tg-vincular").onclick = async () => {
+  try {
+    const r = await api("/api/telegram/codigo", {});
+    $("tg-codigo").hidden = false;
+    decir("tg-numero", r.codigo);
+    decir("tg-respuesta", `Busca @${r.bot} en Telegram (o agrégalo al grupo de la familia) y mándale el código.`);
+  } catch (e) { decir("tg-respuesta", e.message); }
+};
+
+$("ia-proveedor").onchange = () => { $("ia-endpoint-campo").hidden = !["azure", "compatible"].includes($("ia-proveedor").value); };
+$("ia-guardar").onclick = () => guardar("ai", {
+  provider: $("ia-proveedor").value, model: $("ia-modelo").value.trim(), endpoint: $("ia-endpoint").value.trim(),
+  monthly_budget_usd: Number($("ia-tope").value) || 0,
+}, "ia-respuesta");
+$("ia-encendida").onchange = () => guardar("ai", { enabled: $("ia-encendida").checked }, "ia-respuesta");
+$("form-ia-llave").onsubmit = async (ev) => {
+  ev.preventDefault();
+  if (await secreto("ia", $("ia-llave").value.trim(), "ia-respuesta")) $("ia-llave").value = "";
+};
+$("ia-probar").onclick = async () => {
+  decir("ia-respuesta", "Preguntando…");
+  try {
+    const r = await api("/api/ia/probar", {});
+    decir("ia-respuesta", `«${r.pregunta}» → ${r.respuesta} (${r.segundos} s · ${r.uso})`);
+  } catch (e) { decir("ia-respuesta", e.message); }
+};
+document.querySelectorAll("[data-ajuste]").forEach((c) => {
+  c.onchange = () => { const [s, k] = c.dataset.ajuste.split("."); guardar(s, { [k]: c.checked }); };
+});
+$("whisper").onchange = () => guardar("voice", { whisper_model: $("whisper").value });
+if (location.hash === "#ajustes") mostrarVista("ajustes");
 
 actualizar();
 setInterval(actualizar, 2000);
