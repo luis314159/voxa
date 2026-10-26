@@ -111,11 +111,25 @@ Sin `--simulado`, usa Spotify, Spotifast y PipeWire reales. Para configurarlos, 
 
 ## Instalar en la PC de la cocina
 
+Desde un release (Linux Mint / Ubuntu 22.04 o más nuevo, de 64 bits; también ARM de 64 bits como una Raspberry Pi 4/5). No hace falta git ni compilar: la pantalla viene lista.
+
 ```bash
-git clone <este repositorio> ~/voxa && cd ~/voxa
+curl -fLO https://github.com/luis314159/voxa/releases/latest/download/instalar-voxa.sh
+bash instalar-voxa.sh                 # opciones: --simular, --sin-video, --cancelar-eco… (se recuerdan)
+voxa revisar                          # qué falta configurar
+```
+
+Después, `voxa actualizar` instala la versión más reciente (`--revisar` solo avisa; `--version 0.1.0` regresa a una anterior: se guardan la actual y la previa en `~/.local/share/voxa/app/`). El instalador revisa la huella del paquete contra `SHA256SUMS` del release.
+
+Desde el código (para desarrollar, o en otra arquitectura; compila la pantalla con Rust):
+
+```bash
+git clone https://github.com/luis314159/voxa ~/voxa && cd ~/voxa
 bash scripts/install.sh --simular     # ver qué hará, sin cambiar nada
 bash scripts/install.sh               # paquetes, VOXA, modelos, pantalla, fondos, videos, audio y arranque automático
 ```
+
+Para publicar un release: subir la versión en `pyproject.toml`, `src/voxa/__init__.py` y `ui/Cargo.toml`, y empujar la etiqueta `vX.Y.Z`; [release.yml](.github/workflows/release.yml) compila la pantalla (x86_64 y aarch64), arma los paquetes y los publica.
 
 El instalador se puede repetir sin miedo: respeta lo ya instalado y nunca sobrescribe `~/.config/voxa/config.toml`. Deja la bocina Bluetooth fija en alta calidad y sin «dormirse» ([deploy/wireplumber/](deploy/wireplumber/)), VOXA como servicio de usuario (`systemctl --user status voxa`), la pantalla abriéndose al iniciar sesión y yt-dlp actualizándose cada semana (`voxa-ytdlp.timer`), porque YouTube cambia seguido. Si al servicio le faltan los modelos de voz o el micrófono, no se cae: la pantalla lo avisa en ámbar. Queda a mano el inicio de sesión automático y `voxa spotify-login`.
 

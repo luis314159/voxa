@@ -16,6 +16,7 @@ import webbrowser
 from dataclasses import replace
 from pathlib import Path
 
+import voxa
 from voxa import diagnostics
 from voxa.app import SetupError, build_app, build_tts, build_voice, build_wake
 from voxa.config import Config, config_path, load_config
@@ -221,6 +222,33 @@ async def record_wake_samples(config: Config, person: str, times: int, talk_seco
     print("Listo. Cuando hayan grabado todos: voxa entrenar-verificador")
 
 
+def update(check_only: bool, version: str | None, force: bool) -> int:
+    from voxa import update as updates
+
+    current = voxa.__version__
+    if version is None:
+        try:
+            latest = asyncio.run(updates.latest_version(UrllibHttp()))
+        except updates.NoReleases:
+            print(f"Todavía no hay releases publicados en {updates.RELEASES}.")
+            return 1
+        if latest is None:
+            print(f"No pude consultar los releases ({updates.RELEASES}). ¿Hay internet?")
+            return 1
+        if not updates.is_newer(latest, current) and not force:
+            print(f"Ya tienes la versión más reciente: {current}.")
+            return 0
+        print(f"Tienes la {current}; la más reciente es la {latest}.")
+        if check_only:
+            print("Para instalarla: voxa actualizar")
+            return 0
+    elif check_only:
+        print(f"Tienes la {current}.")
+        return 0
+    print("Instalando… (VOXA se reinicia al final; puede pedir tu contraseña)")
+    return updates.run_installer(version)
+
+
 def check_installation() -> int:
     from voxa.checkup import FAIL, render, run_checkup
 
@@ -380,6 +408,7 @@ def spotify_login(config: Config) -> int:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="voxa", description="VOXA — asistente de voz familiar.")
     parser.add_argument("-v", "--verbose", action="store_true", help="muestra el registro detallado")
+    parser.add_argument("--version", action="version", version=f"VOXA {voxa.__version__}")
     sub = parser.add_subparsers(dest="command", required=True)
     text = sub.add_parser("texto", help="usa VOXA escribiendo en lugar de hablar")
     text.add_argument("--simulado", action="store_true", help="música y volumen simulados (sin Spotify ni PipeWire)")
@@ -404,6 +433,10 @@ def main(argv: list[str] | None = None) -> int:
     record.add_argument("--platica", type=int, default=30, metavar="SEGUNDOS", help="segundos de plática normal")
     sub.add_parser("entrenar-verificador", help="entrena el verificador familiar con las grabaciones")
     sub.add_parser("revisar", help="revisa la instalación y dice qué falta y cómo arreglarlo")
+    upgrade = sub.add_parser("actualizar", help="instala la versión más reciente de VOXA (releases de GitHub)")
+    upgrade.add_argument("--revisar", action="store_true", help="solo dice si hay una versión nueva")
+    upgrade.add_argument("--version", metavar="X.Y.Z", help="instala esa versión (también sirve para regresar)")
+    upgrade.add_argument("--forzar", action="store_true", help="reinstala aunque ya sea la más reciente")
     sub.add_parser("ia-clave", help="guarda la llave de la IA (Claude, OpenAI, Azure…)")
     probe_ai_cmd = sub.add_parser("ia-probar", help="hace una pregunta de prueba a la IA y dice cuánto costó")
     probe_ai_cmd.add_argument("pregunta", nargs="*")
@@ -419,6 +452,8 @@ def main(argv: list[str] | None = None) -> int:
         sys.stdout.reconfigure(encoding="utf-8")
     if args.command == "revisar":
         return check_installation()
+    if args.command == "actualizar":
+        return update(args.revisar, args.version, args.forzar)
     config = load_config()
 
     if args.command == "spotify-login":

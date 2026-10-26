@@ -20,7 +20,7 @@ jobs:
       - name: Sintaxis de los scripts
         run: for f in scripts/*.sh scripts/*/*.sh; do bash -n "$f"; done
       - name: Revisión de los scripts (shellcheck)
-        run: shellcheck --severity=warning scripts/install.sh scripts/fase0/*.sh
+        run: shellcheck --severity=warning scripts/install.sh scripts/instalar-voxa.sh scripts/empaquetar.sh scripts/fase0/*.sh
       - name: Instalador en modo simulado
         run: bash scripts/install.sh --simular --sin-apt
 

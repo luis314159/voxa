@@ -12,3 +12,8 @@
 *.json text eol=lf
 *.rs text eol=lf
 *.timer text eol=lf
+
+# Fuera de los paquetes de release (scripts/empaquetar.sh usa git archive).
+/tests export-ignore
+/scripts/hey_voxa export-ignore
+/.github export-ignore

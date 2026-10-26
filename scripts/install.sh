@@ -21,6 +21,8 @@ WAKE_MODELS=(
   "embedding_model.onnx 70d164290c1d095d1d4ee149bc5e00543250a7316b59f31d056cff7bd3075c1f"
 )
 PIPER_VOICE="es_MX-claude-high"
+# Los paquetes de los releases traen la pantalla ya compilada (scripts/empaquetar.sh): sin Rust.
+UI_LISTA="$REPO/ui/bin/voxa-ui"
 
 SIMULAR=0 APT=1 MODELOS=1 PANTALLA=1 FONDOS=1 VIDEO=1 SERVICIOS=1 ESCRITORIO=1 ECO=0
 for arg in "$@"; do
@@ -75,7 +77,10 @@ fi
 if [ "$APT" = 1 ]; then
   paso "Paquetes del sistema (pide tu contraseña)"
   paquetes=(pipx python3-venv playerctl libportaudio2 pipewire-bin wireplumber unzip curl)
-  if [ "$PANTALLA" = 1 ]; then
+  if [ "$PANTALLA" = 1 ] && [ -x "$UI_LISTA" ]; then
+    # La pantalla ya compilada solo necesita las bibliotecas de X11/Wayland y OpenGL.
+    paquetes+=(libxkbcommon-x11-0 libwayland-client0 libgl1 libegl1 libxcursor1 libxrandr2 libxi6)
+  elif [ "$PANTALLA" = 1 ]; then
     # Para compilar la pantalla (egui sobre X11/Wayland con OpenGL).
     paquetes+=(build-essential pkg-config libxkbcommon-dev libwayland-dev libgl1-mesa-dev libxcursor-dev libxrandr-dev libxi-dev)
   fi
@@ -141,7 +146,11 @@ fi
 if [ "$PANTALLA" = 1 ]; then
   paso "Pantalla de cocina (voxa-ui)"
   if ! tiene cargo && [ -x "$HOME/.cargo/bin/cargo" ]; then PATH="$HOME/.cargo/bin:$PATH"; fi
-  if tiene cargo; then
+  if [ -x "$UI_LISTA" ]; then
+    run mkdir -p "$BIN"
+    run install -m 755 "$UI_LISTA" "$BIN/voxa-ui"
+    listo "$BIN/voxa-ui (ya compilada)"
+  elif tiene cargo; then
     run cargo build --release --locked --manifest-path "$REPO/ui/Cargo.toml"
     run mkdir -p "$BIN"
     run install -m 755 "$REPO/ui/target/release/voxa-ui" "$BIN/voxa-ui"

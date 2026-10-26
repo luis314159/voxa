@@ -1,0 +1,89 @@
+name: Release
+
+# En cada push a master se arman los paquetes (para saber que un release saldría bien);
+# con una etiqueta vX.Y.Z además se publica el release con los paquetes y el instalador.
+on:
+  push:
+    branches: [master]
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  paquete:
+    strategy:
+      matrix:
+        include:
+          # 22.04 (glibc 2.35): la pantalla corre en Mint 21 / Ubuntu 22.04 y más nuevos.
+          - arch: x86_64
+            runner: ubuntu-22.04
+          - arch: aarch64
+            runner: ubuntu-22.04-arm
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Bibliotecas para compilar egui (X11/Wayland/OpenGL)
+        run: sudo apt-get update && sudo apt-get install -y libxkbcommon-dev libwayland-dev libgl1-mesa-dev libxcursor-dev libxrandr-dev libxi-dev
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: ui
+          key: ${{ matrix.arch }}
+      - run: cargo build --release --locked
+        working-directory: ui
+      - run: bash scripts/empaquetar.sh "${{ matrix.arch }}" ui/target/release/voxa-ui dist
+      - name: El paquete trae lo necesario
+        run: |
+          tar -tzf "dist/voxa-linux-${{ matrix.arch }}.tar.gz" > contenido.txt
+          for f in voxa/VERSION voxa/ui/bin/voxa-ui voxa/scripts/install.sh voxa/pyproject.toml voxa/src/voxa/audio/hey_voxa.npz; do
+            grep -qx "$f" contenido.txt || { echo "Falta $f"; exit 1; }
+          done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: paquete-${{ matrix.arch }}
+          path: dist/
+          retention-days: 7
+
+  publicar:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: paquete
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: La etiqueta coincide con la versión
+        run: |
+          version="$(sed -n 's/^version = "\(.*\)"/\1/p' pyproject.toml | head -1)"
+          python_version="$(sed -n 's/^__version__ = "\(.*\)"/\1/p' src/voxa/__init__.py)"
+          ui_version="$(sed -n 's/^version = "\(.*\)"/\1/p' ui/Cargo.toml | head -1)"
+          echo "pyproject $version · __init__ $python_version · ui $ui_version · etiqueta ${GITHUB_REF_NAME}"
+          [ "v$version" = "${GITHUB_REF_NAME}" ] && [ "$version" = "$python_version" ] && [ "$version" = "$ui_version" ]
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: paquete-*
+          merge-multiple: true
+          path: dist
+      - name: Instalador y huellas
+        run: |
+          cp scripts/instalar-voxa.sh dist/
+          cd dist && sha256sum voxa-linux-*.tar.gz instalar-voxa.sh > SHA256SUMS && cat SHA256SUMS
+      - name: Publicar
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cat > notas.md <<EOF
+          ## Instalar o actualizar
+
+          En la PC (Linux Mint / Ubuntu 22.04 o más nuevo, de 64 bits; también ARM de 64 bits):
+
+          \`\`\`bash
+          curl -fLO https://github.com/${GITHUB_REPOSITORY}/releases/latest/download/instalar-voxa.sh
+          bash instalar-voxa.sh
+          \`\`\`
+
+          Si ya está instalada: \`voxa actualizar\`. Después, \`voxa revisar\` dice qué falta configurar.
+
+          Los paquetes traen la pantalla ya compilada; \`SHA256SUMS\` tiene sus huellas (el instalador las revisa).
+          EOF
+          gh release create "${GITHUB_REF_NAME}" dist/* --title "VOXA ${VERSION}" --notes-file notas.md --generate-notes
