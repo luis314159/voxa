@@ -276,6 +276,43 @@ def set_ai_key(config: Config) -> int:
     return 0
 
 
+async def link_telegram(config: Config, new_token: bool) -> int:
+    """Guarda el token del bot (si hace falta) y vincula un chat con un código de 6 dígitos."""
+    import getpass
+
+    from voxa.services.ai import save_key
+    from voxa.telegram import Chats, TelegramApi, TelegramError, link_chat, read_token
+
+    token = None if new_token else read_token(config.telegram_token_path)
+    if token is None:
+        print("Crea el bot en Telegram con @BotFather (/newbot) y copia el token que te da.")
+        token = getpass.getpass("Pega el token y pulsa Enter (no se verá): ").strip()
+        if not token:
+            print("No se guardó nada.")
+            return 1
+    api = TelegramApi(token, UrllibHttp(daemon=True))
+    try:
+        me = await api.call("getMe")
+    except TelegramError as exc:
+        print(f"Telegram no aceptó el token: {exc}")
+        return 2
+    save_key(config.telegram_token_path, token)
+    print(f"Bot: @{me.get('username')} (token guardado en {config.telegram_token_path}, solo legible por ti).")
+    chats = Chats(config.telegram_chats_path, config.telegram_code_path)
+    try:
+        linked = await link_chat(api, chats)
+    except TelegramError as exc:
+        print(f"Telegram: {exc}")
+        return 2
+    if not linked:
+        print("Nadie mandó el código a tiempo. Vuelve a correr: voxa telegram-vincular")
+        return 1
+    print("Chat vinculado: " + ", ".join(chats.all().values()))
+    if not config.telegram.enabled:
+        print("Falta encenderlo: pon enabled = true en [telegram] de ~/.config/voxa/config.toml y reinicia VOXA.")
+    return 0
+
+
 async def probe_ai(config: Config, question: str) -> int:
     """Una pregunta de prueba: muestra respuesta, tiempo y costo (aunque la IA esté apagada en config)."""
     # Simulado: si la IA pide una orden («pon música…»), se ve qué haría sin tocar Spotify ni el volumen.
@@ -441,6 +478,8 @@ def main(argv: list[str] | None = None) -> int:
     probe_ai_cmd = sub.add_parser("ia-probar", help="hace una pregunta de prueba a la IA y dice cuánto costó")
     probe_ai_cmd.add_argument("pregunta", nargs="*")
     sub.add_parser("spotify-login", help="autoriza a VOXA en tu cuenta de Spotify")
+    telegram = sub.add_parser("telegram-vincular", help="conecta el bot de Telegram de la lista del súper")
+    telegram.add_argument("--nuevo-token", action="store_true", help="pide el token otra vez (bot nuevo)")
     args = parser.parse_args(argv)
 
     logging.basicConfig(
@@ -462,6 +501,11 @@ def main(argv: list[str] | None = None) -> int:
         return train_wake_verifier(config)
     if args.command == "ia-clave":
         return set_ai_key(config)
+    if args.command == "telegram-vincular":
+        try:
+            return asyncio.run(link_telegram(config, args.nuevo_token))
+        except KeyboardInterrupt:
+            return 1
     if args.command == "ia-probar":
         question = " ".join(args.pregunta) or "¿Cuántos minutos se cuece un huevo tibio?"
         return asyncio.run(probe_ai(config, question))

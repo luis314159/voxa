@@ -101,6 +101,13 @@ morning_music = ""
 enabled = false
 port = 8770
 
+[telegram]
+# La lista del súper desde Telegram, también fuera de casa: se le escribe «leche y huevos» al
+# bot y lo agrega; «/lista» la manda con un botón por cosa para ir palomeando en la tienda.
+# Crea el bot con @BotFather, corre «voxa telegram-vincular» (pide el token y un código para
+# cada chat de la familia) y pon enabled = true. Solo atiende a los chats vinculados.
+enabled = false
+
 [update]
 # Revisar cada 6 horas si hay una versión nueva de VOXA (se ve en el diagnóstico y se puede
 # preguntar «¿hay actualizaciones?»; «actualízate» la instala).

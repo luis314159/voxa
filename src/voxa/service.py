@@ -19,8 +19,10 @@ from voxa.core.assistant import STOPS_ALARM
 from voxa.core.types import Response
 from voxa.display import Display, DisplayServer
 from voxa.health import Health, Problem
+from voxa.services.http import UrllibHttp
 from voxa.skills.timers import ring_phrase
 from voxa.state.timers import Timer
+from voxa.telegram import Chats, ShoppingBot, TelegramApi, read_token
 from voxa.web import WebServer, load_or_create_key
 
 if TYPE_CHECKING:
@@ -329,6 +331,16 @@ class Service:
             if self.mic is not None and not self.muted and not self.mic.is_open and not self._turn.locked():
                 self._open_microphone()
 
+    def _telegram_bot(self) -> ShoppingBot | None:
+        config = self.app.config
+        token = read_token(config.telegram_token_path)
+        if token is None:
+            log.warning("Telegram está encendido pero falta el token: corre «voxa telegram-vincular».")
+            return None
+        chats = Chats(config.telegram_chats_path, config.telegram_code_path)
+        api = TelegramApi(token, UrllibHttp(daemon=True))
+        return ShoppingBot(api, self.app.shopping, chats, self.app.matcher, on_change=self.display.publish)
+
     @contextlib.asynccontextmanager
     async def running(self, port: int | None) -> AsyncIterator[Service]:
         """Arranca temporizadores, pantalla y su canal (si ``port`` no es None); los detiene al salir."""
@@ -358,6 +370,8 @@ class Service:
                 self.web = web
             except OSError as exc:
                 log.warning("No pude abrir VOXA para el celular en el puerto %d: %s", config.web.port, exc)
+        if config.telegram.enabled and (bot := self._telegram_bot()) is not None:
+            background.append(asyncio.create_task(bot.run()))
         screen = self.app.assistant.skill("display")
         if screen is not None and hasattr(screen, "phone_ready"):
             screen.phone_ready = lambda: self.web is not None

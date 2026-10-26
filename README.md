@@ -99,6 +99,8 @@ python scripts/descargar_fondos.py           # ~77 fondos: México, pueblos y pa
 
 **Desde el celular (opcional).** Con `enabled = true` en `[web]`, «conecta mi celular» muestra un código QR: al escanearlo (en el wifi de la casa) el celular abre una página para ver y cancelar temporizadores, poner temporizadores rápidos, manejar la lista del súper y la música, escribirle órdenes a VOXA (sin que hable en la cocina, salvo que se pida) y subir fotos de la familia al fondo de pantalla. El código lleva la clave de esa PC (`~/.config/voxa/web_clave`); sin ella, nadie más en la red puede usarlo.
 
+**La lista del súper en Telegram (opcional).** Para apuntar cosas desde la calle: se crea un bot con @BotFather, `voxa telegram-vincular` guarda su token (`~/.config/voxa/telegram_token`, 600) y da un código de 6 dígitos que cada persona (o el grupo de la familia) le manda al bot; luego `enabled = true` en `[telegram]`. Al bot se le escribe «leche, huevos y tortillas» o «quita la leche», y «/lista» manda la lista con un botón por cosa para ir palomeando en la tienda; la pantalla de la cocina se actualiza al momento. Solo contesta a los chats vinculados.
+
 **Modo foto.** «Modo foto», «solo el fondo» o un doble toque en una parte vacía de la pantalla dejan solo la imagen de fondo, sin información; tocar la pantalla o «muestra la información» la regresan. Mientras VOXA escucha o habla, o si suena una alarma, la información aparece sola.
 
 La pantalla se conecta sola a `voxa texto`, `voxa voz` o `voxa servicio` (puerto 8766, solo local) y se reconecta si VOXA se reinicia. Las fotos de `~/.local/share/voxa/fondos/` (también las tuyas) rotan cada 10 minutos (`--cambio-fondo`).

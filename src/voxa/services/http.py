@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
+import threading
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -36,6 +38,11 @@ class Http(Protocol):
 
 
 class UrllibHttp:
+    """``daemon=True`` para esperas largas (Telegram): el hilo no detiene la salida de VOXA."""
+
+    def __init__(self, *, daemon: bool = False) -> None:
+        self._daemon = daemon
+
     async def request(
         self,
         method: str,
@@ -47,7 +54,30 @@ class UrllibHttp:
         form: Mapping[str, str] | None = None,
         timeout: float = 8.0,
     ) -> HttpResponse:
-        return await asyncio.to_thread(self._request, method, url, params, headers, json_body, form, timeout)
+        args = (method, url, params, headers, json_body, form, timeout)
+        if not self._daemon:
+            return await asyncio.to_thread(self._request, *args)
+        loop = asyncio.get_running_loop()
+        future: asyncio.Future[HttpResponse] = loop.create_future()
+
+        def settle(result: HttpResponse | None, error: BaseException | None) -> None:
+            if future.done():
+                return  # se canceló mientras esperaba
+            if error is not None:
+                future.set_exception(error)
+            else:
+                future.set_result(result)
+
+        def work() -> None:
+            try:
+                result, error = self._request(*args), None
+            except BaseException as exc:  # noqa: BLE001 - se entrega al que espera
+                result, error = None, exc
+            with contextlib.suppress(RuntimeError):  # el loop ya cerró
+                loop.call_soon_threadsafe(settle, result, error)
+
+        threading.Thread(target=work, name="http", daemon=True).start()
+        return await future
 
     @staticmethod
     def _request(method, url, params, headers, json_body, form, timeout) -> HttpResponse:

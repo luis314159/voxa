@@ -112,6 +112,11 @@ class WebConfig:
 
 
 @dataclass(frozen=True)
+class TelegramConfig:
+    enabled: bool = False
+
+
+@dataclass(frozen=True)
 class UpdateConfig:
     check: bool = True
     automatic: bool = False
@@ -138,6 +143,7 @@ class Config:
     ai: AiConfig = field(default_factory=AiConfig)
     update: UpdateConfig = field(default_factory=UpdateConfig)
     web: WebConfig = field(default_factory=WebConfig)
+    telegram: TelegramConfig = field(default_factory=TelegramConfig)
     config_dir: Path = field(default_factory=lambda: _xdg("XDG_CONFIG_HOME", ".config"))
     state_dir: Path = field(default_factory=lambda: _xdg("XDG_STATE_HOME", ".local/state"))
 
@@ -148,6 +154,18 @@ class Config:
     @property
     def web_key_path(self) -> Path:
         return self.config_dir / "web_clave"
+
+    @property
+    def telegram_token_path(self) -> Path:
+        return self.config_dir / "telegram_token"
+
+    @property
+    def telegram_chats_path(self) -> Path:
+        return self.config_dir / "telegram_chats.json"
+
+    @property
+    def telegram_code_path(self) -> Path:
+        return self.state_dir / "telegram_codigo.json"
 
     @property
     def backgrounds_dir(self) -> Path:

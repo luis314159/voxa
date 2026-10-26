@@ -256,6 +256,21 @@ def check_ai(config: Config, tools: Tools) -> list[Finding]:
     return [Finding(group, "Respaldo con IA", OK, f"{chat.name} (pruébala: voxa ia-probar)")]
 
 
+def check_telegram(config: Config) -> list[Finding]:
+    from voxa.telegram import Chats, read_token
+
+    group = "Telegram"
+    if not config.telegram.enabled:
+        return [Finding(group, "Lista desde Telegram", SKIP, "apagado (opcional): voxa telegram-vincular y enabled = true en [telegram]")]
+    if read_token(config.telegram_token_path) is None:
+        return [Finding(group, "Lista desde Telegram", FAIL, "falta el token del bot", "voxa telegram-vincular")]
+    chats = Chats(config.telegram_chats_path, config.telegram_code_path).all()
+    if not chats:
+        return [Finding(group, "Lista desde Telegram", WARN, "ningún chat vinculado: el bot no le contesta a nadie",
+                        "voxa telegram-vincular")]
+    return [Finding(group, "Lista desde Telegram", OK, "chats: " + ", ".join(chats.values()))]
+
+
 async def check_services(config: Config, tools: Tools) -> list[Finding]:
     group = "Servicios"
     if not tools.linux:
@@ -296,6 +311,7 @@ async def run_checkup(path: Path, tools: Tools | None = None) -> list[Finding]:
         lambda: check_video(config, tools),
         lambda: check_network(config, tools),
         lambda: check_ai(config, tools),
+        lambda: check_telegram(config),
         lambda: check_services(config, tools),
     ]
     for step in steps:
