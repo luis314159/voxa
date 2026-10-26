@@ -18,7 +18,7 @@ from pathlib import Path
 
 from voxa import diagnostics
 from voxa.app import SetupError, build_app, build_tts, build_voice, build_wake
-from voxa.config import Config, load_config
+from voxa.config import Config, config_path, load_config
 from voxa.core.types import Response
 from voxa.health import Problem
 from voxa.service import Service
@@ -221,6 +221,14 @@ async def record_wake_samples(config: Config, person: str, times: int, talk_seco
     print("Listo. Cuando hayan grabado todos: voxa entrenar-verificador")
 
 
+def check_installation() -> int:
+    from voxa.checkup import FAIL, render, run_checkup
+
+    findings = asyncio.run(run_checkup(config_path()))
+    print(render(findings, color=sys.stdout.isatty()))
+    return 1 if any(f.status == FAIL for f in findings) else 0
+
+
 def set_ai_key(config: Config) -> int:
     """Pide la llave sin mostrarla y la guarda con permisos 600 (nunca en el repositorio)."""
     import getpass
@@ -395,6 +403,7 @@ def main(argv: list[str] | None = None) -> int:
     record.add_argument("--veces", type=int, default=8)
     record.add_argument("--platica", type=int, default=30, metavar="SEGUNDOS", help="segundos de plática normal")
     sub.add_parser("entrenar-verificador", help="entrena el verificador familiar con las grabaciones")
+    sub.add_parser("revisar", help="revisa la instalación y dice qué falta y cómo arreglarlo")
     sub.add_parser("ia-clave", help="guarda la llave de la IA (Claude, OpenAI, Azure…)")
     probe_ai_cmd = sub.add_parser("ia-probar", help="hace una pregunta de prueba a la IA y dice cuánto costó")
     probe_ai_cmd.add_argument("pregunta", nargs="*")
@@ -408,6 +417,8 @@ def main(argv: list[str] | None = None) -> int:
     diagnostics.install()
     with contextlib.suppress(AttributeError, ValueError):
         sys.stdout.reconfigure(encoding="utf-8")
+    if args.command == "revisar":
+        return check_installation()
     config = load_config()
 
     if args.command == "spotify-login":

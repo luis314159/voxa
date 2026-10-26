@@ -116,6 +116,8 @@ bash scripts/install.sh               # paquetes, VOXA, modelos, pantalla, fondo
 
 El instalador se puede repetir sin miedo: respeta lo ya instalado y nunca sobrescribe `~/.config/voxa/config.toml`. Deja la bocina Bluetooth fija en alta calidad y sin «dormirse» ([deploy/wireplumber/](deploy/wireplumber/)), VOXA como servicio de usuario (`systemctl --user status voxa`), la pantalla abriéndose al iniciar sesión y yt-dlp actualizándose cada semana (`voxa-ytdlp.timer`), porque YouTube cambia seguido. Si al servicio le faltan los modelos de voz o el micrófono, no se cae: la pantalla lo avisa en ámbar. Queda a mano el inicio de sesión automático y `voxa spotify-login`.
 
+`voxa revisar` revisa la instalación de punta a punta (modelos y sus huellas, micrófono, bocina Bluetooth en A2DP, Spotify y Spotifast, yt-dlp/mpv/deno, internet y clima, IA, servicios de systemd y erratas en `config.toml`) y dice, para cada cosa que falte, el comando que la arregla. Solo lee: no cambia nada ni gasta.
+
 ## Pruebas
 
 ```bash
@@ -138,7 +140,8 @@ src/voxa/
 ├── diagnostics.py  reporte de la pantalla de diagnóstico
 ├── service.py  voz + pantalla + temporizadores + video juntos
 ├── app.py      arma todo
-└── main.py     CLI: voxa texto | voz | servicio | decir | spotify-login | ia-clave | ia-probar…
+├── checkup.py  voxa revisar: qué falta en la instalación y cómo arreglarlo
+└── main.py     CLI: voxa texto | voz | servicio | decir | revisar | spotify-login | ia-clave | ia-probar…
 ui/             voxa-ui: pantalla de cocina (Rust + egui)
 scripts/fase0/  diagnóstico y benchmarks para correr en la PC
 config/         configuración de ejemplo

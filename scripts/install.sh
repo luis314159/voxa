@@ -244,6 +244,7 @@ fi
 
 paso "Listo"
 cat <<EOF
+  • Revisar todo:  voxa revisar   (qué falta y cómo arreglarlo)
   • Estado:        systemctl --user status voxa voxa-ui
   • Registro:      journalctl --user -u voxa -f
   • Probar a mano: voxa texto

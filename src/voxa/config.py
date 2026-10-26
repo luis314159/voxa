@@ -167,25 +167,36 @@ class Config:
         return _xdg("XDG_CACHE_HOME", ".cache") / "tts"
 
 
+def config_path() -> Path:
+    return Path(os.environ.get("VOXA_CONFIG") or Config().config_dir / "config.toml")
+
+
 def load_config(path: Path | None = None) -> Config:
+    config, warnings = read_config(path or config_path())
+    for warning in warnings:
+        log.warning("%s", warning)
+    return config
+
+
+def read_config(path: Path) -> tuple[Config, list[str]]:
+    """La configuración y los avisos (opciones o secciones que VOXA no conoce: suelen ser erratas)."""
     config = Config()
-    path = path or Path(os.environ.get("VOXA_CONFIG") or config.config_dir / "config.toml")
     if not path.exists():
-        return config
+        return config, []
     with path.open("rb") as fh:
         data = tomllib.load(fh)
 
-    sections = {}
+    sections, warnings = {}, []
     for f in fields(Config):
         if f.name not in data or f.name in ("config_dir", "state_dir"):
             continue
         current = getattr(config, f.name)
         known = {sf.name for sf in fields(current)}
         values = data.pop(f.name)
-        for unknown in set(values) - known:
-            log.warning("Opción desconocida en %s: [%s] %s", path, f.name, unknown)
+        for unknown in sorted(set(values) - known):
+            warnings.append(f"Opción desconocida en {path}: [{f.name}] {unknown}")
         values = {k: tuple(v) if isinstance(v, list) else v for k, v in values.items() if k in known}
         sections[f.name] = replace(current, **values)
     for unknown in data:
-        log.warning("Sección desconocida en %s: [%s]", path, unknown)
-    return replace(config, **sections)
+        warnings.append(f"Sección desconocida en {path}: [{unknown}]")
+    return replace(config, **sections), warnings

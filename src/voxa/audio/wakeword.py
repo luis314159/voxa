@@ -38,6 +38,11 @@ FEATURE_MODEL_URLS = {
     "melspectrogram.onnx": "https://github.com/dscripka/openWakeWord/releases/download/v0.5.1/melspectrogram.onnx",
     "embedding_model.onnx": "https://github.com/dscripka/openWakeWord/releases/download/v0.5.1/embedding_model.onnx",
 }
+# Las mismas huellas que verifica scripts/install.sh.
+FEATURE_MODEL_SHA256 = {
+    "melspectrogram.onnx": "ba2b0e0f8b7b875369a2c89cb13360ff53bac436f2895cced9f479fa65eb176f",
+    "embedding_model.onnx": "70d164290c1d095d1d4ee149bc5e00543250a7316b59f31d056cff7bd3075c1f",
+}
 DEFAULT_MODEL = Path(__file__).with_name("hey_voxa.npz")
 
 
