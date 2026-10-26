@@ -104,8 +104,8 @@ def main() -> int:
     parser.add_argument("--fondo", choices=("rosa", "musica"), default="rosa", help="qué ruido: extractor (rosa) o música")
     parser.add_argument("--eco", action="store_true", help="agrega eco de cocina")
     parser.add_argument("--limite", type=int, default=0, help="evaluar solo las primeras N frases")
-    args = parser.parse_args()
     sys.stdout.reconfigure(encoding="utf-8")  # «» y acentos aunque se redirija a un archivo en Windows
+    args = parser.parse_args()
 
     matcher = load_matcher()
     cases = [c for c in yaml.safe_load(CORPUS.read_text(encoding="utf-8")) if c["intent"] and c["text"]]
