@@ -614,8 +614,12 @@ impl VoxaApp {
         painter.rect_filled(card, radius, if response.hovered() { theme::CARD_HOVER } else { theme::CARD });
         let label_font = theme::regular(f.px(36.0));
         widgets::fitted_text(painter, card.left_top() + vec2(pad, pad * 0.75), Align2::LEFT_TOP, &label, label_font, theme::TEXT_DIM, card.width() * 0.45);
-        let subtitle = if timer.is_reminder() {
+        let subtitle = if let Some(days) = &timer.repeat {
+            format::capitalize(days) // «De lunes a viernes»
+        } else if timer.is_reminder() {
             format!("en {}", format::duration((timer.remaining(f.now) / 60.0).ceil() * 60.0))
+        } else if timer.paused_remaining.is_some() {
+            format!("En pausa · {}", format::duration(timer.total))
         } else {
             format::duration(timer.total)
         };
@@ -642,13 +646,14 @@ impl VoxaApp {
                     Align2::RIGHT_CENTER,
                     &format::countdown(timer.remaining(f.now)),
                     theme::strong(f.px(104.0)),
-                    theme::TEXT,
+                    if timer.paused_remaining.is_some() { theme::TEXT_DIM } else { theme::TEXT },
                 );
                 let bar = Rect::from_min_max(
                     pos2(card.left() + pad, card.bottom() - pad * 0.75 - f.px(10.0)),
                     pos2(card.right() - pad, card.bottom() - pad * 0.75),
                 );
-                widgets::progress_bar(painter, bar, timer.fraction_left(f.now), None);
+                let fill = timer.paused_remaining.map(|_| theme::TRACK.gamma_multiply(1.6));
+                widgets::progress_bar(painter, bar, timer.fraction_left(f.now), fill);
             }
         }
 

@@ -291,6 +291,13 @@ class Service:
         log.info("Durante la alarma: «%s» → %s", text, intent.name if intent else None)
         if intent is not None and intent.name in STOPS_ALARM:
             await self.stop_alarm()
+        elif intent is not None and intent.name == "timer.adjust":
+            # «5 minutos más»: se pospone sin decir «Hey Voxa».
+            response = await self.app.assistant.handle_intent(intent)
+            self.exchange(text, response)
+            self.display.publish()
+            if self.session is not None:
+                await self.session.say(response)
 
     async def _keep_microphone(self) -> None:
         """Si el micrófono no abrió (USB desconectado, PipeWire reiniciando), lo reintenta solo."""

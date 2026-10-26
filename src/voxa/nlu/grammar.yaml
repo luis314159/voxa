@@ -27,6 +27,14 @@
 # quedaría dentro del nombre («sacar la basura mañana»).
 - intent: timer.remind
   patterns:
+    # Con días: «de lunes a viernes», «los martes», «todos los días», «el viernes».
+    - "(despiertame|levantame) {days} (a la|a las|a|al) {time}"
+    - "(pon|ponme|programa|crea|activa) [una|un] (alarma|despertador) [para] {days} (a la|a las|a|al) {time} [(para|de|que) {name}]"
+    - "(pon|ponme|programa|crea|activa) [una|un] (alarma|despertador) (a la|a las|a|al|para la|para las) {time} {days} [(para|de|que) {name}]"
+    - "(recuerdame|acuerdame|avisame) {days} (a la|a las) {time} [(que|de|para)] {name}"
+    - "(recuerdame|acuerdame|avisame) {days} [que] {name} (a la|a las) {time}"
+    - "(recuerdame|acuerdame|avisame) [que] {name} {days} (a la|a las) {time}"
+    - "(recuerdame|acuerdame|avisame) [que] {name} (a la|a las) {time} {days}"
     - pattern: "(despiertame|levantame) manana (a la|a las|a|al) {time}"
       set: {day: manana}
     - "(despiertame|levantame) (a la|a las|a|al) {time}"
@@ -77,6 +85,26 @@
     - "(temporizador|timer|cronometro|alarma) (de|por|en|a) {duration} [(para|de|del|pa) {name}]"
     - "(avisame|recuerdame|despiertame) en {duration} [(para|de|que) {name}]"
     - "(pon|ponme|cuenta) {duration} [(para|de|del|pa) {name}]"
+
+# Ajustar un temporizador, o posponer la alarma que suena («5 minutos más»).
+- intent: timer.adjust
+  patterns:
+    - pattern: "(agregale|agrega|anadele|anade|sumale|suma|ponle|dale|aumentale) [otros] {duration} [mas] [(al|a la|a los|a las|a|del|de la|para el|para la) {name}]"
+      set: {sign: 1}
+    - pattern: "(quitale|quita|restale|resta|bajale) {duration} [(al|a la|a los|a las|a|del|de la) {name}]"
+      set: {sign: -1}
+    - pattern: "[(dame|dale|otros|unos)] {duration} mas"
+      set: {sign: 1}
+    - pattern: "(pospon|posponla|posponlo|aplaza|atrasa) [(la alarma|el temporizador|el despertador)] [(por|unos)] {duration}"
+      set: {sign: 1}
+
+- intent: timer.pause
+  patterns:
+    - "(pausa|pon en pausa|congela) [el|la|mi] (temporizador|timer|cronometro|cuenta regresiva) [(del|de la|de los|de|para) {name}]"
+
+- intent: timer.resume
+  patterns:
+    - "(reanuda|continua|sigue con|arranca|quita la pausa del|quitale la pausa al) [el|la|mi] (temporizador|timer|cronometro|cuenta regresiva) [(del|de la|de los|de|para) {name}]"
 
 - intent: timer.query
   patterns:

@@ -180,3 +180,11 @@
 - {text: "quita la información de la pantalla", intent: display.photo}
 - {text: "muestra la información", intent: display.info}
 - {text: "quita el modo foto", intent: display.info}
+# --- temporizadores flexibles y alarmas semanales ---
+- {text: "agrégale cinco minutos al arroz", intent: timer.adjust, slots: {duration: 300, name: arroz, sign: 1}}
+- {text: "quítale dos minutos a la pasta", intent: timer.adjust, slots: {duration: 120, name: pasta, sign: -1}}
+- {text: "cinco minutos más", intent: timer.adjust, slots: {duration: 300, sign: 1}}
+- {text: "pausa el temporizador del arroz", intent: timer.pause, slots: {name: arroz}}
+- {text: "reanuda el temporizador", intent: timer.resume}
+- {text: "despiértame de lunes a viernes a las seis", intent: timer.remind}
+- {text: "recuérdame los martes sacar la basura a las ocho de la noche", intent: timer.remind}

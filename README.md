@@ -13,7 +13,7 @@ Asistente de voz familiar para la cocina, sobre una PC All-in-One con Linux Mint
 | Parte | Estado |
 |---|---|
 | NLU en español (gramática, números, duraciones, corrección de errores del STT) | ✅ |
-| Temporizadores persistentes con alarma; recordatorios y despertador a una hora fija | ✅ |
+| Temporizadores persistentes con alarma («agrégale 5 minutos», «pausa el temporizador», «5 minutos más» al sonar); recordatorios y despertador a una hora fija o cada semana («de lunes a viernes a las 6», «los martes») | ✅ |
 | Conversiones de cocina sin internet (tazas, cucharadas, gramos, °F/°C) | ✅ |
 | Lista del súper por voz (y en la pantalla), «buenos días» / «buenas noches» | ✅ |
 | Música: Web API + Connect → CLI de Spotifast → MPRIS; por ambiente o género («algo tranquilo para cocinar», «salsa», «los 80») | ✅ (falta probar en el equipo real) |

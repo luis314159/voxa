@@ -14,6 +14,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import itertools
+import time
 from dataclasses import replace
 
 from voxa.app import build_app
@@ -65,6 +66,7 @@ async def main() -> None:
     parser.add_argument("--sin-activacion", action="store_true", help="sin «Hey Voxa» (solo tocar)")
     parser.add_argument("--recordatorio", action="store_true", help="agrega un recordatorio a una hora fija")
     parser.add_argument("--lista", action="store_true", help="llena la lista del súper")
+    parser.add_argument("--pausa", action="store_true", help="el temporizador del arroz en pausa")
     parser.add_argument("--foto", action="store_true", help="«modo foto»: solo la imagen de fondo")
     parser.add_argument("--receta", type=int, metavar="PASO", help="abre una receta en ese paso (0 = ingredientes)")
     parser.add_argument("--puerto", type=int, default=8766)
@@ -75,10 +77,14 @@ async def main() -> None:
     music = app.now_playing.__self__  # la música simulada de la demo
 
     if not args.sin_temporizadores:
-        app.timers.add(900, "el arroz").ends_at -= 450
+        arroz = app.timers.add(900, "el arroz")
+        arroz.ends_at -= 450
+        if args.pausa:
+            app.timers.pause(arroz)
         app.timers.add(180, "los huevos").ends_at -= 108
         if args.recordatorio:
             app.timers.add(5 * 3600, "sacar la basura", kind="reminder")
+            app.timers.add_at(time.time() + 14 * 3600, None, repeat=[0, 1, 2, 3, 4], at=[6, 0])
         if args.alarma:
             app.timers.add(0, "el pan")
     if args.lista:

@@ -22,6 +22,25 @@ def _amount(value: int, singular: str, plural: str, *, feminine: bool = False) -
     return f"{value} {plural}"
 
 
+_PLURAL_DAYS = ("lunes", "martes", "miércoles", "jueves", "viernes", "sábados", "domingos")
+
+
+def days_phrase(days: list[int] | frozenset[int]) -> str:
+    """{0..4} → «de lunes a viernes», {5, 6} → «los fines de semana», {1, 3} → «los martes y jueves»."""
+    chosen = sorted(set(days))
+    if len(chosen) == 7:
+        return "todos los días"
+    if chosen == [5, 6]:
+        return "los fines de semana"
+    if len(chosen) >= 3 and chosen == list(range(chosen[0], chosen[-1] + 1)):
+        return f"de {_WEEKDAYS[chosen[0]]} a {_WEEKDAYS[chosen[-1]]}"
+    return "los " + join_words([_PLURAL_DAYS[d] for d in chosen])
+
+
+def weekday_name(day: int) -> str:
+    return _WEEKDAYS[day]
+
+
 def join_words(parts: list[str]) -> str:
     if len(parts) <= 1:
         return "".join(parts)

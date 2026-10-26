@@ -12,6 +12,7 @@ from typing import Any, Callable
 import yaml
 
 from voxa.core.types import Intent
+from voxa.nlu.days import DAY_WORDS, parse_days
 from voxa.nlu.normalize import normalize, phonetic_key, restore_original, strip_accents
 from voxa.nlu.numbers import CLOCK_WORDS, DURATION_WORDS, NUMBER_WORDS, parse_clock, parse_duration, parse_number
 
@@ -29,6 +30,7 @@ _TYPED_SLOTS = {
     "duration": _word_run(DURATION_WORDS),
     "number": _word_run(NUMBER_WORDS | {"por", "ciento"}),
     "time": _word_run(CLOCK_WORDS),
+    "days": _word_run(DAY_WORDS),
 }
 # Slots de texto libre: si los contiene, la intención no se puede corregir con fuzzy.
 _FREE_SLOTS = frozenset({"query", "name", "device"})
@@ -158,6 +160,7 @@ class Matcher:
             "duration": lambda v: parse_duration(v, spec.default_unit),
             "number": parse_number,
             "time": parse_clock,
+            "days": parse_days,
         }
         slots: dict[str, Any] = {}
         for name, value in groups.items():

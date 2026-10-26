@@ -8,7 +8,7 @@ from voxa.core.types import OK, Intent, Response
 HELP = (
     "Puedo poner música de Spotify, por ejemplo «pon Soda Stereo» o «pon algo tranquilo para cocinar»; "
     "poner temporizadores, como «temporizador de diez minutos para el arroz», "
-    "y recordatorios, como «recuérdame sacar la basura a las 8»; "
+    "y recordatorios, como «recuérdame sacar la basura a las 8» o «despiértame de lunes a viernes a las 6»; "
     "subir o bajar el volumen, decirte la hora y el clima. "
     "También pongo videos de recetas: «pon un video de cómo hacer pozole». "
     "Si quieres que deje de escuchar, di «deja de escuchar»."

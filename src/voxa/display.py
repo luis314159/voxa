@@ -22,6 +22,7 @@ import logging
 import time
 from typing import Awaitable, Callable, Protocol
 
+from voxa.core.phrases import days_phrase
 from voxa.core.types import Response
 from voxa.health import Health
 from voxa.services.music_backend import BackendUnavailable, NowPlaying
@@ -99,6 +100,8 @@ class Display:
                 "ends_at": t.ends_at,
                 "ringing": t.ringing_since is not None,
                 "kind": t.kind,
+                "paused_remaining": t.paused_remaining,
+                "repeat": days_phrase(t.repeat) if t.repeat else None,
             }
             for t in [*self._timers.ringing, *self._timers.active]
         ]

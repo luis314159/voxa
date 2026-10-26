@@ -182,6 +182,10 @@ pub struct Timer {
     /// `timer` («en 10 minutos») o `reminder` («a las 8»).
     #[serde(default)]
     pub kind: String,
+    /// En pausa: los segundos que le quedan (no corren).
+    pub paused_remaining: Option<f64>,
+    /// Recordatorio semanal: «de lunes a viernes».
+    pub repeat: Option<String>,
 }
 
 impl Timer {
@@ -190,7 +194,10 @@ impl Timer {
     }
 
     pub fn remaining(&self, now: f64) -> f64 {
-        (self.ends_at - now).max(0.0)
+        match self.paused_remaining {
+            Some(left) => left.max(0.0),
+            None => (self.ends_at - now).max(0.0),
+        }
     }
 
     /// Fracción que falta (1 → recién puesto, 0 → terminó).
@@ -289,6 +296,17 @@ mod tests {
         let music = state.music.unwrap();
         assert_eq!(music.position_now(1005.0), Some(15.0));
         assert_eq!(music.position_now(2000.0), Some(290.0));
+    }
+
+    #[test]
+    fn paused_timers_do_not_count_down() {
+        let line = r#"{"type": "state", "timers": [{"id": 1, "label": "arroz", "total": 600, "ends_at": 1000.0,
+            "paused_remaining": 300.0}, {"id": 2, "label": null, "total": 60, "ends_at": 5000.0, "kind": "reminder",
+            "repeat": "de lunes a viernes"}]}"#;
+        let state = parse_state(line).unwrap();
+        assert_eq!(state.timers[0].remaining(4000.0), 300.0);
+        assert_eq!(state.timers[0].fraction_left(9999.0), 0.5);
+        assert_eq!(state.timers[1].repeat.as_deref(), Some("de lunes a viernes"));
     }
 
     #[test]
