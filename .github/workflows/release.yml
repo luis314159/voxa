@@ -86,4 +86,8 @@ jobs:
 
           Los paquetes traen la pantalla ya compilada; \`SHA256SUMS\` tiene sus huellas (el instalador las revisa).
           EOF
+          # Las novedades de la versión, si están escritas, van primero.
+          if [ -f "docs/novedades/${VERSION}.md" ]; then
+            cat "docs/novedades/${VERSION}.md" notas.md > notas-completas.md && mv notas-completas.md notas.md
+          fi
           gh release create "${GITHUB_REF_NAME}" dist/* --title "VOXA ${VERSION}" --notes-file notas.md --generate-notes
