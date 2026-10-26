@@ -97,6 +97,8 @@ ui/target/release/voxa-ui                    # --completa para pantalla completa
 python scripts/descargar_fondos.py           # ~77 fondos: México, pueblos y paisajes de todo el mundo
 ```
 
+**Modo foto.** «Modo foto», «solo el fondo» o un doble toque en una parte vacía de la pantalla dejan solo la imagen de fondo, sin información; tocar la pantalla o «muestra la información» la regresan. Mientras VOXA escucha o habla, o si suena una alarma, la información aparece sola.
+
 La pantalla se conecta sola a `voxa texto`, `voxa voz` o `voxa servicio` (puerto 8766, solo local) y se reconecta si VOXA se reinicia. Las fotos de `~/.local/share/voxa/fondos/` (también las tuyas) rotan cada 10 minutos (`--cambio-fondo`).
 
 - **Anillo:** tocarlo equivale a pulsar para hablar. Se pone **ámbar** con el problema debajo cuando algo falla («Sin internet», «No encuentro el micrófono», «Spotifast no responde», «Falta conectar Spotify»).

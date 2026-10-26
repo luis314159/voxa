@@ -29,6 +29,7 @@ if TYPE_CHECKING:
 log = logging.getLogger(__name__)
 
 MUTE_ACTION = "mic.mute"
+PHOTO_ACTIONS = {"display.photo": True, "display.info": False}
 _MIC_RETRY_SECONDS = 30.0
 # Lo que se ve encima del video mientras VOXA escucha o piensa (el video tapa la pantalla).
 _VIDEO_OSD = {"listening": "🎙 Te escucho…", "thinking": "Un momento…"}
@@ -158,6 +159,14 @@ class Service:
     async def _apply(self, response: Response | None) -> None:
         if response is not None and response.action == MUTE_ACTION:
             await self.set_muted(True, acknowledge=False)  # la respuesta ya lo dijo
+        if response is not None and response.action in PHOTO_ACTIONS:
+            await self.set_photo(PHOTO_ACTIONS[response.action])
+
+    async def set_photo(self, on: bool) -> None:
+        """«Modo foto»: solo la imagen de fondo; la información vuelve sola al hablar o con una alarma."""
+        if on != self.display.photo:
+            self.display.photo = on
+            self.display.publish()
 
     async def set_muted(self, on: bool, *, acknowledge: bool = True) -> None:
         """Modo privado: suelta el micrófono de verdad (no solo deja de hacerle caso)."""

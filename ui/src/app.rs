@@ -23,6 +23,10 @@ const SELECT_SECONDS: Duration = Duration::from_secs(5);
 const NIGHT_WAKE: Duration = Duration::from_secs(30);
 /// Cuánto oscurece la pantalla de noche (0 = nada, 1 = negro).
 const NIGHT_DARKNESS: f32 = 0.68;
+/// Brillo de la foto de fondo y fuerza del velo oscuro con la información encima: la foto se ve,
+/// y los textos (que llevan sombra) se siguen leyendo a 3 m.
+const BACKGROUND_DIM: f32 = 0.86;
+const BACKGROUND_VEIL: f32 = 0.72;
 /// Mantener presionado el reloj abre el diagnóstico.
 const LONG_PRESS: Duration = Duration::from_millis(1200);
 const DIAGNOSTICS_REFRESH: Duration = Duration::from_secs(5);
@@ -145,10 +149,35 @@ impl eframe::App for VoxaApp {
         }
         let painter = ui.painter().clone();
         painter.rect_filled(rect, CornerRadius::ZERO, theme::BG);
+        // «Modo foto»: solo la imagen. La información vuelve sola mientras VOXA escucha o habla,
+        // si suena una alarma o con el diagnóstico abierto.
+        let photo = state.photo
+            && self.backgrounds.is_some()
+            && connected
+            && state.phase == Phase::Idle
+            && !state.timers.iter().any(|t| t.ringing)
+            && self.diagnostics.is_none();
         if let Some(backgrounds) = &mut self.backgrounds {
             let ppp = ui.ctx().pixels_per_point();
             backgrounds.update(ui.ctx(), [(rect.width() * ppp) as u32, (rect.height() * ppp) as u32]);
-            backgrounds.paint(&painter, rect, 0.66);
+            let (dim, veil) = if photo { (1.0, 0.0) } else { (BACKGROUND_DIM, BACKGROUND_VEIL) };
+            backgrounds.paint(&painter, rect, dim, veil);
+        }
+        if photo {
+            // Cualquier toque regresa la información (y no llega a ningún botón).
+            if ui.interact(rect, ui.scope_id().with("foto"), Sense::click()).clicked() {
+                self.send(Command::Photo { on: false });
+            }
+            self.night(ui, &painter, rect, &state);
+            self.manage_cursor(ui);
+            schedule_repaint(ui, &f, &state, self.backgrounds.as_ref());
+            self.capture_if_requested(ui);
+            return;
+        }
+        // Doble toque en una parte vacía: «modo foto» (los botones encima se llevan sus toques).
+        let empty = ui.interact(rect, ui.scope_id().with("fondo"), Sense::click());
+        if empty.double_clicked() && self.backgrounds.is_some() {
+            self.send(Command::Photo { on: true });
         }
 
         let margin = f.px(72.0);

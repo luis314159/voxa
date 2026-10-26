@@ -110,7 +110,9 @@ impl Backgrounds {
     }
 
     /// Dibuja la foto oscurecida y un velo más denso a la izquierda, donde va el texto grande.
-    pub fn paint(&self, painter: &Painter, rect: Rect, dim: f32) {
+    /// `dim`: brillo de la foto (1 = tal cual). `veil`: cuánto del velo oscuro que hace legible el texto
+    /// (más a la izquierda, donde va el reloj); 0 = sin velo.
+    pub fn paint(&self, painter: &Painter, rect: Rect, dim: f32, veil: f32) {
         let Some(current) = &self.current else { return };
         let uv = Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0));
         let level = (255.0 * dim) as u8;
@@ -119,19 +121,22 @@ impl Backgrounds {
             painter.image(previous.texture.id(), rect, uv, Color32::from_gray(level));
         }
         painter.image(current.texture.id(), rect, uv, Color32::from_gray(level).gamma_multiply(fade));
+        if veil <= 0.0 {
+            return;
+        }
 
-        let mut veil = egui::Mesh::default();
+        let mut shade = egui::Mesh::default();
         let dark = |a: f32| Color32::from_rgba_unmultiplied(0x0B, 0x10, 0x20, (a * 255.0) as u8);
         let middle = rect.left() + rect.width() * 0.62;
-        for (x, a) in [(rect.left(), 0.66), (middle, 0.30), (rect.right(), 0.42)] {
-            veil.colored_vertex(pos2(x, rect.top()), dark(a));
-            veil.colored_vertex(pos2(x, rect.bottom()), dark(a));
+        for (x, a) in [(rect.left(), 0.66 * veil), (middle, 0.30 * veil), (rect.right(), 0.42 * veil)] {
+            shade.colored_vertex(pos2(x, rect.top()), dark(a));
+            shade.colored_vertex(pos2(x, rect.bottom()), dark(a));
         }
         for i in [0u32, 2] {
-            veil.add_triangle(i, i + 1, i + 2);
-            veil.add_triangle(i + 1, i + 3, i + 2);
+            shade.add_triangle(i, i + 1, i + 2);
+            shade.add_triangle(i + 1, i + 3, i + 2);
         }
-        painter.add(egui::Shape::mesh(veil));
+        painter.add(egui::Shape::mesh(shade));
     }
 }
 

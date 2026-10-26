@@ -269,6 +269,20 @@
     - "(como se hace|como se hacen|como hago|como hacer|como preparo|como preparar|como se prepara|como se preparan|como cocino|como cocinar) {query}"
     - "(quiero|vamos a|voy a|ayudame a|ensename a) (hacer|preparar|cocinar) {query}"
 
+# La pantalla: «modo foto» (solo la imagen de fondo) y de regreso.
+- intent: display.photo
+  patterns:
+    - "(modo foto|solo la foto|solo el fondo|solo la imagen|solo el paisaje|pantalla limpia)"
+    - "(muestra|muestrame|pon|ponme|deja|ensename|quiero ver) [solo|nada mas] (la foto|el fondo|la imagen|el paisaje|la foto de fondo|la imagen de fondo) [nada mas|sola|solo]"
+    - "(quita|esconde|oculta|apaga) (la informacion|los letreros|lo de la pantalla) [de la pantalla]"
+
+- intent: display.info
+  patterns:
+    - "(muestra|muestrame|regresa|pon|ponme|ensename|vuelve a mostrar) [toda] (la informacion|la pantalla normal)"
+    - "(muestra|muestrame|ensename|vuelve a mostrar) todo"
+    - "(quita|sal del|termina|apaga) [el] modo foto"
+    - "(modo normal|pantalla normal)"
+
 - intent: video.close
   patterns:
     - "(cierra|quita|apaga|deten) [el] (video|youtube)"

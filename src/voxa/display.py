@@ -8,7 +8,8 @@ Protocolo: JSON, un mensaje por línea, sobre TCP en 127.0.0.1 (nunca hacia fuer
   También van el clima, los problemas («Sin internet») y si el micrófono está apagado.
 - Pantalla → VOXA: ``{"type": "talk"}`` (tocar el anillo), ``{"type": "say", "text": "pausa"}``
   (botones de música: misma ruta que una orden hablada), ``{"type": "cancel_timer", "id": 3}``,
-  ``{"type": "stop_alarm"}``, ``{"type": "mute", "on": true}`` y ``{"type": "diagnostics"}``,
+  ``{"type": "stop_alarm"}``, ``{"type": "mute", "on": true}``, ``{"type": "photo", "on": true}``
+  (solo la foto de fondo, sin información) y ``{"type": "diagnostics"}``,
   que VOXA contesta solo a esa pantalla con ``{"type": "diagnostics", ...}``.
 """
 
@@ -66,6 +67,8 @@ class Display:
         self._music_at: float | None = None
         self.weather: Weather | None = None
         self.muted = False
+        self.photo = False
+        """«Modo foto»: la pantalla muestra solo la imagen de fondo (vuelve la información al hablar)."""
         self.video_title: str | None = None
         self.wake_word: str | None = None
         self.shopping: list[str] = []
@@ -115,6 +118,7 @@ class Display:
             "wake_word": self.wake_word,
             "shopping": list(self.shopping),
             "recipe": self.recipe(),
+            "photo": self.photo,
         }
 
     def _weather_snapshot(self) -> dict | None:
@@ -247,6 +251,7 @@ class DisplayCommands(Protocol):
     async def cancel_timer(self, timer_id: int) -> None: ...
     async def stop_alarm(self) -> None: ...
     async def set_muted(self, on: bool) -> None: ...
+    async def set_photo(self, on: bool) -> None: ...
     def diagnostics(self) -> dict: ...
 
 
@@ -334,6 +339,8 @@ class DisplayServer:
             action = commands.stop_alarm()
         elif kind == "mute" and isinstance(message.get("on"), bool):
             action = commands.set_muted(message["on"])
+        elif kind == "photo" and isinstance(message.get("on"), bool):
+            action = commands.set_photo(message["on"])
         elif kind == "diagnostics" and writer is not None:
             report = {"type": "diagnostics", "v": PROTOCOL_VERSION, **commands.diagnostics()}
             writer.write(json.dumps(report, ensure_ascii=False).encode() + b"\n")

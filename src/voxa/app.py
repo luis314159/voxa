@@ -28,6 +28,7 @@ from voxa.skills.kitchen import KitchenSkill
 from voxa.skills.music import MusicSkill
 from voxa.skills.recipe import RecipeSkill
 from voxa.skills.routine import RoutineSkill
+from voxa.skills.screen import ScreenSkill
 from voxa.skills.shopping import ShoppingSkill
 from voxa.skills.system import SystemSkill
 from voxa.skills.timers import TimerSkill
@@ -178,6 +179,7 @@ def build_app(config: Config, *, simulated: bool = False, on_ring: Callable[[Tim
         "kitchen": KitchenSkill(),
         "routine": RoutineSkill(timers, weather, music, config.routine.morning_music),
         "shopping": ShoppingSkill(shopping),
+        "display": ScreenSkill(),
     }
     player = None
     if video is not None:

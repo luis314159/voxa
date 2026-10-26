@@ -34,6 +34,9 @@ pub struct State {
     pub shopping: Vec<String>,
     /// La receta que se está cocinando paso a paso.
     pub recipe: Option<Recipe>,
+    /// «Modo foto»: solo la imagen de fondo, sin información.
+    #[serde(default)]
+    pub photo: bool,
 }
 
 #[derive(Debug, Clone, Deserialize, PartialEq)]
@@ -253,6 +256,8 @@ pub enum Command {
     StopAlarm,
     /// Apagar o encender el micrófono.
     Mute { on: bool },
+    /// «Modo foto» (solo la imagen de fondo) o de regreso a la información.
+    Photo { on: bool },
     /// Pide el reporte para la pantalla de diagnóstico.
     Diagnostics,
 }
@@ -352,6 +357,7 @@ mod tests {
         assert_eq!(Command::CancelTimer { id: 3 }.to_line(), "{\"type\":\"cancel_timer\",\"id\":3}\n");
         assert_eq!(Command::StopAlarm.to_line(), "{\"type\":\"stop_alarm\"}\n");
         assert_eq!(Command::Mute { on: true }.to_line(), "{\"type\":\"mute\",\"on\":true}\n");
+        assert_eq!(Command::Photo { on: false }.to_line(), "{\"type\":\"photo\",\"on\":false}\n");
         assert_eq!(Command::Diagnostics.to_line(), "{\"type\":\"diagnostics\"}\n");
     }
 }

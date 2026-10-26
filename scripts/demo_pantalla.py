@@ -65,6 +65,7 @@ async def main() -> None:
     parser.add_argument("--sin-activacion", action="store_true", help="sin «Hey Voxa» (solo tocar)")
     parser.add_argument("--recordatorio", action="store_true", help="agrega un recordatorio a una hora fija")
     parser.add_argument("--lista", action="store_true", help="llena la lista del súper")
+    parser.add_argument("--foto", action="store_true", help="«modo foto»: solo la imagen de fondo")
     parser.add_argument("--receta", type=int, metavar="PASO", help="abre una receta en ese paso (0 = ingredientes)")
     parser.add_argument("--puerto", type=int, default=8766)
     args = parser.parse_args()
@@ -95,6 +96,7 @@ async def main() -> None:
     if args.problema:
         service.health.report(Problem("demo", args.problema, "Problema de prueba de la demo"))
     service.display.muted = args.silenciado
+    service.display.photo = args.foto
     service.display.wake_word = None if args.sin_activacion or args.silenciado else "Hey Voxa"
 
     async with service.running(args.puerto):
