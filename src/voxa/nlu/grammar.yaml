@@ -156,12 +156,12 @@
 
 - intent: volume.up
   patterns:
-    - "(sube|subele|subelo|subela|aumenta|alza) [un poco|un poquito|poquito|mucho|bastante|mas] [el|la] [volumen|musica|sonido|cancion] [un poco|un poquito|poquito|mucho|bastante|mas]"
+    - "(sube|subele|subelo|subela|aumenta|alza) [un poco|un poquito|poquito|mucho|bastante|mas] [el|la|al|a la|a el] [volumen|musica|sonido|cancion] [un poco|un poquito|poquito|mucho|bastante|mas]"
     - "(mas|mas fuerte|mas alto|mas volumen|mas recio|no se oye|no oigo|no escucho|no se escucha)"
 
 - intent: volume.down
   patterns:
-    - "(baja|bajale|bajalo|bajala|disminuye|reduce) [un poco|un poquito|poquito|mucho|bastante|mas] [el|la] [volumen|musica|sonido|cancion] [un poco|un poquito|poquito|mucho|bastante|mas]"
+    - "(baja|bajale|bajalo|bajala|disminuye|reduce) [un poco|un poquito|poquito|mucho|bastante|mas] [el|la|al|a la|a el] [volumen|musica|sonido|cancion] [un poco|un poquito|poquito|mucho|bastante|mas]"
     - "(mas bajo|mas bajito|menos volumen|menos fuerte|esta muy fuerte|muy fuerte|bajito|mas quedito)"
 
 - intent: music.transfer

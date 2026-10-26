@@ -1,4 +1,4 @@
-"""Punto de entrada: ``voxa texto | voz | servicio | decir | escuchar | sonidos | spotify-login``."""
+"""Punto de entrada: ``voxa texto | voz | servicio | decir | escuchar | sonidos | spotify-login | ia-…``."""
 
 from __future__ import annotations
 
@@ -221,6 +221,43 @@ async def record_wake_samples(config: Config, person: str, times: int, talk_seco
     print("Listo. Cuando hayan grabado todos: voxa entrenar-verificador")
 
 
+def set_ai_key(config: Config) -> int:
+    """Pide la llave sin mostrarla y la guarda con permisos 600 (nunca en el repositorio)."""
+    import getpass
+
+    from voxa.services.ai import save_key
+
+    provider = config.ai.provider
+    print(f"Llave de la IA ({provider}). Se guarda en {config.ai_key_path}, solo legible por tu usuario.")
+    key = getpass.getpass("Pega la llave y pulsa Enter (no se verá): ").strip()
+    if not key:
+        print("No se guardó nada.")
+        return 1
+    save_key(config.ai_key_path, key)
+    print("Guardada. Pruébala con: voxa ia-probar")
+    if not config.ai.enabled:
+        print("Ojo: la IA sigue apagada. Pon enabled = true en [ai] de ~/.config/voxa/config.toml.")
+    return 0
+
+
+async def probe_ai(config: Config, question: str) -> int:
+    """Una pregunta de prueba: muestra respuesta, tiempo y costo (aunque la IA esté apagada en config)."""
+    # Simulado: si la IA pide una orden («pon música…»), se ve qué haría sin tocar Spotify ni el volumen.
+    app = build_app(replace(config, ai=replace(config.ai, enabled=True)), simulated=True)
+    ai = app.ai
+    if ai is None:
+        print(f"La IA no está lista: {app.ai_problem}")
+        return 2
+    ai.on_setup_error = lambda detail: print(f"  ⚠ {detail}")
+    print(f"{ai.chat.name} · pregunta: «{question}»")
+    start = time.perf_counter()
+    response = await ai(question)
+    elapsed = time.perf_counter() - start
+    print(render(response) if response else "VOXA: (no es una pregunta: no se mandó)")
+    print(f"{elapsed:.1f} s · {ai.last_cost:.5f} USD · llevas {ai.usage.summary()}")
+    return 0
+
+
 def train_wake_verifier(config: Config) -> int:
     from voxa.audio.verifier import train_verifier, windows_from_recordings
     from voxa.audio.wakeword import DEFAULT_MODEL, Classifier, FeatureModels
@@ -358,6 +395,9 @@ def main(argv: list[str] | None = None) -> int:
     record.add_argument("--veces", type=int, default=8)
     record.add_argument("--platica", type=int, default=30, metavar="SEGUNDOS", help="segundos de plática normal")
     sub.add_parser("entrenar-verificador", help="entrena el verificador familiar con las grabaciones")
+    sub.add_parser("ia-clave", help="guarda la llave de la IA (Claude, OpenAI, Azure…)")
+    probe_ai_cmd = sub.add_parser("ia-probar", help="hace una pregunta de prueba a la IA y dice cuánto costó")
+    probe_ai_cmd.add_argument("pregunta", nargs="*")
     sub.add_parser("spotify-login", help="autoriza a VOXA en tu cuenta de Spotify")
     args = parser.parse_args(argv)
 
@@ -374,6 +414,11 @@ def main(argv: list[str] | None = None) -> int:
         return spotify_login(config)
     if args.command == "entrenar-verificador":
         return train_wake_verifier(config)
+    if args.command == "ia-clave":
+        return set_ai_key(config)
+    if args.command == "ia-probar":
+        question = " ".join(args.pregunta) or "¿Cuántos minutos se cuece un huevo tibio?"
+        return asyncio.run(probe_ai(config, question))
     commands = {
         "texto": lambda: run_text_mode(config, args.simulado),
         "voz": lambda: run_voice_mode(config, args.simulado),

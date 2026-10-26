@@ -25,6 +25,7 @@ Asistente de voz familiar para la cocina, sobre una PC All-in-One con Linux Mint
 | Videos de YouTube (yt-dlp + mpv) controlados por voz | ✅ (falta probar en el equipo real) |
 | Servicios systemd e instalador | ✅ (falta probar en el equipo real) |
 | «Hey Voxa»: detector propio, alarmas que se apagan con «ya», cancelación de eco opcional | ✅ (falta calibrar con la familia) |
+| Respaldo con IA (opcional): Claude, OpenAI, Azure OpenAI o cualquier servicio compatible, con tope de gasto | ✅ (falta poner la llave) |
 
 ## Probarlo (sin micrófono)
 
@@ -73,6 +74,15 @@ voxa escuchar grabacion.wav                 # procesar una grabación
 
 **«Hey Voxa».** Con `voxa voz` o `voxa servicio`, VOXA escucha «Hey Voxa» (u «Oye Voxa») todo el tiempo y se puede decir la orden de corrido: «Hey Voxa, pon música». Mientras suena una alarma basta con «para», «ya» o «gracias». `voxa probar-activacion` muestra en vivo qué tan seguro está de oírlo, para ajustar `threshold` en `[wake]`, y `voxa grabar-activacion` + `voxa entrenar-verificador` lo afinan con las voces de la familia. Cómo se entrenó y cómo reentrenarlo: [scripts/hey_voxa/](scripts/hey_voxa/README.md).
 
+**Respaldo con IA (opcional, de paga).** Lo que las reglas no entienden se le puede preguntar a un modelo de lenguaje: «¿con qué sustituyo el huevo en un pastel?», «¿qué le pongo al pozole para que no quede simple?». Si alguien pide algo que VOXA ya sabe hacer pero dicho de otra forma («échale un ojo a la pasta unos doce minutitos»), la IA lo traduce a una orden de VOXA y VOXA la ejecuta. Funciona con Claude, OpenAI, Azure OpenAI y cualquier servicio con la API de OpenAI (Gemini, Groq, Mistral, DeepSeek, OpenRouter, Ollama). Está apagada por defecto y tiene tope de gasto al mes y de preguntas al día; solo se manda el texto de la frase, nunca audio.
+
+```bash
+voxa ia-clave                                     # guarda la llave (permisos 600, fuera del repositorio)
+voxa ia-probar "¿cuánto se cuece un huevo tibio?" # respuesta, segundos y costo
+```
+
+Luego `enabled = true` en `[ai]` de `~/.config/voxa/config.toml` (ahí se elige proveedor, modelo y tope) y `systemctl --user restart voxa`. El gasto del mes se ve en el diagnóstico de la pantalla.
+
 Si VOXA pronuncia mal un nombre, agrégalo a `~/.config/voxa/pronunciacion.yaml` (formato en [src/voxa/audio/pronunciacion.yaml](src/voxa/audio/pronunciacion.yaml)).
 
 ### Pantalla de cocina
@@ -120,15 +130,15 @@ El corpus [tests/data/utterances.yaml](tests/data/utterances.yaml) guarda frases
 src/voxa/
 ├── nlu/        normalización, números/duraciones, grammar.yaml, matcher
 ├── core/       asistente (enrutamiento), tipos, frases en español
-├── skills/     música, video, volumen, temporizadores, hora, clima, sistema
-├── services/   Spotify (Web API, auth PKCE), Spotifast CLI, MPRIS, PipeWire, Open-Meteo, yt-dlp + mpv
-├── state/      temporizadores persistentes
+├── skills/     música, video, volumen, temporizadores, hora, clima, cocina, súper, sistema, respaldo con IA
+├── services/   Spotify (Web API, auth PKCE), Spotifast CLI, MPRIS, PipeWire, Open-Meteo, yt-dlp + mpv, IA
+├── state/      temporizadores, lista del súper y gasto de IA persistentes
 ├── display.py  estado para la pantalla y su canal local
 ├── health.py   problemas que la pantalla avisa en ámbar
 ├── diagnostics.py  reporte de la pantalla de diagnóstico
 ├── service.py  voz + pantalla + temporizadores + video juntos
 ├── app.py      arma todo
-└── main.py     CLI: voxa texto | voz | servicio | decir | spotify-login
+└── main.py     CLI: voxa texto | voz | servicio | decir | spotify-login | ia-clave | ia-probar…
 ui/             voxa-ui: pantalla de cocina (Rust + egui)
 scripts/fase0/  diagnóstico y benchmarks para correr en la PC
 config/         configuración de ejemplo

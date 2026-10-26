@@ -93,3 +93,44 @@ morning_music = ""
 # Ubicación de la casa para el clima (Open-Meteo). Ejemplo: Ciudad de México.
 # latitude = 19.43
 # longitude = -99.13
+
+[ai]
+# Respaldo con IA (opcional, de paga): lo que VOXA no entiende se le pregunta a un modelo de
+# lenguaje («¿con qué sustituyo el huevo en un pastel?»). Si la persona pidió algo que VOXA sabe
+# hacer dicho de otra forma, la IA lo traduce a una orden de VOXA. Solo se manda el texto de la
+# frase (nunca audio) y las preguntas de los últimos 3 minutos.
+#   1. voxa ia-clave     ← guarda la llave en ~/.config/voxa/ia_clave (permisos 600)
+#   2. enabled = true y reinicia: systemctl --user restart voxa
+#   3. voxa ia-probar "¿cuánto se cuece un huevo tibio?"   ← respuesta, tiempo y costo
+enabled = false
+# "claude" (Anthropic), "openai", "azure" (Azure OpenAI) o "compatible" (cualquier servicio con
+# la API de OpenAI: Gemini, Groq, Mistral, DeepSeek, OpenRouter, Ollama en la red de la casa…).
+provider = "claude"
+# Vacío con Claude = claude-opus-5-5 (4 / 20 USD por millón de tokens de entrada / salida).
+# claude-haiku-5-5 cuesta 40 veces menos (0.10 / 0.50) y responde más rápido; suele bastar para
+# preguntas de cocina. Con azure va el nombre del *deployment*. Con openai o compatible, el modelo.
+model = ""
+# azure: https://TU-RECURSO.openai.azure.com          compatible, por ejemplo:
+#   Gemini      https://generativelanguage.googleapis.com/v1beta/openai/
+#   Groq        https://api.groq.com/openai/v1
+#   OpenRouter  https://openrouter.ai/api/v1
+#   Ollama      http://IP-DE-LA-PC:11434/v1   (sin llave)
+endpoint = ""
+# Variable de entorno con la llave, si prefieres eso al archivo (vacío = ANTHROPIC_API_KEY,
+# OPENAI_API_KEY o AZURE_OPENAI_API_KEY según el proveedor).
+key_env = ""
+# Claude: esfuerzo "low" (vacío = low), "medium" o "high"; "ninguno" para modelos que no lo aceptan.
+# OpenAI/Azure: se manda como reasoning_effort solo si lo pones ("minimal", "low"…), para modelos que razonan.
+effort = ""
+# Solo Claude: que pueda buscar en internet (precios, resultados, noticias). 10 USD por mil búsquedas.
+web_search = false
+# Tope de gasto al mes (USD) y de preguntas al día. 0 = sin tope.
+monthly_budget_usd = 5.0
+daily_questions = 60
+# USD por millón de tokens, para contar el gasto con modelos que VOXA no conoce (todos los de
+# OpenAI, Azure y compatibles). Con 0, VOXA usa su tabla de precios de Claude.
+price_input = 0.0
+price_output = 0.0
+timeout_seconds = 15.0
+# Lo que la IA debe saber de la casa, en una frase. Ejemplo: "Vivimos en Monterrey; Ana es vegetariana."
+context = ""

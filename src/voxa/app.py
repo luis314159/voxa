@@ -11,6 +11,7 @@ from voxa.config import Config
 from voxa.core.assistant import Assistant
 from voxa.health import Check, internet_check, player_check, spotify_check
 from voxa.nlu.matcher import Matcher, load_matcher
+from voxa.services.ai import AiSetupError, build_chat, prices_for, read_key
 from voxa.services.http import UrllibHttp
 from voxa.services.mpris import PlayerctlBackend
 from voxa.services.music_backend import LayeredMusicBackend, MusicBackend, NowPlaying
@@ -21,6 +22,7 @@ from voxa.services.spotify_api import SpotifyWebApi
 from voxa.services.spotify_auth import SpotifyAuth
 from voxa.services.video import MpvPlayer, VideoPlayer, VideoSearch, YtDlpSearch
 from voxa.services.weather import OpenMeteo
+from voxa.skills.ai import AiFallback
 from voxa.skills.clock import ClockSkill
 from voxa.skills.kitchen import KitchenSkill
 from voxa.skills.music import MusicSkill
@@ -31,6 +33,7 @@ from voxa.skills.timers import TimerSkill
 from voxa.skills.video import VideoSkill
 from voxa.skills.volume import VolumeSkill
 from voxa.skills.weather import WeatherSkill
+from voxa.state.ai_usage import AiUsage
 from voxa.state.shopping import ShoppingList
 from voxa.state.timers import Timer, TimerManager
 
@@ -53,6 +56,9 @@ class App:
     health_checks: list[Check] = field(default_factory=list)
     config: Config = field(default_factory=Config)
     shopping: ShoppingList = field(default_factory=ShoppingList)
+    ai: AiFallback | None = None
+    ai_problem: str | None = None
+    """Por qué la IA activada no pudo arrancar (falta la llave, el SDK…)."""
 
 
 class SetupError(Exception):
@@ -184,7 +190,25 @@ def build_app(config: Config, *, simulated: bool = False, on_ring: Callable[[Tim
     matcher = load_matcher()
     video_active = (lambda: player.current is not None) if player is not None else None
     assistant = Assistant(matcher, skills, timers, video_active=video_active)
-    return App(assistant, timers, matcher, now_playing, weather, player, checks, config, shopping)
+    ai, ai_problem = build_ai(config, assistant)
+    assistant.fallback = ai
+    skills["system"].open_questions = ai is not None
+    return App(assistant, timers, matcher, now_playing, weather, player, checks, config, shopping, ai, ai_problem)
+
+
+def build_ai(config: Config, assistant: Assistant) -> tuple[AiFallback | None, str | None]:
+    """El respaldo con IA si está activado en [ai]; si no puede arrancar, el porqué."""
+    if not config.ai.enabled:
+        return None, None
+    try:
+        chat = build_chat(config.ai, read_key(config.ai, config.ai_key_path))
+    except AiSetupError as exc:
+        return None, str(exc)
+    usage = AiUsage(config.ai_usage_path, config.ai.monthly_budget_usd, config.ai.daily_questions)
+    fallback = AiFallback(
+        chat, usage, run_command=assistant.try_command, prices=prices_for(config.ai, chat.model), context=config.ai.context
+    )
+    return fallback, None
 
 
 def build_video(config: Config, *, simulated: bool = False) -> tuple[VideoSearch, VideoPlayer] | None:

@@ -112,6 +112,10 @@ def collect(service: Service) -> dict:
         family = " · con verificador" if service.wake.verifier is not None else ""
         wake = f"umbral {service.wake.threshold:.2f} · {times}{family}"
     music = display.music
+    if app.ai is not None:
+        ai = f"{app.ai.chat.name} · {app.ai.usage.summary()}"
+    else:
+        ai = app.ai_problem or ("desactivada" if not config.ai.enabled else "no disponible")
     sections = [
         (
             "VOXA",
@@ -150,6 +154,7 @@ def collect(service: Service) -> dict:
                 ("Internet", "sin conexión" if "internet" in has_problem else "bien"),
                 ("IP local", _local_ip() or "—"),
                 ("Clima", _weather_place(config) or "sin ubicación"),
+                ("IA", ai),
                 ("Pantalla", f"puerto {config.display.port}"),
             ],
         ),

@@ -89,6 +89,23 @@ class WakeConfig:
 
 
 @dataclass(frozen=True)
+class AiConfig:
+    enabled: bool = False
+    provider: str = "claude"
+    model: str = ""
+    endpoint: str = ""
+    key_env: str = ""
+    effort: str = ""
+    web_search: bool = False
+    monthly_budget_usd: float = 5.0
+    daily_questions: int = 60
+    price_input: float = 0.0
+    price_output: float = 0.0
+    timeout_seconds: float = 15.0
+    context: str = ""
+
+
+@dataclass(frozen=True)
 class DisplayConfig:
     enabled: bool = True
     port: int = 8766
@@ -106,12 +123,21 @@ class Config:
     routine: RoutineConfig = field(default_factory=RoutineConfig)
     display: DisplayConfig = field(default_factory=DisplayConfig)
     video: VideoConfig = field(default_factory=VideoConfig)
+    ai: AiConfig = field(default_factory=AiConfig)
     config_dir: Path = field(default_factory=lambda: _xdg("XDG_CONFIG_HOME", ".config"))
     state_dir: Path = field(default_factory=lambda: _xdg("XDG_STATE_HOME", ".local/state"))
 
     @property
     def spotify_token_path(self) -> Path:
         return self.config_dir / "spotify_token.json"
+
+    @property
+    def ai_key_path(self) -> Path:
+        return self.config_dir / "ia_clave"
+
+    @property
+    def ai_usage_path(self) -> Path:
+        return self.state_dir / "ia_uso.json"
 
     @property
     def pronunciation_path(self) -> Path:

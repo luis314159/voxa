@@ -38,7 +38,7 @@ class Assistant:
         self._matcher = matcher
         self._skills = dict(skills)
         self._timers = timers
-        self._fallback = fallback
+        self.fallback = fallback
         self._video_active = video_active or (lambda: False)
         self.last_response: Response | None = None
 
@@ -53,10 +53,18 @@ class Assistant:
     async def handle_text(self, text: str) -> Response:
         intent = self._matcher.match(text)
         if intent is None:
-            response = await self._fallback(text) if self._fallback else None
+            response = await self.fallback(text) if self.fallback else None
             return self._remember(response or NOT_UNDERSTOOD)
         log.info("«%s» → %s %s", text, intent.name, intent.slots)
         return self._remember(await self.handle_intent(intent))
+
+    async def try_command(self, text: str) -> Response | None:
+        """Ejecuta ``text`` si es una orden que las reglas entienden (la IA traduce a estas); si no, ``None``."""
+        intent = self._matcher.match(text)
+        if intent is None:
+            return None
+        log.info("«%s» → %s %s (vía IA)", text, intent.name, intent.slots)
+        return await self.handle_intent(intent)
 
     async def handle_intent(self, intent: Intent) -> Response:
         if self._timers and self._timers.ringing and intent.name in STOPS_ALARM:

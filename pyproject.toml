@@ -25,8 +25,16 @@ audio = [
     "onnxruntime",
     "piper-tts",
 ]
+# Respaldo con IA ([ai] en config.toml): Claude con el SDK de Anthropic; OpenAI, Azure OpenAI y
+# los servicios compatibles con el de OpenAI.
+ia = [
+    "anthropic>=2.3",
+    "openai>=1.60",
+]
 dev = [
     "numpy",
+    "anthropic>=2.3",
+    "openai>=1.60",
     "pytest>=8",
     "pytest-asyncio>=0.23",
 ]

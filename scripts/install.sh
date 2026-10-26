@@ -88,7 +88,7 @@ fi
 
 # --- 2. Núcleo (Python) -------------------------------------------------------
 paso "Instalando VOXA (núcleo)"
-run pipx install --force "${REPO}[audio]"
+run pipx install --force "${REPO}[audio,ia]"
 run pipx ensurepath
 VENV_PY="$(pipx environment --value PIPX_LOCAL_VENVS 2>/dev/null || echo "$HOME/.local/share/pipx/venvs")/voxa/bin/python"
 
@@ -250,4 +250,5 @@ cat <<EOF
   • Falta a mano:  inicio de sesión automático (Menú → Ventana de inicio de sesión →
                    Usuarios → Inicio de sesión automático) y, si no lo hiciste,
                    voxa spotify-login.
+  • Opcional:      respaldo con IA → voxa ia-clave y enabled = true en [ai].
 EOF

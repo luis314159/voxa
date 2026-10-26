@@ -103,6 +103,8 @@
 - {text: "no se oye", intent: volume.up}
 - {text: "bájale mucho", intent: volume.down}
 - {text: "baja el volumen", intent: volume.down}
+- {text: "bájale al volumen", intent: volume.down}
+- {text: "súbele a la música un poco", intent: volume.up}
 - {text: "está muy fuerte", intent: volume.down}
 - {text: "silencio", intent: volume.mute}
 - {text: "quita el silencio", intent: volume.unmute}

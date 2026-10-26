@@ -13,6 +13,7 @@ HELP = (
     "También pongo videos de recetas: «pon un video de cómo hacer pozole». "
     "Si quieres que deje de escuchar, di «deja de escuchar»."
 )
+HELP_AI = " Y cualquier otra pregunta, como «¿con qué sustituyo el huevo en un pastel?», se la paso a la IA."
 
 
 # Cómo se dice cada problema de ``voxa.health`` («¿estás bien?» → «Aquí estoy, pero no tengo internet»).
@@ -23,6 +24,7 @@ _SPOKEN_PROBLEMS = {
     "internet": "no tengo internet",
     "spotify": "falta conectar Spotify",
     "musica": "Spotifast no responde",
+    "ia": "no puedo usar la IA",
 }
 
 
@@ -30,11 +32,13 @@ class SystemSkill:
     def __init__(self) -> None:
         self.problems: Callable[[], list] = list
         """Lo pone el servicio: los problemas actuales (``voxa.health.Health.problems``)."""
+        self.open_questions = False
+        """Hay respaldo con IA: la ayuda lo menciona."""
 
     async def handle(self, intent: Intent) -> Response:
         match intent.name:
             case "system.help":
-                return Response(HELP)
+                return Response(HELP + HELP_AI if self.open_questions else HELP)
             case "system.status":
                 problems = [_SPOKEN_PROBLEMS.get(p.id, p.text.lower()) for p in self.problems()]
                 if problems:

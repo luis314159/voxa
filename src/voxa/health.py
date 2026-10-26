@@ -19,7 +19,7 @@ from voxa.services.music_backend import BackendUnavailable, NowPlaying
 log = logging.getLogger(__name__)
 
 # Orden en que se muestran: lo que deja a VOXA sorda o muda primero.
-PRIORITY = ("voz", "microfono", "activacion", "internet", "spotify", "musica")
+PRIORITY = ("voz", "microfono", "activacion", "internet", "spotify", "musica", "ia")
 
 
 @dataclass(frozen=True)
