@@ -102,6 +102,13 @@ class Chats:
         chats = self.all() | {chat: name}
         _write_private(self.path, json.dumps([{"id": c, "name": n} for c, n in chats.items()], ensure_ascii=False))
 
+    def remove(self, chat: int) -> bool:
+        chats = self.all()
+        if chats.pop(chat, None) is None:
+            return False
+        _write_private(self.path, json.dumps([{"id": c, "name": n} for c, n in chats.items()], ensure_ascii=False))
+        return True
+
     def new_code(self) -> str:
         code = f"{secrets.randbelow(1_000_000):06d}"
         _write_private(self.code_path, json.dumps({"code": code, "until": self._clock() + CODE_MINUTES * 60}))

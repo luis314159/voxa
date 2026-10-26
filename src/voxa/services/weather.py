@@ -95,3 +95,37 @@ class OpenMeteo:
             rain_probability=daily["precipitation_probability_max"][0] or 0,
             is_day=bool(current.get("is_day", 1)),
         )
+
+
+GEOCODING_URL = "https://geocoding-api.open-meteo.com/v1/search"
+
+
+@dataclass(frozen=True)
+class Place:
+    name: str
+    region: str
+    country: str
+    latitude: float
+    longitude: float
+
+    @property
+    def label(self) -> str:
+        return ", ".join(p for p in (self.name, self.region, self.country) if p)
+
+
+async def find_places(http: Http, text: str, limit: int = 6) -> list[Place]:
+    """«Monterrey» → las ciudades que se llaman así (para elegir la de la casa sin escribir coordenadas)."""
+    try:
+        response = await http.request(
+            "GET", GEOCODING_URL, params={"name": text.strip()[:80], "count": limit, "language": "es", "format": "json"}
+        )
+    except HttpError as exc:
+        raise WeatherUnavailable(f"sin conexión con Open-Meteo: {exc}") from exc
+    if response.status != 200 or not isinstance(response.data, dict):
+        raise WeatherUnavailable(f"Open-Meteo respondió {response.status}")
+    return [
+        Place(str(r.get("name", "")), str(r.get("admin1", "")), str(r.get("country", "")),
+              float(r["latitude"]), float(r["longitude"]))
+        for r in response.data.get("results") or []
+        if "latitude" in r and "longitude" in r
+    ]

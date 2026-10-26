@@ -15,6 +15,7 @@ from typing import TYPE_CHECKING, AsyncIterable, AsyncIterator
 
 from voxa import diagnostics
 from voxa.app import App
+from voxa.config import config_path
 from voxa.core.assistant import STOPS_ALARM
 from voxa.core.types import Response
 from voxa.display import Display, DisplayServer
@@ -25,6 +26,7 @@ from voxa.skills.timers import ring_phrase
 from voxa.state.timers import Timer
 from voxa.telegram import Chats, ShoppingBot, TelegramApi, read_token
 from voxa.web import WebServer, load_or_create_key
+from voxa.web_settings import SettingsApi
 
 if TYPE_CHECKING:
     from voxa.audio.devices import Microphone
@@ -184,7 +186,10 @@ class Service:
         if response is not None and response.action in ("display.phone", "display.phone_close"):
             self.show_phone_code(response.action == "display.phone")
         if response is not None and response.action == ENROLL_ACTION:
-            self._spawn(self.enroll(response.target or ""))
+            self.start_enrollment(response.target or "")
+
+    def start_enrollment(self, person: str) -> None:
+        self._spawn(self.enroll(person))
 
     async def enroll(self, person: str) -> Response | None:
         """«Aprende mi voz»: VOXA guía la grabación con el micrófono de la cocina y entrena el verificador."""
@@ -425,7 +430,8 @@ class Service:
                 server = None
         config = self.app.config
         if config.web.enabled:
-            web = WebServer(self, load_or_create_key(config.web_key_path), config.backgrounds_dir, port=config.web.port)
+            web = WebServer(self, load_or_create_key(config.web_key_path), config.backgrounds_dir, port=config.web.port,
+                            settings=SettingsApi(self, config_path()))
             try:
                 await web.start()
                 self.web = web

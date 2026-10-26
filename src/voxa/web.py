@@ -22,6 +22,7 @@ from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from voxa.service import Service
+    from voxa.web_settings import SettingsApi
 
 log = logging.getLogger(__name__)
 
@@ -29,7 +30,12 @@ COOKIE = "voxa_clave"
 MAX_BODY = 1 << 14
 MAX_PHOTO = 15 << 20
 _PHOTO_TYPES = {b"\xff\xd8\xff": "jpg", b"\x89PNG\r\n\x1a\n": "png", b"RIFF": "webp"}
-_STATUS = {200: "OK", 303: "See Other", 400: "Bad Request", 403: "Forbidden", 404: "Not Found", 413: "Payload Too Large"}
+_STATUS = {200: "OK", 303: "See Other", 400: "Bad Request", 403: "Forbidden", 404: "Not Found", 409: "Conflict",
+           413: "Payload Too Large", 502: "Bad Gateway"}
+SETTINGS_PATHS = frozenset({
+    "/api/ajustes", "/api/ajustes/revisar", "/api/clima/buscar", "/api/secreto", "/api/spotify/autorizar",
+    "/api/spotify/codigo", "/api/telegram/codigo", "/api/telegram/quitar", "/api/voz/aprender", "/api/ia/probar",
+})
 
 FORBIDDEN_PAGE = """<!doctype html><html lang="es"><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>VOXA</title>
@@ -62,8 +68,18 @@ def photo_kind(data: bytes) -> str | None:
 
 
 class WebServer:
-    def __init__(self, service: Service, key: str, photos_dir: Path, *, host: str = "0.0.0.0", port: int = 8770) -> None:
+    def __init__(
+        self,
+        service: Service,
+        key: str,
+        photos_dir: Path,
+        *,
+        host: str = "0.0.0.0",
+        port: int = 8770,
+        settings: SettingsApi | None = None,
+    ) -> None:
         self._service = service
+        self.settings = settings
         self._key = key
         self._photos = photos_dir
         self._host = host
@@ -85,6 +101,8 @@ class WebServer:
         log.info("VOXA para el celular en el puerto %d", self.port)
 
     async def close(self) -> None:
+        if self.settings is not None:
+            await self.settings.close()
         if self._server:
             self._server.close()
             await self._server.wait_closed()
@@ -137,6 +155,8 @@ class WebServer:
             return 200, {"Content-Type": "text/html; charset=utf-8"}, self.page.encode()
         if method == "GET" and url.path == "/api/estado":
             return self._json(200, self._state())
+        if method == "GET" and url.path == "/api/ajustes" and self.settings is not None:
+            return self._json(200, self.settings.summary())
         if method == "POST" and url.path == "/api/foto":
             return self._json(*self._save_photo(body))
         if method == "POST" and url.path.startswith("/api/"):
@@ -145,6 +165,8 @@ class WebServer:
             data = json.loads(body or b"{}")
             if not isinstance(data, dict):
                 return self._json(400, {"error": "se esperaba un objeto"})
+            if url.path in SETTINGS_PATHS and self.settings is not None:
+                return self._json(*await self.settings.post(url.path, data))
             return self._json(*await self._post(url.path, data))
         return self._json(404, {"error": "no existe"})
 
