@@ -70,6 +70,8 @@ class Display:
         self.wake_word: str | None = None
         self.shopping: list[str] = []
         """La lista del súper (``voxa.state.shopping``): la misma lista, se lee al tomar la foto."""
+        self.recipe: Callable[[], dict | None] = lambda: None
+        """La receta en curso (``voxa.state.recipe.RecipeSession.snapshot``)."""
         self._last: dict | None = None
 
     # --- TurnObserver (voxa.voice) ----------------------------------------
@@ -112,6 +114,7 @@ class Display:
             "video": {"title": self.video_title} if self.video_title else None,
             "wake_word": self.wake_word,
             "shopping": list(self.shopping),
+            "recipe": self.recipe(),
         }
 
     def _weather_snapshot(self) -> dict | None:

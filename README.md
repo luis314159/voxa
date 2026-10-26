@@ -26,6 +26,7 @@ Asistente de voz familiar para la cocina, sobre una PC All-in-One con Linux Mint
 | Servicios systemd e instalador | ✅ (falta probar en el equipo real) |
 | «Hey Voxa»: detector propio, alarmas que se apagan con «ya», cancelación de eco opcional | ✅ (falta calibrar con la familia) |
 | Respaldo con IA (opcional): Claude, OpenAI, Azure OpenAI o cualquier servicio compatible, con tope de gasto | ✅ (falta poner la llave) |
+| Recetas paso a paso con la IA: ingredientes, pasos en la pantalla, tiempo de cada paso, ingredientes a la lista | ✅ (falta poner la llave) |
 
 ## Probarlo (sin micrófono)
 
@@ -81,6 +82,8 @@ voxa ia-clave                                     # guarda la llave (permisos 60
 voxa ia-probar "¿cuánto se cuece un huevo tibio?" # respuesta, segundos y costo
 ```
 
+**Recetas paso a paso (con la IA).** «Dame la receta de pozole» (o «cómo se hace el arroz rojo», «quiero hacer enchiladas») arma la receta y la deja en la pantalla: «los ingredientes», «siguiente paso», «paso anterior», «repite el paso», «ve al paso 4», «pon el tiempo» (cuenta los minutos de ese paso), «agrega los ingredientes a la lista» y «termina la receta». Mientras tanto se le puede preguntar a la IA sobre esa receta («¿cuánto chile le pongo?»). Sin IA, «receta de pozole» pone un video, como antes.
+
 Luego `enabled = true` en `[ai]` de `~/.config/voxa/config.toml` (ahí se elige proveedor, modelo y tope) y `systemctl --user restart voxa`. El gasto del mes se ve en el diagnóstico de la pantalla.
 
 Si VOXA pronuncia mal un nombre, agrégalo a `~/.config/voxa/pronunciacion.yaml` (formato en [src/voxa/audio/pronunciacion.yaml](src/voxa/audio/pronunciacion.yaml)).
@@ -132,9 +135,9 @@ El corpus [tests/data/utterances.yaml](tests/data/utterances.yaml) guarda frases
 src/voxa/
 ├── nlu/        normalización, números/duraciones, grammar.yaml, matcher
 ├── core/       asistente (enrutamiento), tipos, frases en español
-├── skills/     música, video, volumen, temporizadores, hora, clima, cocina, súper, sistema, respaldo con IA
+├── skills/     música, video, volumen, temporizadores, hora, clima, cocina, súper, recetas, sistema, respaldo con IA
 ├── services/   Spotify (Web API, auth PKCE), Spotifast CLI, MPRIS, PipeWire, Open-Meteo, yt-dlp + mpv, IA
-├── state/      temporizadores, lista del súper y gasto de IA persistentes
+├── state/      temporizadores, lista del súper, receta en curso y gasto de IA persistentes
 ├── display.py  estado para la pantalla y su canal local
 ├── health.py   problemas que la pantalla avisa en ámbar
 ├── diagnostics.py  reporte de la pantalla de diagnóstico

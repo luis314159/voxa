@@ -13,7 +13,10 @@ HELP = (
     "También pongo videos de recetas: «pon un video de cómo hacer pozole». "
     "Si quieres que deje de escuchar, di «deja de escuchar»."
 )
-HELP_AI = " Y cualquier otra pregunta, como «¿con qué sustituyo el huevo en un pastel?», se la paso a la IA."
+HELP_AI = (
+    " Con la IA también te guío en recetas paso a paso: «dame la receta de arroz rojo»."
+    " Y cualquier otra pregunta, como «¿con qué sustituyo el huevo en un pastel?», se la paso a la IA."
+)
 
 
 # Cómo se dice cada problema de ``voxa.health`` («¿estás bien?» → «Aquí estoy, pero no tengo internet»).

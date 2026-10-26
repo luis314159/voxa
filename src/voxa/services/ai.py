@@ -67,6 +67,16 @@ COMMAND_SCHEMA = {
 }
 
 
+@dataclass(frozen=True)
+class Tool:
+    name: str
+    description: str
+    schema: dict
+
+
+COMMAND = Tool(COMMAND_TOOL, COMMAND_DESCRIPTION, COMMAND_SCHEMA)
+
+
 class AiError(Exception):
     """La IA no respondió. El mensaje es para el registro y el diagnóstico."""
 
@@ -83,6 +93,9 @@ class AiSetupError(AiError):
 class AiAnswer:
     text: str = ""
     commands: list[str] = field(default_factory=list)
+    """Las órdenes de VOXA que pidió (herramienta ``orden_voxa``)."""
+    calls: list[tuple[str, dict]] = field(default_factory=list)
+    """Las demás herramientas que usó, con sus argumentos (p. ej. la receta)."""
     input_tokens: int = 0
     output_tokens: int = 0
     searches: int = 0
@@ -94,47 +107,59 @@ class ChatModel(Protocol):
     """Para el diagnóstico: «Claude · claude-opus-5-5»."""
     model: str
 
-    async def ask(self, system: str, messages: list[dict[str, str]]) -> AiAnswer: ...
+    async def ask(
+        self, system: str, messages: list[dict[str, str]], tools: tuple[Tool, ...] = (COMMAND,), *, max_tokens: int = 2048
+    ) -> AiAnswer: ...
 
 
-def _command(raw: Any) -> str | None:
+def _arguments(raw: Any) -> dict | None:
     if isinstance(raw, str):
         try:
             raw = json.loads(raw)
         except ValueError:
             return None
-    if isinstance(raw, dict) and isinstance(raw.get("frase"), str) and raw["frase"].strip():
-        return raw["frase"].strip()
-    return None
+    return raw if isinstance(raw, dict) else None
+
+
+def _add_call(answer: AiAnswer, name: str, raw: Any) -> None:
+    args = _arguments(raw)
+    if args is None:
+        return
+    if name == COMMAND_TOOL:
+        if isinstance(args.get("frase"), str) and args["frase"].strip():
+            answer.commands.append(args["frase"].strip())
+    else:
+        answer.calls.append((name, args))
 
 
 class ClaudeChat:
     def __init__(
         self, client: Any, model: str = DEFAULT_CLAUDE_MODEL, *, effort: str = "low",
-        web_search: bool = False, max_tokens: int = 2048,
+        web_search: bool = False,
     ) -> None:
         self._client = client
         self.model = model
         self.name = f"Claude · {model}"
         self._effort = effort
         self._web_search = web_search
-        self._max_tokens = max_tokens
 
-    def _tools(self) -> list[dict]:
-        tools: list[dict] = [{"name": COMMAND_TOOL, "description": COMMAND_DESCRIPTION, "input_schema": COMMAND_SCHEMA}]
+    def _tools(self, tools: tuple[Tool, ...]) -> list[dict]:
+        specs: list[dict] = [{"name": t.name, "description": t.description, "input_schema": t.schema} for t in tools]
         if self._web_search:
             kind = "web_search_20260209" if self.model in _DYNAMIC_SEARCH else "web_search_20250305"
-            tools.append({"type": kind, "name": "web_search", "max_uses": 2})
-        return tools
+            specs.append({"type": kind, "name": "web_search", "max_uses": 2})
+        return specs
 
-    async def ask(self, system: str, messages: list[dict[str, str]]) -> AiAnswer:
+    async def ask(
+        self, system: str, messages: list[dict[str, str]], tools: tuple[Tool, ...] = (COMMAND,), *, max_tokens: int = 2048
+    ) -> AiAnswer:
         import anthropic
 
         params: dict[str, Any] = {
             "model": self.model,
-            "max_tokens": self._max_tokens,
+            "max_tokens": max_tokens,
             "system": system,
-            "tools": self._tools(),
+            "tools": self._tools(tools),
         }
         if self._effort:
             params["output_config"] = {"effort": self._effort}
@@ -172,9 +197,8 @@ def _add_claude(answer: AiAnswer, response: Any) -> None:
     for block in response.content:
         if block.type == "text":
             parts.append(block.text)
-        elif block.type == "tool_use" and block.name == COMMAND_TOOL:
-            if (phrase := _command(block.input)) is not None:
-                answer.commands.append(phrase)
+        elif block.type == "tool_use":
+            _add_call(answer, block.name, block.input)
     answer.text = "".join(parts).strip()
     answer.refused = answer.refused or response.stop_reason == "refusal"
     usage = response.usage
@@ -190,29 +214,29 @@ class OpenAiChat:
     """Chat Completions: OpenAI, Azure OpenAI (API v1) y los servicios compatibles."""
 
     def __init__(
-        self, client: Any, model: str, *, label: str = "OpenAI", reasoning_effort: str = "",
-        max_tokens: int = 2048, modern_limit: bool = True,
+        self, client: Any, model: str, *, label: str = "OpenAI", reasoning_effort: str = "", modern_limit: bool = True,
     ) -> None:
         self._client = client
         self.model = model
         self.name = f"{label} · {model}"
         self._reasoning_effort = reasoning_effort
-        self._max_tokens = max_tokens
         # OpenAI y Azure piden max_completion_tokens (los modelos que razonan rechazan max_tokens);
         # muchos servicios compatibles solo conocen max_tokens.
         self._limit_param = "max_completion_tokens" if modern_limit else "max_tokens"
 
-    async def ask(self, system: str, messages: list[dict[str, str]]) -> AiAnswer:
+    async def ask(
+        self, system: str, messages: list[dict[str, str]], tools: tuple[Tool, ...] = (COMMAND,), *, max_tokens: int = 2048
+    ) -> AiAnswer:
         import openai
 
         params: dict[str, Any] = {
             "model": self.model,
             "messages": [{"role": "system", "content": system}, *messages],
-            "tools": [{
-                "type": "function",
-                "function": {"name": COMMAND_TOOL, "description": COMMAND_DESCRIPTION, "parameters": COMMAND_SCHEMA},
-            }],
-            self._limit_param: self._max_tokens,
+            "tools": [
+                {"type": "function", "function": {"name": t.name, "description": t.description, "parameters": t.schema}}
+                for t in tools
+            ],
+            self._limit_param: max_tokens,
         }
         if self._reasoning_effort:
             params["reasoning_effort"] = self._reasoning_effort
@@ -236,9 +260,8 @@ class OpenAiChat:
         answer.text = (choice.message.content or "").strip()
         for call in choice.message.tool_calls or []:
             function = getattr(call, "function", None)
-            if function is not None and function.name == COMMAND_TOOL:
-                if (phrase := _command(function.arguments)) is not None:
-                    answer.commands.append(phrase)
+            if function is not None:
+                _add_call(answer, function.name, function.arguments)
         answer.refused = choice.finish_reason == "content_filter"
         if response.usage is not None:
             answer.input_tokens = response.usage.prompt_tokens or 0

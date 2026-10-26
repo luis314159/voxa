@@ -19,8 +19,9 @@ from typing import Awaitable, Callable
 
 from voxa.core.phrases import clock_words, date_phrase
 from voxa.core.types import Response
-from voxa.services.ai import AiError, AiSetupError, ChatModel, cost_usd
+from voxa.services.ai import COMMAND, AiAnswer, AiError, AiSetupError, ChatModel, Tool, cost_usd
 from voxa.state.ai_usage import AiUsage
+from voxa.state.recipe import Recipe
 
 log = logging.getLogger(__name__)
 
@@ -44,6 +45,64 @@ tarde», «agrega jitomate, cebolla y cilantro a la lista», «pon un video de c
 «bájale al volumen». No digas que hiciste algo si no usaste la herramienta. No puedes hacer nada fuera \
 de esa lista (compras, llamadas, mensajes, luces).
 """
+
+RECIPE_HINT = """
+Si la persona quiere cocinar algo ahora y pide la receta o cómo se hace un platillo, usa la herramienta \
+mostrar_receta: VOXA la guía paso a paso.
+"""
+
+RECIPE_PROMPT = """\
+Eres VOXA, el asistente de voz de la cocina de una familia en México. Te piden la receta de un platillo \
+para cocinarlo ahora, guiados por voz paso a paso.
+
+Usa la herramienta mostrar_receta con una receta casera y confiable (la versión mexicana o la más \
+común en México, si aplica), para las porciones que pidan (si no dicen, 4):
+- Ingredientes con su cantidad, como se dirían en voz alta («1 kilo de maíz pozolero», «sal al gusto»).
+- Entre 4 y 12 pasos; cada uno una o dos frases cortas con una sola acción, para leerse en voz alta, \
+sin numerarlos ni usar formato.
+- En «minutos», el tiempo de espera o cocción de ese paso (para ofrecer un temporizador); 0 si no hay.
+- Unidades completas (gramos, tazas, cucharadas, grados centígrados).
+
+Si lo que piden no es algo que se cocina, no uses la herramienta y explícalo en una frase.
+"""
+
+RECIPE_TOOL = Tool(
+    "mostrar_receta",
+    "Muestra en la pantalla de la cocina una receta y la guía paso a paso por voz.",
+    {
+        "type": "object",
+        "properties": {
+            "titulo": {"type": "string", "description": "Nombre del platillo, p. ej. «Pozole rojo»."},
+            "porciones": {"type": "integer"},
+            "ingredientes": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "texto": {"type": "string", "description": "Con cantidad: «2 tazas de harina»."},
+                        "nombre": {"type": "string", "description": "Solo lo que se compra: «harina»."},
+                    },
+                    "required": ["texto", "nombre"],
+                    "additionalProperties": False,
+                },
+            },
+            "pasos": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "texto": {"type": "string"},
+                        "minutos": {"type": "integer", "description": "Espera o cocción de este paso; 0 si no hay."},
+                    },
+                    "required": ["texto", "minutos"],
+                    "additionalProperties": False,
+                },
+            },
+        },
+        "required": ["titulo", "porciones", "ingredientes", "pasos"],
+        "additionalProperties": False,
+    },
+)
 
 # Lo que Whisper «oye» en el silencio o el ruido: nunca vale la pena preguntarlo.
 _HALLUCINATIONS = ("amara.org", "subtitulos", "suscribete", "gracias por ver", "www.")
@@ -98,6 +157,7 @@ REFUSED = Response("Prefiero no responder eso.")
 NO_ANSWER = Response("No supe qué responder. ¿Me lo dices de otra forma?", sound="error")
 
 RunCommand = Callable[[str], Awaitable["Response | None"]]
+StartRecipe = Callable[[Recipe], Awaitable[Response]]
 
 
 class AiFallback:
@@ -116,6 +176,10 @@ class AiFallback:
         memory_seconds: float = 180.0,
         memory_turns: int = 4,
     ) -> None:
+        self.start_recipe: StartRecipe | None = None
+        """Lo pone la app: si la IA manda una receta desde una pregunta libre, se abre en modo receta."""
+        self.extra_context: Callable[[], str] = str
+        """Lo pone la app: la receta en curso, para preguntas como «¿cuánto chile le pongo?»."""
         self.chat = chat
         self.usage = usage
         self._run_command = run_command
@@ -136,17 +200,66 @@ class AiFallback:
     async def __call__(self, text: str) -> Response | None:
         if not worth_asking(text):
             return None
+        if self._clock() - self._last_at > self._memory_seconds:
+            self._history.clear()
+        question = {"role": "user", "content": f"{self._context_line()}\n{text}"}
+        tools: tuple[Tool, ...] = (COMMAND, RECIPE_TOOL) if self.start_recipe else (COMMAND,)
+        system = SYSTEM_PROMPT + RECIPE_HINT if self.start_recipe else SYSTEM_PROMPT
+        answer = await self._ask(text, system, [*self._history, question], tools)
+        if isinstance(answer, Response):
+            return answer
+
+        recipe = self._recipe_in(answer)
+        if recipe is not None and self.start_recipe is not None:
+            response = await self.start_recipe(recipe)
+        elif answer.refused and not answer.text:
+            response = REFUSED
+        elif answer.commands:
+            response = await self._run(answer.commands, answer.text)
+        else:
+            spoken = speakable(answer.text)
+            response = Response(spoken) if spoken else NO_ANSWER
+        self._remember(question, response)
+        return response
+
+    async def recipe(self, dish: str) -> Recipe | Response:
+        """Arma la receta de un platillo (``recipe.start``); si no se pudo, lo que hay que decir."""
+        question = {"role": "user", "content": f"{context_line(self._now(), self._context)}\nLa receta de: {dish}"}
+        answer = await self._ask(f"receta de {dish}", RECIPE_PROMPT, [question], (RECIPE_TOOL,), max_tokens=4096)
+        if isinstance(answer, Response):
+            return answer
+        recipe = self._recipe_in(answer)
+        if recipe is not None:
+            self.forget()  # la plática empieza con la receta (la IA la ve en el contexto)
+            return recipe
+        if answer.refused and not answer.text:
+            return REFUSED
+        spoken = speakable(answer.text)
+        return Response(spoken) if spoken else NO_ANSWER
+
+    @staticmethod
+    def _recipe_in(answer: AiAnswer) -> Recipe | None:
+        for name, args in answer.calls:
+            if name == RECIPE_TOOL.name and (recipe := Recipe.from_tool(args)) is not None:
+                return recipe
+        return None
+
+    def _context_line(self) -> str:
+        extra = " ".join(part for part in (self._context.strip(), self.extra_context().strip()) if part)
+        return context_line(self._now(), extra)
+
+    async def _ask(
+        self, what: str, system: str, messages: list[dict[str, str]], tools: tuple[Tool, ...], *, max_tokens: int = 2048
+    ) -> AiAnswer | Response:
+        """Una petición con tope de gasto, registro y avisos; si no hubo respuesta, qué decir."""
         now = self._now()
         match self.usage.blocked(now):
             case "month":
                 return BUDGET_REACHED
             case "day":
                 return DAILY_LIMIT
-        if self._clock() - self._last_at > self._memory_seconds:
-            self._history.clear()
-        question = {"role": "user", "content": f"{context_line(now, self._context)}\n{text}"}
         try:
-            answer = await self.chat.ask(SYSTEM_PROMPT, [*self._history, question])
+            answer = await self.chat.ask(system, messages, tools, max_tokens=max_tokens)
         except AiSetupError as exc:
             log.error("IA: %s", exc)
             if self.on_setup_error:
@@ -161,19 +274,10 @@ class AiFallback:
         self.usage.record(self.last_cost, now)
         log.info(
             "IA «%s»: %d+%d tokens, %d búsquedas, %.4f USD → %s",
-            text, answer.input_tokens, answer.output_tokens, answer.searches, self.last_cost,
-            answer.commands or answer.text[:80],
+            what, answer.input_tokens, answer.output_tokens, answer.searches, self.last_cost,
+            answer.commands or [name for name, _ in answer.calls] or answer.text[:80],
         )
-
-        if answer.refused and not answer.text:
-            response = REFUSED
-        elif answer.commands:
-            response = await self._run(answer.commands, answer.text)
-        else:
-            spoken = speakable(answer.text)
-            response = Response(spoken) if spoken else NO_ANSWER
-        self._remember(question, response)
-        return response
+        return answer
 
     async def _run(self, commands: list[str], text: str) -> Response:
         """Ejecuta las órdenes que pidió la IA; habla VOXA (su respuesta ya dice qué hizo)."""

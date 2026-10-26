@@ -156,3 +156,17 @@
 - {text: "", intent: null}
 - {text: "hey voxa", intent: null}
 - {text: "el gato está en la azotea", intent: null}
+# --- recetas paso a paso ---
+- {text: "dame la receta de pozole", intent: recipe.start, slots: {query: pozole}}
+- {text: "cómo se hace el arroz rojo", intent: recipe.start, slots: {query: el arroz rojo}}
+- {text: "quiero hacer enchiladas verdes", intent: recipe.start, slots: {query: enchiladas verdes}}
+- {text: "siguiente paso", intent: recipe.next}
+- {text: "ya, qué sigue", intent: recipe.next}
+- {text: "paso anterior", intent: recipe.previous}
+- {text: "repite el paso", intent: recipe.repeat}
+- {text: "ve al paso tres", intent: recipe.goto, slots: {number: 3}}
+- {text: "qué ingredientes lleva", intent: recipe.ingredients}
+- {text: "pon el tiempo", intent: recipe.timer}
+- {text: "agrega los ingredientes a la lista", intent: recipe.to_list}
+- {text: "termina la receta", intent: recipe.close}
+- {text: "siguiente", intent: media.next}

@@ -155,6 +155,10 @@ class Config:
         return Path(self.wake.feature_dir).expanduser() / "verificador.npz"
 
     @property
+    def recipe_path(self) -> Path:
+        return self.state_dir / "receta.json"
+
+    @property
     def shopping_path(self) -> Path:
         return self.state_dir / "lista_super.json"
 

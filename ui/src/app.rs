@@ -10,7 +10,7 @@ use egui::{Align2, Color32, CornerRadius, Painter, Pos2, Rect, Sense, Ui, pos2, 
 use crate::backgrounds::Backgrounds;
 use crate::format;
 use crate::link::Link;
-use crate::protocol::{Command, Diagnostics, Music, Phase, State, Timer, Weather};
+use crate::protocol::{Command, Diagnostics, Music, Phase, Recipe, State, Timer, Weather};
 use crate::theme;
 use crate::widgets::{self, Icon, RingMode};
 
@@ -156,14 +156,24 @@ impl eframe::App for VoxaApp {
         let right = Rect::from_min_max(pos2(split + margin * 0.5, rect.top() + margin), rect.max - vec2(margin, margin));
 
         let caption_bottom = self.clock_and_caption(ui, &painter, &f, left, &state);
+        let mut free_bottom = left.bottom();
         if let Some(music) = &state.music {
-            let height = f.px(200.0);
+            // Con receta, la música se hace una franja: el paso es lo que hay que leer de lejos.
+            let compact = state.recipe.is_some();
+            let height = f.px(if compact { 120.0 } else { 200.0 });
             let card = Rect::from_min_max(pos2(left.left(), left.bottom() - height), left.max);
             if card.top() > caption_bottom {
-                self.music_card(ui, &painter, &f, card, music);
+                self.music_card(ui, &painter, &f, card, music, compact);
+                free_bottom = card.top() - f.px(28.0);
             }
         } else if let Some(old) = self.art_url.take() {
             ui.ctx().forget_image(&old);
+        }
+        if let Some(recipe) = &state.recipe {
+            let card = Rect::from_min_max(pos2(left.left(), caption_bottom + f.px(8.0)), pos2(left.right(), free_bottom));
+            if card.height() >= f.px(240.0) {
+                self.recipe_card(ui, &painter, &f, card, recipe);
+            }
         }
         let ring_left = self.ring(ui, &painter, &f, right, &state, connected);
         if let Some(weather) = &state.weather {
@@ -241,6 +251,20 @@ impl VoxaApp {
         let age = state.exchange_at.map_or(f64::INFINITY, |at| f.now - at);
         let fade = ((CAPTION_SECONDS - age) as f32).clamp(0.0, 1.0);
         let listening = matches!(state.phase, Phase::Listening | Phase::Thinking);
+        if state.recipe.is_some() {
+            // Con receta, la respuesta ya está en la tarjeta (el paso): basta un renglón fijo para el estado.
+            let line = if listening {
+                Some((if state.phase == Phase::Listening { "Te escucho…" } else { "Un momento…" }.to_owned(), theme::CYAN))
+            } else if fade > 0.0 {
+                state.heard.as_ref().map(|heard| (format!("«{heard}»"), theme::alpha(theme::TEXT_DIM, fade)))
+            } else {
+                None
+            };
+            if let Some((text, color)) = line {
+                widgets::fitted_text(painter, pos2(area.left(), y), Align2::LEFT_TOP, &text, theme::regular(f.px(40.0)), color, area.width());
+            }
+            return y + f.px(56.0);
+        }
         if listening {
             let text = if state.phase == Phase::Listening { "Te escucho…" } else { "Un momento…" };
             widgets::shadow_text(painter, pos2(area.left(), y), Align2::LEFT_TOP, text, theme::regular(f.px(52.0)), theme::CYAN);
@@ -271,7 +295,7 @@ impl VoxaApp {
         y
     }
 
-    fn music_card(&mut self, ui: &mut Ui, painter: &Painter, f: &Frame, card: Rect, music: &Music) {
+    fn music_card(&mut self, ui: &mut Ui, painter: &Painter, f: &Frame, card: Rect, music: &Music, compact: bool) {
         let cover = Rect::from_min_size(card.min, vec2(card.height(), card.height()));
         let radius = CornerRadius::same(f.px(20.0) as u8);
         painter.rect_filled(cover, radius, theme::CARD);
@@ -287,31 +311,37 @@ impl VoxaApp {
         }
 
         let x = cover.right() + f.px(32.0);
-        let width = card.right() - x;
+        let size = f.px(72.0);
+        let controls = 3.0 * size + 2.0 * f.px(16.0);
+        // Compacta: título y artista a media altura, controles a la derecha y sin barra de avance.
+        let (text_top, width, controls_left, y) = if compact {
+            let top = card.center().y - f.px(44.0);
+            (top, card.right() - controls - f.px(24.0) - x, card.right() - controls, card.center().y)
+        } else {
+            (card.top() + f.px(4.0), card.right() - x, x, card.bottom() - size / 2.0)
+        };
         widgets::fitted_text(
             painter,
-            pos2(x, card.top() + f.px(4.0)),
+            pos2(x, text_top),
             Align2::LEFT_TOP,
             &music.title,
-            theme::strong(f.px(46.0)),
+            theme::strong(f.px(if compact { 40.0 } else { 46.0 })),
             theme::TEXT,
             width,
         );
         if let Some(artist) = &music.artist {
             widgets::fitted_text(
                 painter,
-                pos2(x, card.top() + f.px(58.0)),
+                pos2(x, text_top + f.px(if compact { 50.0 } else { 54.0 })),
                 Align2::LEFT_TOP,
                 artist,
-                theme::regular(f.px(34.0)),
+                theme::regular(f.px(if compact { 30.0 } else { 34.0 })),
                 theme::TEXT_DIM,
                 width,
             );
         }
 
         // Controles: anterior, reproducir/pausar, siguiente.
-        let size = f.px(72.0);
-        let y = card.bottom() - size / 2.0;
         let buttons = [
             (Icon::Previous, "anterior", Command::Say { text: "anterior".into() }),
             (
@@ -323,7 +353,7 @@ impl VoxaApp {
         ];
         let progress_left = x + 3.0 * (size + f.px(16.0)) + f.px(16.0);
         for (n, (icon, id, command)) in buttons.into_iter().enumerate() {
-            let center = pos2(x + size / 2.0 + n as f32 * (size + f.px(16.0)), y);
+            let center = pos2(controls_left + size / 2.0 + n as f32 * (size + f.px(16.0)), y);
             let hit = Rect::from_center_size(center, vec2(size, size));
             let response = ui.interact(hit, ui.scope_id().with(("musica", id)), Sense::click());
             let primary = n == 1;
@@ -336,7 +366,7 @@ impl VoxaApp {
             }
         }
 
-        if let (Some(position), Some(length)) = (music.position_now(f.now), music.length) {
+        if let (false, Some(position), Some(length)) = (compact, music.position_now(f.now), music.length) {
             if length > 0.0 && card.right() - progress_left > f.px(160.0) {
                 let bar = Rect::from_min_max(pos2(progress_left, y - f.px(4.0)), pos2(card.right(), y + f.px(4.0)));
                 widgets::progress_bar(painter, bar, (position / length) as f32, None);
@@ -437,6 +467,90 @@ impl VoxaApp {
         }
         if !state.shopping.is_empty() && area.bottom() - y >= f.px(150.0) {
             shopping_card(painter, f, Rect::from_min_max(pos2(area.left(), y), area.max), &state.shopping);
+        }
+    }
+
+    /// La receta: el paso en grande, qué sigue y botones; antes de empezar, los ingredientes.
+    fn recipe_card(&mut self, ui: &mut Ui, painter: &Painter, f: &Frame, card: Rect, recipe: &Recipe) {
+        painter.rect_filled(card, CornerRadius::same(f.px(28.0) as u8), theme::CARD);
+        let tight = card.height() < f.px(440.0);
+        let inner = card.shrink(f.px(if tight { 26.0 } else { 36.0 }));
+        let total = recipe.steps.len();
+        let step = recipe.step();
+
+        // Encabezado: platillo y en qué paso va, con la barra de avance debajo.
+        let where_text = match step {
+            Some((n, _)) => format!("Paso {} de {total}", n + 1),
+            None => format!("{} porciones · {total} pasos", recipe.servings),
+        };
+        let where_rect = widgets::shadow_text(painter, inner.right_top(), Align2::RIGHT_TOP, where_text, theme::regular(f.px(32.0)), theme::CYAN);
+        let title_room = where_rect.left() - inner.left() - f.px(24.0);
+        widgets::fitted_text(painter, inner.left_top(), Align2::LEFT_TOP, &recipe.title, theme::strong(f.px(36.0)), theme::TEXT_DIM, title_room);
+        let bar = Rect::from_min_size(pos2(inner.left(), inner.top() + f.px(52.0)), vec2(inner.width(), f.px(6.0)));
+        widgets::progress_bar(painter, bar, recipe.progress(), None);
+
+        // Pie: botón del tiempo del paso (si tiene) y anterior / siguiente.
+        let size = f.px(if tight { 68.0 } else { 84.0 });
+        let row_y = inner.bottom() - size / 2.0;
+        let buttons = [(Icon::Previous, "anterior", "paso anterior"), (Icon::Next, "siguiente", "siguiente paso")];
+        for (n, (icon, id, said)) in buttons.into_iter().enumerate() {
+            let center = pos2(inner.right() - size / 2.0 - (1 - n) as f32 * (size + f.px(20.0)), row_y);
+            let response = ui.interact(Rect::from_center_size(center, vec2(size, size)), ui.scope_id().with(("receta", id)), Sense::click());
+            let primary = n == 1;
+            let fill = if primary { theme::TEXT } else if response.hovered() { theme::CARD_HOVER } else { theme::TRACK };
+            painter.circle_filled(center, size / 2.0, fill);
+            widgets::icon(painter, center, size * 0.36, icon, if primary { theme::BG } else { theme::TEXT });
+            if response.clicked() {
+                self.send(Command::Say { text: said.into() });
+            }
+        }
+        let footer_right = inner.right() - 2.0 * size - f.px(20.0) - f.px(28.0);
+        match step {
+            Some((_, current)) if current.minutes > 0 => {
+                let label = format!("Contar {}", format::duration(f64::from(current.minutes) * 60.0));
+                let font = theme::strong(f.px(32.0));
+                let width = painter.layout_no_wrap(label.clone(), font.clone(), theme::BG).size().x + f.px(56.0);
+                let pill = Rect::from_min_size(pos2(inner.left(), row_y - size / 2.0), vec2(width.min(footer_right - inner.left()), size));
+                let response = ui.interact(pill, ui.scope_id().with(("receta", "tiempo")), Sense::click());
+                painter.rect_filled(pill, CornerRadius::same((size / 2.0) as u8), if response.hovered() { theme::lerp(theme::CYAN, theme::TEXT, 0.3) } else { theme::CYAN });
+                widgets::fitted_text(painter, pill.center(), Align2::CENTER_CENTER, &label, font, theme::BG, pill.width() - f.px(32.0));
+                if response.clicked() {
+                    self.send(Command::Say { text: "pon el tiempo".into() });
+                }
+            }
+            Some(_) => {}
+            None => {
+                let hint = "Di «siguiente paso» para empezar";
+                widgets::fitted_text(painter, pos2(inner.left(), row_y), Align2::LEFT_CENTER, hint, theme::regular(f.px(30.0)), theme::TEXT_DIM, footer_right - inner.left());
+            }
+        }
+
+        let gap = f.px(if tight { 18.0 } else { 28.0 });
+        let body = Rect::from_min_max(pos2(inner.left(), bar.bottom() + gap), pos2(inner.right(), inner.bottom() - size - gap));
+        match step {
+            Some((n, current)) => {
+                // Lo que sigue, en un renglón al fondo (si hay lugar); el paso usa la letra más grande que quepa.
+                let mut room = body.height();
+                if room >= f.px(170.0) {
+                    let next = recipe.steps.get(n + 1).map_or_else(|| "Último paso".to_owned(), |s| format!("Después: {}", s.text));
+                    let next_font = theme::regular(f.px(30.0));
+                    widgets::fitted_text(painter, pos2(body.left(), body.bottom()), Align2::LEFT_BOTTOM, &next, next_font, theme::TEXT_DIM, body.width());
+                    room -= f.px(52.0);
+                }
+                let mut galley = None;
+                for size in [60.0, 52.0, 44.0, 38.0, 32.0, 28.0] {
+                    let laid = painter.layout(current.text.clone(), theme::strong(f.px(size)), theme::TEXT, body.width());
+                    let fits = laid.size().y <= room;
+                    galley = Some(laid);
+                    if fits {
+                        break;
+                    }
+                }
+                if let Some(galley) = galley {
+                    widgets::shadow_galley(painter, body.left_top(), galley, theme::TEXT);
+                }
+            }
+            None => ingredient_columns(painter, f, body, &recipe.ingredients),
         }
     }
 
@@ -669,6 +783,29 @@ fn shopping_card(painter: &Painter, f: &Frame, area: Rect, items: &[String]) {
         let at = slot(n);
         painter.circle_filled(pos2(at.x + f.px(8.0), at.y + row * 0.42), f.px(5.0), theme::CYAN);
         widgets::fitted_text(painter, at + vec2(f.px(28.0), 0.0), Align2::LEFT_TOP, &format::capitalize(item), font.clone(), theme::TEXT, column - f.px(40.0));
+    }
+    if more > 0 {
+        widgets::shadow_text(painter, slot(shown) + vec2(f.px(28.0), 0.0), Align2::LEFT_TOP, format!("y {more} más"), font, theme::TEXT_DIM);
+    }
+}
+
+/// Ingredientes en dos columnas, los que quepan, y «y N más».
+fn ingredient_columns(painter: &Painter, f: &Frame, area: Rect, items: &[String]) {
+    let row = f.px(46.0);
+    widgets::shadow_text(painter, area.left_top(), Align2::LEFT_TOP, "Ingredientes", theme::regular(f.px(30.0)), theme::TEXT_DIM);
+    let top = area.top() + f.px(52.0);
+    let rows_fit = (((area.bottom() - top) / row).floor() as usize).max(1);
+    let capacity = rows_fit * 2;
+    let shown = if items.len() > capacity { capacity - 1 } else { items.len() };
+    let more = items.len() - shown;
+    let per_column = (shown + usize::from(more > 0)).div_ceil(2).max(1);
+    let column = area.width() / 2.0;
+    let font = theme::regular(f.px(34.0));
+    let slot = |n: usize| pos2(area.left() + (n / per_column) as f32 * column, top + (n % per_column) as f32 * row);
+    for (n, item) in items[..shown].iter().enumerate() {
+        let at = slot(n);
+        painter.circle_filled(pos2(at.x + f.px(8.0), at.y + row * 0.4), f.px(5.0), theme::CYAN);
+        widgets::fitted_text(painter, at + vec2(f.px(28.0), 0.0), Align2::LEFT_TOP, &format::capitalize(item), font.clone(), theme::TEXT, column - f.px(44.0));
     }
     if more > 0 {
         widgets::shadow_text(painter, slot(shown) + vec2(f.px(28.0), 0.0), Align2::LEFT_TOP, format!("y {more} más"), font, theme::TEXT_DIM);

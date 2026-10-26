@@ -46,7 +46,8 @@ class FakeChat:
         self.answers = list(answers)
         self.asked: list[list[dict]] = []
 
-    async def ask(self, system, messages):
+    async def ask(self, system, messages, tools=(), *, max_tokens=2048):
+        self.tools = tools
         self.asked.append(messages)
         answer = self.answers.pop(0)
         if isinstance(answer, Exception):

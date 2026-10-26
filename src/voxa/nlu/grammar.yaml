@@ -43,6 +43,12 @@
     - "(pon|ponme|crea|agrega|programa) [un] recordatorio (para|de|que) {name} (a la|a las) {time}"
 
 # Lista del súper. Va antes que todo lo que empieza con «pon» o «quita».
+# Antes que la lista del súper: «agrega los ingredientes a la lista» es de la receta.
+- intent: recipe.to_list
+  patterns:
+    - "(agrega|agregale|apunta|anota|pon|mete|manda) los ingredientes (a|en) (la lista|mi lista|la lista del super)"
+    - "(agrega|apunta|anota|pon|mete) (la receta|lo de la receta|los ingredientes de la receta) (a|en) (la lista|la lista del super)"
+
 - intent: shopping.clear
   patterns:
     - "(borra|limpia|vacia|elimina) [toda] (la lista|mi lista|la lista del super|la lista de compras|la lista de la compra|la lista del mandado)"
@@ -212,6 +218,51 @@
     - pattern: "(cuantas|cuantos) libras (es|son|hay en|tiene|tienen|lleva|llevan|equivale a|equivalen a|caben en|cabe en|pesa|pesan) {query}"
       set: {unit: libras}
 
+# Recetas paso a paso (con IA; sin IA, «receta de…» pone un video de la receta).
+- intent: recipe.timer
+  patterns:
+    - "(pon|ponme|ponle|inicia|empieza|arranca|activa|cuenta) [el|un|ese] (tiempo|temporizador|timer|cronometro) [(del|de este|de ese) paso|de la receta]"
+    - "(cuenta|toma|tomame) el tiempo"
+
+- intent: recipe.next
+  patterns:
+    - "[ya|listo|ok|bueno] (siguiente|proximo|el siguiente|el proximo) paso"
+    - "[ya|listo|ok|bueno] (que sigue|y luego|y despues|que mas sigue|que hago despues|que hago ahora|ya quedo que sigue)"
+    - "(empezamos|empieza la receta|empecemos|comenzamos|comencemos|vamos con el primer paso|el primer paso)"
+
+- intent: recipe.previous
+  patterns:
+    - "(paso anterior|el paso anterior|regresa un paso|vuelve un paso|regresa al paso anterior|vuelve al paso anterior)"
+
+- intent: recipe.repeat
+  patterns:
+    - "(repite|repiteme|repitemelo|dime otra vez|lee otra vez|cual era|como era) [el] paso"
+    - "en que paso (voy|vamos|estoy|estamos)"
+    - "que paso (es|era)"
+
+- intent: recipe.goto
+  patterns:
+    - "(ve|vete|pasa|salta|regresa|regresate|vuelve|brinca) al paso {number}"
+    - "[el] paso [numero] {number}"
+
+- intent: recipe.ingredients
+  patterns:
+    - "(que|cuales) [son los] ingredientes (lleva|llevan|necesito|son|tiene|ocupo|ocupamos|necesitamos)"
+    - "(dime|dame|lee|leeme|repite|repiteme) los ingredientes"
+    - "(los ingredientes|que ingredientes)"
+
+- intent: recipe.close
+  patterns:
+    - "(termina|cierra|quita|cancela|acaba|termine) [la|esta] receta"
+    - "(ya termine|terminamos|ya terminamos) [la receta|de cocinar]"
+
+- intent: recipe.start
+  patterns:
+    - "(dame|dime|pasame|quiero|busca|buscame|necesito|ensename|lee|leeme) [la|una|el] receta (de|del|para) {query}"
+    - "(receta de|receta del|receta para) {query}"
+    - "(como se hace|como se hacen|como hago|como hacer|como preparo|como preparar|como se prepara|como se preparan|como cocino|como cocinar) {query}"
+    - "(quiero|vamos a|voy a|ayudame a|ensename a) (hacer|preparar|cocinar) {query}"
+
 - intent: video.close
   patterns:
     - "(cierra|quita|apaga|deten) [el] (video|youtube)"
@@ -220,8 +271,6 @@
   patterns:
     - "(pon|ponme|busca|buscame|reproduce|quiero ver|muestrame|ensename) [un|el|unos|los] (video|videos) (de|del|sobre|para|con|que) {query}"
     - "(busca|buscame|pon|ponme) en youtube {query}"
-    - pattern: "(como se hace|como se hacen|como hacer|como preparar|como se prepara|receta de|receta para) {query}"
-      set: {kind: recipe}
 
 - intent: clock.time
   patterns:

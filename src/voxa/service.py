@@ -53,6 +53,10 @@ class Service:
         if system is not None and hasattr(system, "problems"):
             system.problems = lambda: self.health.problems  # «¿estás bien?» dice qué falla
         display.shopping = app.shopping.items  # la pantalla ve la lista tal cual (se republica tras cada orden)
+        display.recipe = app.recipe.snapshot
+        recipe = app.assistant.skill("recipe")
+        if recipe is not None and hasattr(recipe, "on_wait"):
+            recipe.on_wait = self._say_meanwhile
         if app.ai_problem:
             self.health.report(Problem("ia", "La IA no está lista", app.ai_problem))
         if app.ai is not None:
@@ -129,6 +133,12 @@ class Service:
             await self.session.say(response)
         await self._apply(response)
         return response
+
+    async def _say_meanwhile(self, text: str) -> None:
+        """Algo que decir mientras se espera a la IA («Déjame ver la receta…»); luego sigue «pensando»."""
+        if self.session is not None:
+            await self.session.say(Response(text))
+        self.phase("thinking")
 
     async def _apply(self, response: Response | None) -> None:
         if response is not None and response.action == MUTE_ACTION:

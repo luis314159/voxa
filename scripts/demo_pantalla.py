@@ -23,6 +23,7 @@ from voxa.health import Problem
 from voxa.service import Service
 from voxa.services.music_backend import NowPlaying
 from voxa.services.weather import Weather
+from voxa.state.recipe import Recipe
 
 EXCHANGES = [
     ("cuánto le falta al arroz", "Faltan 7 minutos y 30 segundos."),
@@ -30,6 +31,23 @@ EXCHANGES = [
     ("va a llover hoy", "No se esperan lluvias hoy. Máxima de 24 grados."),
 ]
 CYCLE = [("listening", 3.0), ("thinking", 1.0), ("speaking", 2.5), ("idle", 6.0)]
+
+
+DEMO_RECIPE = Recipe.from_tool({
+    "titulo": "Pozole rojo",
+    "porciones": 6,
+    "ingredientes": [{"texto": t, "nombre": t} for t in (
+        "1 kilo de maíz pozolero", "1 kilo de carne de cerdo", "5 chiles guajillo", "3 chiles anchos",
+        "1 cebolla", "4 dientes de ajo", "orégano y sal al gusto", "lechuga, rábanos y limón para servir",
+    )],
+    "pasos": [
+        {"texto": "Cuece la carne con media cebolla, 2 ajos y sal en 3 litros de agua.", "minutos": 60},
+        {"texto": "Tuesta y remoja los chiles en agua caliente.", "minutos": 15},
+        {"texto": "Licúa los chiles con el resto de la cebolla y el ajo, cuela y fríe la salsa 5 minutos.", "minutos": 5},
+        {"texto": "Agrega la salsa y el maíz al caldo con la carne y deja hervir a fuego bajo.", "minutos": 20},
+        {"texto": "Sirve con lechuga, rábano, orégano y limón.", "minutos": 0},
+    ],
+})
 
 
 async def main() -> None:
@@ -47,6 +65,7 @@ async def main() -> None:
     parser.add_argument("--sin-activacion", action="store_true", help="sin «Hey Voxa» (solo tocar)")
     parser.add_argument("--recordatorio", action="store_true", help="agrega un recordatorio a una hora fija")
     parser.add_argument("--lista", action="store_true", help="llena la lista del súper")
+    parser.add_argument("--receta", type=int, metavar="PASO", help="abre una receta en ese paso (0 = ingredientes)")
     parser.add_argument("--puerto", type=int, default=8766)
     args = parser.parse_args()
 
@@ -63,6 +82,9 @@ async def main() -> None:
             app.timers.add(0, "el pan")
     if args.lista:
         app.shopping.add(["leche", "huevos", "tortillas", "jabón para trastes", "aguacates", "café", "pan dulce"])
+    if args.receta is not None:
+        app.recipe.start(DEMO_RECIPE)
+        app.recipe.go(args.receta - 1)
     if not args.sin_musica:
         music.current = NowPlaying(
             "Amor eterno", "Rocío Dúrcal", album="Canta a Juan Gabriel", art_url=args.portada, position=61.0, length=287.0

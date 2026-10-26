@@ -320,6 +320,7 @@ Cada fase termina con un **criterio de salida** verificable.
 - Respaldo de NLU con *tool calling* para frases que las reglas no entienden: la herramienta `orden_voxa` traduce la frase libre a una orden que la gramática entiende y VOXA la ejecuta (nunca acciones fuera de las suyas).
 - Preguntas abiertas con respuestas cortas para voz; plática corta (las preguntas de los últimos 3 minutos). Las conversiones y la lista del súper ya son locales.
 - Proveedores: Claude (SDK de Anthropic, con respaldo del servidor si el modelo declina y búsqueda web opcional), OpenAI, Azure OpenAI (API v1) y cualquier servicio compatible con OpenAI (Gemini, Groq, Mistral, DeepSeek, OpenRouter, Ollama).
+- **Recetas paso a paso:** la IA arma la receta (herramienta `mostrar_receta`: ingredientes con cantidad, pasos cortos con sus minutos) y VOXA la guía por voz y en la pantalla: siguiente/anterior/repite/ve al paso N, «pon el tiempo» del paso, ingredientes a la lista. La receta en curso va en el contexto de las preguntas libres. Sin IA, «receta de…» pone un video.
 - Límite de gasto mensual en USD y tope diario de preguntas (`~/.local/state/voxa/ia_uso.json`), visibles en el diagnóstico. Privacidad: apagada por defecto, solo texto (nunca audio), llave con permisos `600`, y las alucinaciones típicas de Whisper en el silencio no se mandan.
 
 **Salida:** ≥ 80 % de las frases que antes fallaban ahora se resuelven, dentro del presupuesto.

@@ -32,6 +32,51 @@ pub struct State {
     /// Lista del súper.
     #[serde(default)]
     pub shopping: Vec<String>,
+    /// La receta que se está cocinando paso a paso.
+    pub recipe: Option<Recipe>,
+}
+
+#[derive(Debug, Clone, Deserialize, PartialEq)]
+pub struct Recipe {
+    pub title: String,
+    #[serde(default)]
+    pub servings: u32,
+    /// Con cantidad: «1 kilo de maíz pozolero».
+    #[serde(default)]
+    pub ingredients: Vec<String>,
+    #[serde(default)]
+    pub steps: Vec<RecipeStep>,
+    /// Paso actual desde 0; -1 mientras no se empieza (se ven los ingredientes).
+    #[serde(default = "not_started")]
+    pub current: i32,
+}
+
+#[derive(Debug, Clone, Deserialize, PartialEq)]
+pub struct RecipeStep {
+    pub text: String,
+    /// Espera o cocción del paso; 0 si no hay.
+    #[serde(default)]
+    pub minutes: u32,
+}
+
+fn not_started() -> i32 {
+    -1
+}
+
+impl Recipe {
+    /// El paso actual (índice desde 0), o `None` si aún no se empieza.
+    pub fn step(&self) -> Option<(usize, &RecipeStep)> {
+        let n = usize::try_from(self.current).ok()?;
+        self.steps.get(n).map(|step| (n, step))
+    }
+
+    /// Fracción hecha, para la barra: el paso 3 de 4 es 0.75.
+    pub fn progress(&self) -> f32 {
+        match self.step() {
+            Some((n, _)) if !self.steps.is_empty() => (n + 1) as f32 / self.steps.len() as f32,
+            _ => 0.0,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Deserialize, PartialEq)]
@@ -273,6 +318,20 @@ mod tests {
         let Some(Incoming::Diagnostics(report)) = parse_line(line) else { panic!("no es diagnóstico") };
         assert_eq!(report.sections[0].items[0], ("Micrófono".to_owned(), "abierto".to_owned()));
         assert_eq!(report.problems[0].detail, "DNS");
+    }
+
+    #[test]
+    fn parses_a_recipe_in_progress() {
+        let line = r#"{"type": "state", "recipe": {"title": "Pozole rojo", "servings": 6,
+            "ingredients": ["1 kilo de maíz"], "steps": [{"text": "Cuece la carne", "minutes": 60},
+            {"text": "Licúa los chiles", "minutes": 0}], "current": 1}}"#;
+        let recipe = parse_state(line).unwrap().recipe.unwrap();
+        let (n, step) = recipe.step().unwrap();
+        assert_eq!((n, step.text.as_str(), recipe.progress()), (1, "Licúa los chiles", 1.0));
+        let fresh = parse_state(r#"{"type": "state", "recipe": {"title": "Arroz", "steps": [{"text": "Lava"}]}}"#).unwrap();
+        let fresh = fresh.recipe.unwrap();
+        assert_eq!((fresh.current, fresh.step(), fresh.progress()), (-1, None, 0.0));
+        assert!(parse_state(r#"{"type": "state"}"#).unwrap().recipe.is_none());
     }
 
     #[test]
