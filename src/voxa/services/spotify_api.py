@@ -157,8 +157,31 @@ class SpotifyWebApi:
     async def play(self, query: str, kind: str | None = None) -> PlayResult:
         body, result = await self._choose(query, kind)
         device_id = await self._home_device_id()
-        await self._api("PUT", "/me/player/play", params={"device_id": device_id}, body=body)
+        try:
+            await self._api("PUT", "/me/player/play", params={"device_id": device_id}, body=body)
+        except BackendUnavailable as exc:
+            if result.kind != "playlist":
+                raise
+            # Algunas playlists editoriales de Spotify no se dejan poner desde apps nuevas de la Web
+            # API: con el dispositivo ya encontrado, se prueba con las siguientes de la búsqueda.
+            log.info("No se pudo poner la playlist «%s» (%s); pruebo otras", result.title, exc)
+            return await self._other_playlist(query, device_id, body.get("context_uri"), exc)
         return result
+
+    async def _other_playlist(self, query: str, device_id: str, failed: str | None, error: Exception) -> PlayResult:
+        tried = 0
+        for playlist in self._items(await self._search(query, "playlist"), "playlists"):
+            if playlist.get("uri") == failed or tried >= 2:
+                continue
+            tried += 1
+            try:
+                body = {"context_uri": playlist["uri"]}
+                await self._api("PUT", "/me/player/play", params={"device_id": device_id}, body=body)
+            except BackendUnavailable as exc:
+                error = exc
+                continue
+            return PlayResult(playlist["name"], kind="playlist")
+        raise error
 
     async def pause(self) -> None:
         await self._api("PUT", "/me/player/pause")

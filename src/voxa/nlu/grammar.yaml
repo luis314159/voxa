@@ -170,6 +170,12 @@
     - "(baja|bajale|bajalo|bajala|disminuye|reduce) [un poco|un poquito|poquito|mucho|bastante|mas] [el|la|al|a la|a el] [volumen|musica|sonido|cancion] [un poco|un poquito|poquito|mucho|bastante|mas]"
     - "(mas bajo|mas bajito|menos volumen|menos fuerte|esta muy fuerte|muy fuerte|bajito|mas quedito)"
 
+# «Pon música para cocinar» es un ambiente, no un dispositivo (va antes que music.transfer).
+- intent: music.play
+  patterns:
+    - pattern: "(pon|ponme|reproduce|toca|tocame|quiero escuchar|quiero oir|escuchemos) [unas|una|un poco de|algo de] (musica|algo|canciones|rolas) (para|pa) {query}"
+      set: {kind: mood}
+
 - intent: music.transfer
   patterns:
     - "(ponla|ponlo|pasala|pasalo|mandala|mandalo|cambiala|cambialo|muevela|muevelo) (en|a|al|para) [la|el] {device}"

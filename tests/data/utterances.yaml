@@ -170,3 +170,7 @@
 - {text: "agrega los ingredientes a la lista", intent: recipe.to_list}
 - {text: "termina la receta", intent: recipe.close}
 - {text: "siguiente", intent: media.next}
+# --- música por ambiente ---
+- {text: "pon música para cocinar", intent: music.play, slots: {query: cocinar, kind: mood}}
+- {text: "ponme algo de música para bailar", intent: music.play, slots: {query: bailar, kind: mood}}
+- {text: "pon la música en la sala", intent: music.transfer, slots: {device: sala}}

@@ -16,7 +16,7 @@ Asistente de voz familiar para la cocina, sobre una PC All-in-One con Linux Mint
 | Temporizadores persistentes con alarma; recordatorios y despertador a una hora fija | ✅ |
 | Conversiones de cocina sin internet (tazas, cucharadas, gramos, °F/°C) | ✅ |
 | Lista del súper por voz (y en la pantalla), «buenos días» / «buenas noches» | ✅ |
-| Música: Web API + Connect → CLI de Spotifast → MPRIS | ✅ (falta probar en el equipo real) |
+| Música: Web API + Connect → CLI de Spotifast → MPRIS; por ambiente o género («algo tranquilo para cocinar», «salsa», «los 80») | ✅ (falta probar en el equipo real) |
 | Volumen (PipeWire), hora, clima (Open-Meteo) | ✅ |
 | Modo texto (`voxa texto`) | ✅ |
 | Voz con «pulsar para hablar» (`voxa voz`): micrófono, fin de frase, STT híbrido Vosk/Whisper, Piper, sonidos, ducking | ✅ (falta calibrar en el equipo real) |

@@ -6,7 +6,7 @@ from voxa.core.phrases import join_words
 from voxa.core.types import OK, Intent, Response
 
 HELP = (
-    "Puedo poner música de Spotify, por ejemplo «pon Soda Stereo»; "
+    "Puedo poner música de Spotify, por ejemplo «pon Soda Stereo» o «pon algo tranquilo para cocinar»; "
     "poner temporizadores, como «temporizador de diez minutos para el arroz», "
     "y recordatorios, como «recuérdame sacar la basura a las 8»; "
     "subir o bajar el volumen, decirte la hora y el clima. "

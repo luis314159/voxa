@@ -186,3 +186,42 @@ def test_authorization_url_has_pkce_and_scopes(token_path):
     assert query["code_challenge_method"] == "S256"
     assert query["redirect_uri"] == "http://127.0.0.1:8765/callback"
     assert "user-modify-playback-state" in query["scope"]
+
+
+async def test_playlist_that_cannot_be_played_falls_back_to_the_next_one(token_path):
+    editorial = {"name": "Cocinando", "uri": "spotify:playlist:editorial", "owner": {"id": "spotify"}}
+    family = {"name": "Música para cocinar", "uri": "spotify:playlist:otra", "owner": {"id": "ana"}}
+
+    def play(params, body, form):
+        if body == {"context_uri": "spotify:playlist:editorial"}:
+            return HttpResponse(404, {"error": {"status": 404, "message": "Not found"}})
+        return HttpResponse(204)
+
+    api, http = api_with(
+        {
+            ("GET", "/me/playlists"): HttpResponse(200, {"items": []}),
+            ("GET", "/search"): search_returning(playlists=[editorial, None, family]),
+            ("GET", "/me/player/devices"): HttpResponse(200, DEVICES),
+            ("PUT", "/me/player/play"): play,
+        },
+        token_path,
+    )
+    result = await api.play("música para cocinar", "playlist")
+    assert result.describe() == "La playlist Música para cocinar"
+    assert [c["json"] for c in http.calls("PUT", "/me/player/play")] == [
+        {"context_uri": "spotify:playlist:editorial"}, {"context_uri": "spotify:playlist:otra"},
+    ]
+
+
+async def test_other_errors_are_not_retried_with_other_playlists(token_path):
+    api, http = api_with(
+        {
+            ("GET", "/search"): search_returning(artists=[ARTIST]),
+            ("GET", "/me/player/devices"): HttpResponse(200, DEVICES),
+            ("PUT", "/me/player/play"): HttpResponse(502, {}),
+        },
+        token_path,
+    )
+    with pytest.raises(BackendUnavailable):
+        await api.play("soda stereo")
+    assert len(http.calls("PUT", "/me/player/play")) == 1

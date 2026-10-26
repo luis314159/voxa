@@ -27,11 +27,12 @@ const NIGHT_DARKNESS: f32 = 0.68;
 const LONG_PRESS: Duration = Duration::from_millis(1200);
 const DIAGNOSTICS_REFRESH: Duration = Duration::from_secs(5);
 const DIAGNOSTICS_CLOSE: Duration = Duration::from_secs(120);
-const HINTS: [&str; 8] = [
+const HINTS: [&str; 9] = [
     "«Pon un temporizador de 10 minutos para el arroz»",
     "«¿Cuánto le falta al arroz?»",
     "«Recuérdame sacar la basura a las 8 de la noche»",
     "«Pon a Juan Gabriel»",
+    "«Pon algo tranquilo para cocinar»",
     "«Pon un video de cómo hacer pozole»",
     "«Súbele a la música»",
     "«¿Va a llover hoy?»",

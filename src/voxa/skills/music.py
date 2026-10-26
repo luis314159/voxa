@@ -5,6 +5,7 @@ import logging
 from voxa.core.phrases import capitalize
 from voxa.core.types import OK, Intent, Response
 from voxa.services.music_backend import AuthRequired, BackendUnavailable, MusicBackend, NothingFound
+from voxa.skills.mood import mood_search
 
 log = logging.getLogger(__name__)
 
@@ -33,7 +34,13 @@ class MusicSkill:
         match intent.name:
             case "music.play":
                 query = intent.slots["query"].removeprefix("de ").strip()
-                result = await backend.play(query, intent.slots.get("kind"))
+                kind = intent.slots.get("kind")
+                # «Pon algo tranquilo para cocinar», «pon salsa», «música de los 80»: una playlist.
+                if kind == "mood":
+                    query, kind = mood_search(f"para {query}", forced=True) or query, "playlist"
+                elif kind in (None, "artist") and (search := mood_search(query)) is not None:
+                    query, kind = search, "playlist"
+                result = await backend.play(query, kind)
                 return Response(capitalize(result.describe()) + ".")
             case "media.pause":
                 await backend.pause()
