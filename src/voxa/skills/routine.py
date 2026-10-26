@@ -4,10 +4,11 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime
-from typing import Callable
+from typing import Awaitable, Callable
 
 from voxa.core.phrases import clock_words, join_words, time_phrase
 from voxa.core.types import Intent, Response
+from voxa.services.calendar import CalendarUnavailable
 from voxa.services.music_backend import BackendUnavailable, MusicBackend, NothingFound
 from voxa.services.weather import OpenMeteo, WeatherUnavailable
 from voxa.state.timers import TimerManager
@@ -23,12 +24,15 @@ class RoutineSkill:
         music: MusicBackend | None = None,
         morning_music: str = "",
         now: Callable[[], datetime] = datetime.now,
+        agenda: Callable[[], Awaitable[str]] | None = None,
     ) -> None:
         self._timers = timers
         self._weather = weather
         self._music = music
         self._morning_music = morning_music
         self._now = now
+        self._agenda = agenda
+        """Lo de hoy en el calendario de la familia (vacío si no hay nada)."""
 
     async def handle(self, intent: Intent) -> Response:
         if intent.name == "routine.good_night":
@@ -49,6 +53,12 @@ class RoutineSkill:
         today = self._reminders(lambda at: at.date() == now.date())
         if today:
             parts.append(f"Hoy tienes: {join_words(today)}.")
+        if self._agenda is not None:
+            try:
+                if agenda := await self._agenda():
+                    parts.append(agenda)
+            except CalendarUnavailable as exc:
+                log.info("Sin calendario para «buenos días»: %s", exc)
         if self._morning_music and self._music is not None:
             try:
                 await self._music.play(self._morning_music)

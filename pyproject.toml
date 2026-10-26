@@ -37,6 +37,7 @@ dev = [
     "openai>=1.60",
     "pytest>=8",
     "pytest-asyncio>=0.23",
+    "tzdata; sys_platform == 'win32'",  # zonas horarias para el calendario (Linux ya las trae)
 ]
 
 [project.scripts]

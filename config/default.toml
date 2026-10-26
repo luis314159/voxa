@@ -93,6 +93,8 @@ morning_music = ""
 # Ubicación de la casa para el clima (Open-Meteo). Ejemplo: Ciudad de México.
 # latitude = 19.43
 # longitude = -99.13
+# place = "Ciudad de México"
+# (Más fácil: desde el celular, en Ajustes → Clima, se busca la ciudad por nombre.)
 
 [web]
 # VOXA desde el celular, en la misma red de la casa: temporizadores, lista del súper, música,
@@ -100,6 +102,13 @@ morning_music = ""
 # «conecta mi celular» y escanea el código de la pantalla. Apagado por defecto.
 enabled = false
 port = 8770
+
+[calendar]
+# «¿Qué tengo hoy?» y lo de hoy en «buenos días», del calendario de la familia (solo lectura).
+# Se configura desde el celular (Ajustes → Calendario) pegando la «dirección secreta en formato
+# iCal» del calendario (Google Calendar: Configuración → el calendario → Integrar el calendario).
+# La dirección se guarda en ~/.config/voxa/calendario_url (600): quien la tiene puede leerlo.
+enabled = false
 
 [telegram]
 # La lista del súper desde Telegram, también fuera de casa: se le escribe «leche y huevos» al

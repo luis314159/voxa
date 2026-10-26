@@ -12,6 +12,7 @@ from voxa.core.assistant import Assistant
 from voxa.health import Check, internet_check, player_check, spotify_check
 from voxa.nlu.matcher import Matcher, load_matcher
 from voxa.services.ai import AiSetupError, build_chat, prices_for, read_key
+from voxa.services.calendar import Calendar
 from voxa.services.http import UrllibHttp
 from voxa.services.mpris import PlayerctlBackend
 from voxa.services.music_backend import LayeredMusicBackend, MusicBackend, NowPlaying
@@ -28,6 +29,7 @@ from voxa.skills.kitchen import KitchenSkill
 from voxa.skills.music import MusicSkill
 from voxa.skills.recipe import RecipeSkill
 from voxa.skills.routine import RoutineSkill
+from voxa.skills.calendar import CalendarSkill
 from voxa.skills.enroll import EnrollSkill
 from voxa.skills.screen import ScreenSkill
 from voxa.skills.shopping import ShoppingSkill
@@ -37,6 +39,7 @@ from voxa.skills.updates import UpdateSkill
 from voxa.skills.video import VideoSkill
 from voxa.skills.volume import VolumeSkill
 from voxa.skills.weather import WeatherSkill
+from voxa.settings import read_secret
 from voxa.state.ai_usage import AiUsage
 from voxa.state.recipe import RecipeSession
 from voxa.state.shopping import ShoppingList
@@ -170,6 +173,10 @@ def build_app(config: Config, *, simulated: bool = False, on_ring: Callable[[Tim
     music: MusicBackend = SimulatedMusic() if simulated else build_music(config)
     now_playing = music.now_playing if simulated else PlayerctlBackend(config.spotifast.mpris_player).now_playing
     volume: VolumeControl = SimulatedVolume() if simulated else WpctlVolume()
+    calendar = None
+    if config.calendar.enabled:
+        calendar = Calendar(lambda: read_secret(config.calendar_url_path), UrllibHttp(), config.calendar_cache_path)
+    agenda = CalendarSkill(calendar)
     weather = None
     if config.weather.latitude is not None and config.weather.longitude is not None:
         weather = OpenMeteo(UrllibHttp(), config.weather.latitude, config.weather.longitude)
@@ -184,7 +191,9 @@ def build_app(config: Config, *, simulated: bool = False, on_ring: Callable[[Tim
         "weather": WeatherSkill(weather),
         "system": SystemSkill(),
         "kitchen": KitchenSkill(),
-        "routine": RoutineSkill(timers, weather, music, config.routine.morning_music),
+        "routine": RoutineSkill(timers, weather, music, config.routine.morning_music,
+                                agenda=agenda.today_for_morning if agenda.calendar else None),
+        "calendar": agenda,
         "shopping": ShoppingSkill(shopping),
         "display": ScreenSkill(),
         "voice": EnrollSkill(),

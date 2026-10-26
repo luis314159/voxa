@@ -350,6 +350,26 @@
     - "(que|cual es la) (clima|temperatura) (hace|hay|tenemos)"
     - "(cuantos grados hace|cuantos grados hay|que temperatura hace|hace frio|hace calor|el clima|clima)"
 
+# El calendario de la familia (de solo lectura).
+- intent: calendar.tomorrow
+  patterns:
+    - "(que tengo|que hay|tengo algo|que tenemos|tenemos algo) [para] manana"
+    - "(que hay en|que dice|que tiene) [mi|el|la|nuestro|nuestra] (calendario|agenda) [de|para] manana"
+    - "[cual es] [mi|la] agenda [de|para] manana"
+
+- intent: calendar.today
+  patterns:
+    - "(que tengo|que hay|tengo algo|que tenemos|tenemos algo) [para] hoy"
+    - "(que hay en|que dice|que tiene) [mi|el|la|nuestro|nuestra] (calendario|agenda) [de hoy|para hoy|hoy]"
+    - "[cual es] [mi|la] agenda [de|para] hoy"
+    - "(mi|la) agenda"
+
+- intent: calendar.next
+  patterns:
+    - "(cual es|que es) [mi|la|el] (siguiente|proxima|proximo) (cita|evento|compromiso|pendiente)"
+    - "que sigue en [mi|el|la] (calendario|agenda)"
+    - "cuando es [mi|la] (siguiente|proxima) cita"
+
 - intent: routine.good_morning
   patterns:
     - "(buenos dias|buen dia|buenas tardes|buenos dias a todos|buenos dias familia)"

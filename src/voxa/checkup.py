@@ -256,6 +256,17 @@ def check_ai(config: Config, tools: Tools) -> list[Finding]:
     return [Finding(group, "Respaldo con IA", OK, f"{chat.name} (pruébala: voxa ia-probar)")]
 
 
+def check_calendar(config: Config) -> list[Finding]:
+    from voxa.settings import read_secret
+
+    group = "Calendario"
+    if not config.calendar.enabled:
+        return [Finding(group, "Calendario de la familia", SKIP, "apagado (opcional): Ajustes → Calendario en el celular")]
+    if read_secret(config.calendar_url_path) is None:
+        return [Finding(group, "Calendario de la familia", FAIL, "falta la dirección iCal", "Ajustes → Calendario en el celular")]
+    return [Finding(group, "Calendario de la familia", OK, "dirección guardada (pregunta «¿qué tengo hoy?»)")]
+
+
 def check_telegram(config: Config) -> list[Finding]:
     from voxa.telegram import Chats, read_token
 
@@ -312,6 +323,7 @@ async def run_checkup(path: Path, tools: Tools | None = None) -> list[Finding]:
         lambda: check_network(config, tools),
         lambda: check_ai(config, tools),
         lambda: check_telegram(config),
+        lambda: check_calendar(config),
         lambda: check_services(config, tools),
     ]
     for step in steps:

@@ -48,6 +48,7 @@ class TimersConfig:
 class WeatherConfig:
     latitude: float | None = None
     longitude: float | None = None
+    place: str = ""
 
 
 @dataclass(frozen=True)
@@ -117,6 +118,11 @@ class TelegramConfig:
 
 
 @dataclass(frozen=True)
+class CalendarConfig:
+    enabled: bool = False
+
+
+@dataclass(frozen=True)
 class UpdateConfig:
     check: bool = True
     automatic: bool = False
@@ -144,6 +150,7 @@ class Config:
     update: UpdateConfig = field(default_factory=UpdateConfig)
     web: WebConfig = field(default_factory=WebConfig)
     telegram: TelegramConfig = field(default_factory=TelegramConfig)
+    calendar: CalendarConfig = field(default_factory=CalendarConfig)
     config_dir: Path = field(default_factory=lambda: _xdg("XDG_CONFIG_HOME", ".config"))
     state_dir: Path = field(default_factory=lambda: _xdg("XDG_STATE_HOME", ".local/state"))
 
@@ -154,6 +161,15 @@ class Config:
     @property
     def web_key_path(self) -> Path:
         return self.config_dir / "web_clave"
+
+    @property
+    def calendar_url_path(self) -> Path:
+        """La dirección secreta (iCal) del calendario: quien la tiene puede leerlo."""
+        return self.config_dir / "calendario_url"
+
+    @property
+    def calendar_cache_path(self) -> Path:
+        return _xdg("XDG_CACHE_HOME", ".cache") / "calendario.ics"
 
     @property
     def telegram_token_path(self) -> Path:
@@ -223,13 +239,23 @@ def load_config(path: Path | None = None) -> Config:
 
 
 def read_config(path: Path) -> tuple[Config, list[str]]:
-    """La configuración y los avisos (opciones o secciones que VOXA no conoce: suelen ser erratas)."""
-    config = Config()
-    if not path.exists():
-        return config, []
-    with path.open("rb") as fh:
-        data = tomllib.load(fh)
+    """La configuración y los avisos (opciones o secciones que VOXA no conoce: suelen ser erratas).
 
+    Encima de ``config.toml`` van los ajustes que se eligieron en la app (``ajustes.json``).
+    """
+    from voxa.settings import load_settings, settings_path
+
+    config, warnings = Config(), []
+    if path.exists():
+        with path.open("rb") as fh:
+            config, warnings = _apply(config, tomllib.load(fh), path)
+    overlay = settings_path(path)
+    config, more = _apply(config, load_settings(overlay), overlay)
+    return config, warnings + more
+
+
+def _apply(config: Config, data: dict, path: Path) -> tuple[Config, list[str]]:
+    data = dict(data)
     sections, warnings = {}, []
     for f in fields(Config):
         if f.name not in data or f.name in ("config_dir", "state_dir"):
