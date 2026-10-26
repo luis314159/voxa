@@ -150,6 +150,11 @@ class Service:
         if self.session is not None:
             await self.session.say_stream(shown())
 
+    def _kitchen_idle(self) -> bool:
+        """Nadie usa la cocina: sin temporizadores, sin turno de voz y sin video."""
+        timers = self.app.timers
+        return not timers.active and not timers.ringing and not self._turn.locked() and not self._video_showing()
+
     async def _say_meanwhile(self, text: str) -> None:
         """Algo que decir mientras se espera a la IA («Déjame ver la receta…»); luego sigue «pensando»."""
         if self.session is not None:
@@ -316,6 +321,9 @@ class Service:
             asyncio.create_task(self._keep_microphone()),
             asyncio.create_task(self._listen_for_wake()),
         ]
+        if self.app.updater is not None:
+            self.app.updater.on_change = self.display.publish
+            background.append(asyncio.create_task(self.app.updater.run(self._kitchen_idle)))
         server = None
         if port is not None:
             server = DisplayServer(self.display, self, port=port)

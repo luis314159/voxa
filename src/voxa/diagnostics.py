@@ -120,7 +120,7 @@ def collect(service: Service) -> dict:
         (
             "VOXA",
             [
-                ("Versión", voxa.__version__),
+                ("Versión", _version(app)),
                 ("Encendida hace", _uptime(time.monotonic() - _STARTED)),
                 ("Memoria", _memory() or "—"),
                 ("Python", platform.python_version()),
@@ -164,6 +164,15 @@ def collect(service: Service) -> dict:
         "problems": [{"id": p.id, "text": p.text, "detail": p.detail} for p in problems],
         "log": RECENT.lines()[-12:],
     }
+
+
+def _version(app) -> str:
+    updater = app.updater
+    if updater is not None and updater.installing:
+        return f"{voxa.__version__} · actualizando a la {updater.available}"
+    if updater is not None and updater.available:
+        return f"{voxa.__version__} · hay la {updater.available} (di «actualízate»)"
+    return voxa.__version__
 
 
 def _os_name() -> str:

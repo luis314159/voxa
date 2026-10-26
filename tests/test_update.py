@@ -61,3 +61,50 @@ def test_up_to_date(monkeypatch, capsys):
     monkeypatch.setattr(update, "run_installer", lambda version: pytest.fail("no debía instalar"))
     assert main(["actualizar"]) == 0
     assert "Ya tienes la versión más reciente" in capsys.readouterr().out
+
+
+class Releases:
+    def __init__(self, tag):
+        self.tag = tag
+
+    async def request(self, method, url, **kwargs):
+        return HttpResponse(200, {"tag_name": self.tag})
+
+
+async def test_updater_notices_and_installs_by_voice(tmp_path):
+    from voxa.core.types import Intent
+    from voxa.skills.updates import UpdateSkill
+
+    launched = []
+    updater = update.Updater(Releases("v0.2.0"), tmp_path, current="0.1.0",
+                             launch=lambda version, folder: launched.append(version) or True)
+    skill = UpdateSkill(updater)
+    said = await skill.handle(Intent("update.check"))
+    assert said.speech == "Sí: hay la versión 0.2.0; tienes la 0.1.0. Di «actualízate» para instalarla."
+    said = await skill.handle(Intent("update.install"))
+    assert said.speech == "Me actualizo a la versión 0.2.0. En unos minutos vuelvo." and launched == ["0.2.0"]
+    assert (await skill.handle(Intent("update.install"))).speech == "Ya me estoy actualizando."
+
+    current = update.Updater(Releases("v0.1.0"), tmp_path, current="0.1.0", launch=lambda *a: pytest.fail("no"))
+    assert (await UpdateSkill(current).handle(Intent("update.check"))).speech == "Estoy al día: tengo la versión 0.1.0."
+
+
+async def test_automatic_update_waits_for_the_night_and_a_quiet_kitchen(tmp_path):
+    import asyncio
+    from datetime import datetime
+
+    launched = []
+    hour = {"now": datetime(2026, 10, 25, 14, 0)}
+    updater = update.Updater(Releases("v0.2.0"), tmp_path, automatic=True, current="0.1.0",
+                             launch=lambda version, folder: launched.append(version) or True, now=lambda: hour["now"])
+    quiet = {"idle": False}
+    task = asyncio.ensure_future(updater.run(lambda: quiet["idle"], nap=0.01))
+    await asyncio.sleep(0.05)
+    assert updater.available == "0.2.0" and launched == []  # de día no
+    hour["now"] = datetime(2026, 10, 26, 3, 30)
+    await asyncio.sleep(0.05)
+    assert launched == []  # de madrugada, pero hay un temporizador
+    quiet["idle"] = True
+    await asyncio.sleep(0.05)
+    task.cancel()
+    assert launched == ["0.2.0"]

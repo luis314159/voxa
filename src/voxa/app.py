@@ -32,6 +32,7 @@ from voxa.skills.screen import ScreenSkill
 from voxa.skills.shopping import ShoppingSkill
 from voxa.skills.system import SystemSkill
 from voxa.skills.timers import TimerSkill
+from voxa.skills.updates import UpdateSkill
 from voxa.skills.video import VideoSkill
 from voxa.skills.volume import VolumeSkill
 from voxa.skills.weather import WeatherSkill
@@ -39,6 +40,7 @@ from voxa.state.ai_usage import AiUsage
 from voxa.state.recipe import RecipeSession
 from voxa.state.shopping import ShoppingList
 from voxa.state.timers import Timer, TimerManager
+from voxa.update import Updater
 
 if TYPE_CHECKING:  # el audio (numpy, sounddevice…) solo se importa al usar la voz
     from voxa.audio.stt import SpeechToText
@@ -60,6 +62,7 @@ class App:
     config: Config = field(default_factory=Config)
     shopping: ShoppingList = field(default_factory=ShoppingList)
     recipe: RecipeSession = field(default_factory=RecipeSession)
+    updater: Updater | None = None
     ai: AiFallback | None = None
     ai_problem: str | None = None
     """Por qué la IA activada no pudo arrancar (falta la llave, el SDK…)."""
@@ -185,6 +188,10 @@ def build_app(config: Config, *, simulated: bool = False, on_ring: Callable[[Tim
     if video is not None:
         search, player = video
         skills["video"] = VideoSkill(search, player, music)
+    updater = None
+    if config.update.check and not simulated:
+        updater = Updater(UrllibHttp(), config.state_dir / "actualizacion", automatic=config.update.automatic)
+        skills["update"] = UpdateSkill(updater)
     recipe = RecipeSession(None if simulated else config.recipe_path)
     recipe_skill = RecipeSkill(recipe, timers, shopping, video=skills.get("video"))
     skills["recipe"] = recipe_skill
@@ -205,7 +212,9 @@ def build_app(config: Config, *, simulated: bool = False, on_ring: Callable[[Tim
         recipe_skill.make = ai.recipe
         ai.start_recipe = recipe_skill.open
         ai.extra_context = recipe.summary
-    return App(assistant, timers, matcher, now_playing, weather, player, checks, config, shopping, recipe, ai, ai_problem)
+    return App(
+        assistant, timers, matcher, now_playing, weather, player, checks, config, shopping, recipe, updater, ai, ai_problem
+    )
 
 
 def build_ai(config: Config, assistant: Assistant) -> tuple[AiFallback | None, str | None]:

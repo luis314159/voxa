@@ -106,6 +106,12 @@ class AiConfig:
 
 
 @dataclass(frozen=True)
+class UpdateConfig:
+    check: bool = True
+    automatic: bool = False
+
+
+@dataclass(frozen=True)
 class DisplayConfig:
     enabled: bool = True
     port: int = 8766
@@ -124,6 +130,7 @@ class Config:
     display: DisplayConfig = field(default_factory=DisplayConfig)
     video: VideoConfig = field(default_factory=VideoConfig)
     ai: AiConfig = field(default_factory=AiConfig)
+    update: UpdateConfig = field(default_factory=UpdateConfig)
     config_dir: Path = field(default_factory=lambda: _xdg("XDG_CONFIG_HOME", ".config"))
     state_dir: Path = field(default_factory=lambda: _xdg("XDG_STATE_HOME", ".local/state"))
 

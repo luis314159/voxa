@@ -6,7 +6,8 @@
 #   bash instalar-voxa.sh --version 0.1.0     # una versión en particular (p. ej. para regresar)
 #
 # Las demás opciones pasan al instalador (--sin-video, --cancelar-eco…; ver scripts/install.sh)
-# y se recuerdan para las actualizaciones (voxa actualizar).
+# y se recuerdan para las actualizaciones (voxa actualizar). --desatendida (la actualización
+# automática de VOXA): usa las opciones recordadas, sin apt ni contraseña.
 set -euo pipefail
 
 GITHUB_REPO="${VOXA_REPO:-luis314159/voxa}"
@@ -14,9 +15,10 @@ RELEASES="${VOXA_RELEASES:-https://github.com/$GITHUB_REPO/releases}"
 DATA="${XDG_DATA_HOME:-$HOME/.local/share}/voxa"
 OPCIONES="${XDG_CONFIG_HOME:-$HOME/.config}/voxa/opciones-instalacion"
 
-version="" pasar=()
+version="" pasar=() desatendida=0
 while [ $# -gt 0 ]; do
   case "$1" in
+    --desatendida) desatendida=1; shift ;;
     --version)
       [ $# -ge 2 ] || { echo "Falta el número después de --version" >&2; exit 2; }
       version="${2#v}"
@@ -26,9 +28,14 @@ while [ $# -gt 0 ]; do
     *) pasar+=("$1"); shift ;;
   esac
 done
-if [ "${#pasar[@]}" -eq 0 ] && [ -r "$OPCIONES" ]; then
-  read -r -a pasar <"$OPCIONES"  # las mismas opciones que la primera vez
+propias=0
+for opcion in "${pasar[@]}"; do [ "$opcion" = --simular ] || propias=$((propias + 1)); done
+if [ "$propias" -eq 0 ] && [ -r "$OPCIONES" ]; then
+  read -r -a guardadas <"$OPCIONES"  # las mismas opciones que la primera vez
+  pasar+=("${guardadas[@]}")
 fi
+guardar=$((1 - desatendida))
+if [ "$desatendida" = 1 ]; then pasar+=(--sin-apt); fi
 
 case "$(uname -m)" in
   x86_64|amd64) arch=x86_64 ;;
@@ -62,7 +69,7 @@ for vieja in "${viejas[@]}"; do rm -rf "$vieja"; done
 
 recordar=()
 for opcion in "${pasar[@]}"; do [ "$opcion" = --simular ] || recordar+=("$opcion"); done
-if [ "${#recordar[@]}" -gt 0 ]; then
+if [ "$guardar" = 1 ] && [ "${#recordar[@]}" -gt 0 ]; then
   mkdir -p "$(dirname "$OPCIONES")"
   printf '%s\n' "${recordar[*]}" >"$OPCIONES"
 fi

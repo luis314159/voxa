@@ -7,15 +7,25 @@ y se baja ese script.
 
 from __future__ import annotations
 
+import asyncio
+import logging
 import re
+import shutil
 import subprocess
 import tempfile
+from datetime import datetime
 from pathlib import Path
+from typing import Callable
 
 import voxa
 from voxa.services.http import Http, HttpError
 
+log = logging.getLogger(__name__)
+
 GITHUB_REPO = "luis314159/voxa"
+CHECK_EVERY = 6 * 3600
+# Actualización automática (opcional): de madrugada, cuando nadie usa la cocina.
+NIGHT_HOURS = range(3, 5)
 LATEST_API = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
 RELEASES = f"https://github.com/{GITHUB_REPO}/releases"
 
@@ -64,3 +74,89 @@ def run_installer(version: str | None) -> int:
         if version:
             args += ["--version", version]
         return subprocess.run(args, check=False).returncode
+
+
+def launch_unattended(version: str, folder: Path) -> bool:
+    """Instala esa versión sin preguntar nada (sin apt ni contraseña), en una unidad aparte de systemd.
+
+    Va aparte para que el reinicio de VOXA al final de la instalación no corte al instalador.
+    """
+    import urllib.request
+
+    systemd_run = shutil.which("systemd-run")
+    if systemd_run is None:
+        log.warning("Sin systemd-run: la actualización automática solo funciona en la PC de la cocina")
+        return False
+    folder.mkdir(parents=True, exist_ok=True)
+    script = folder / "instalar-voxa.sh"
+    try:
+        with urllib.request.urlopen(installer_url(version), timeout=30) as response:  # noqa: S310 - URL fija de GitHub
+            script.write_bytes(response.read())
+    except OSError as exc:
+        log.warning("No pude bajar el instalador de la %s: %s", version, exc)
+        return False
+    args = [systemd_run, "--user", "--collect", "--unit=voxa-actualizacion", "bash", str(script),
+            "--version", version, "--desatendida"]
+    result = subprocess.run(args, check=False, capture_output=True, text=True)
+    if result.returncode != 0:
+        log.warning("No se pudo lanzar la actualización: %s", result.stderr.strip())
+        return False
+    log.info("Actualizando a la %s (journalctl --user -u voxa-actualizacion)", version)
+    return True
+
+
+class Updater:
+    """Revisa cada tantas horas si hay versión nueva y, si así se configuró, se actualiza de madrugada."""
+
+    def __init__(
+        self,
+        http: Http,
+        folder: Path,
+        *,
+        automatic: bool = False,
+        current: str = voxa.__version__,
+        launch: Callable[[str, Path], bool] = launch_unattended,
+        now: Callable[[], datetime] = datetime.now,
+    ) -> None:
+        self._http = http
+        self._folder = folder
+        self.automatic = automatic
+        self.current = current
+        self._launch = launch
+        self._now = now
+        self.available: str | None = None
+        """La versión nueva que hay (``None`` si ya es la más reciente o no se sabe)."""
+        self.installing = False
+        self.on_change: Callable[[], None] | None = None
+
+    async def check(self) -> str | None:
+        try:
+            latest = await latest_version(self._http)
+        except NoReleases:
+            latest = None
+        available = latest if latest and is_newer(latest, self.current) else None
+        if available != self.available:
+            self.available = available
+            if available:
+                log.info("Hay una versión nueva de VOXA: %s (tienes la %s)", available, self.current)
+            if self.on_change:
+                self.on_change()
+        return available
+
+    def install(self) -> bool:
+        if not self.available or self.installing:
+            return False
+        self.installing = self._launch(self.available, self._folder)
+        return self.installing
+
+    async def run(self, idle: Callable[[], bool], every: float = CHECK_EVERY, nap: float = 600) -> None:
+        """Revisa al arrancar y cada ``every`` segundos; la automática espera la madrugada y la cocina quieta."""
+        last_check = float("-inf")
+        loop = asyncio.get_running_loop()
+        while True:
+            if loop.time() - last_check >= every:
+                last_check = loop.time()
+                await self.check()
+            if self.automatic and self.available and self._now().hour in NIGHT_HOURS and idle():
+                self.install()
+            await asyncio.sleep(nap)

@@ -94,6 +94,13 @@ morning_music = ""
 # latitude = 19.43
 # longitude = -99.13
 
+[update]
+# Revisar cada 6 horas si hay una versión nueva de VOXA (se ve en el diagnóstico y se puede
+# preguntar «¿hay actualizaciones?»; «actualízate» la instala).
+check = true
+# Instalarla sola de madrugada (3 a 5 a. m.), cuando no hay temporizadores ni nadie hablando.
+automatic = false
+
 [ai]
 # Respaldo con IA (opcional, de paga): lo que VOXA no entiende se le pregunta a un modelo de
 # lenguaje («¿con qué sustituyo el huevo en un pastel?»). Si la persona pidió algo que VOXA sabe

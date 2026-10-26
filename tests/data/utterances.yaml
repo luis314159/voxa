@@ -188,3 +188,6 @@
 - {text: "reanuda el temporizador", intent: timer.resume}
 - {text: "despiértame de lunes a viernes a las seis", intent: timer.remind}
 - {text: "recuérdame los martes sacar la basura a las ocho de la noche", intent: timer.remind}
+# --- actualizaciones ---
+- {text: "hay actualizaciones", intent: update.check}
+- {text: "actualízate", intent: update.install}

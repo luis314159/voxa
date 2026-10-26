@@ -352,6 +352,15 @@
   patterns:
     - "(que puedes hacer|que sabes hacer|ayuda|ayudame|como te uso|que haces|que comandos hay|que te puedo pedir|que te puedo decir|que sabes)"
 
+- intent: update.check
+  patterns:
+    - "(hay|tienes|buscas|busca) [alguna|una|unas] (actualizacion|actualizaciones|version nueva|nueva version)"
+    - "(que version (eres|tienes|es)|estas actualizada|estas al dia)"
+
+- intent: update.install
+  patterns:
+    - "(actualizate|actualiza voxa|actualizar voxa|instala la actualizacion|instala la version nueva|ponte al dia)"
+
 - intent: system.status
   patterns:
     - "(estas ahi|me escuchas|me oyes|estas bien|como estas|funcionas|hola|hola voxa)"

@@ -121,7 +121,7 @@ bash instalar-voxa.sh                 # opciones: --simular, --sin-video, --canc
 voxa revisar                          # qué falta configurar
 ```
 
-Después, `voxa actualizar` instala la versión más reciente (`--revisar` solo avisa; `--version 0.1.0` regresa a una anterior: se guardan la actual y la previa en `~/.local/share/voxa/app/`). El instalador revisa la huella del paquete contra `SHA256SUMS` del release.
+Después, `voxa actualizar` instala la versión más reciente (`--revisar` solo avisa; `--version 0.1.0` regresa a una anterior: se guardan la actual y la previa en `~/.local/share/voxa/app/`). El instalador revisa la huella del paquete contra `SHA256SUMS` del release. VOXA también revisa sola cada 6 horas si hay versión nueva: lo dice el diagnóstico de la pantalla, se puede preguntar «¿hay actualizaciones?» y «actualízate» la instala; con `automatic = true` en `[update]` se actualiza sola de madrugada (3 a 5 a. m.) si la cocina está quieta.
 
 Desde el código (para desarrollar, o en otra arquitectura; compila la pantalla con Rust):
 

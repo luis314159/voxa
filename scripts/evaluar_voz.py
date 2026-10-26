@@ -7,6 +7,9 @@ tarda cada motor. Sirve en la PC de desarrollo y en la PC de la cocina.
 
     python scripts/evaluar_voz.py --voz models/piper/es_MX-ald-medium.onnx \
         --vosk models/vosk/vosk-model-small-es-0.42 --whisper base --ruido-db 15
+
+    # música de fondo (la que queda bajita mientras VOXA escucha) y eco de cocina
+    python scripts/evaluar_voz.py --voz ... --fondo musica --ruido-db 12 --eco
 """
 
 from __future__ import annotations
@@ -48,6 +51,44 @@ def add_noise(samples: np.ndarray, snr_db: float | None, rng: np.random.Generato
     return np.clip(samples + noise, -1, 1).astype(np.float32)
 
 
+def music(n: int, rng: np.random.Generator) -> np.ndarray:
+    """Acordes con armónicos y una batería de ruido: no es música real, pero ocupa el espectro igual."""
+    out = np.zeros(n, np.float32)
+    t = np.arange(n) / MIC_RATE
+    beat = int(MIC_RATE * rng.uniform(0.25, 0.6))
+    for start in range(0, n, beat * 2):
+        root = 110 * 2 ** (rng.integers(0, 24) / 12)
+        seg = slice(start, min(start + beat * 2, n))
+        for interval in (0, 4, 7, 12)[: rng.integers(2, 5)]:
+            f = root * 2 ** (interval / 12)
+            for h in range(1, 5):
+                out[seg] += np.sin(2 * np.pi * f * h * t[seg]) / h**1.5
+    for start in range(0, n, beat):
+        k = min(int(0.05 * MIC_RATE), n - start)
+        out[start : start + k] += rng.normal(size=k) * np.exp(-np.arange(k) / (0.01 * MIC_RATE)) * 2
+    return out / (np.abs(out).max() + 1e-9)
+
+
+def add_background(samples: np.ndarray, kind: str, snr_db: float | None, rng: np.random.Generator) -> np.ndarray:
+    if snr_db is None:
+        return samples
+    if kind == "rosa":
+        return add_noise(samples, snr_db, rng)
+    noise = music(len(samples), rng)
+    scale = np.sqrt(np.mean(samples**2) / (np.mean(noise**2) * 10 ** (snr_db / 10)))
+    return np.clip(samples + noise * scale, -1, 1).astype(np.float32)
+
+
+def reverb(samples: np.ndarray, rng: np.random.Generator, rt60: float = 0.4) -> np.ndarray:
+    """Eco de un cuarto con azulejo: respuesta al impulso exponencial."""
+    n = int(MIC_RATE * rt60)
+    ir = rng.normal(size=n) * np.exp(-6.9 * np.arange(n) / n) * 0.3
+    ir[0] = 1.0
+    size = len(samples) + n
+    wet = np.fft.irfft(np.fft.rfft(samples, size) * np.fft.rfft(ir, size), size)[: len(samples)]
+    return (wet / (np.abs(wet).max() + 1e-9) * np.abs(samples).max()).astype(np.float32)
+
+
 def matches(intent, case) -> bool:
     if intent is None or intent.name != case["intent"]:
         return False
@@ -60,6 +101,8 @@ def main() -> int:
     parser.add_argument("--vosk", type=Path, help="carpeta del modelo de Vosk")
     parser.add_argument("--whisper", default="base", help="tamaño de faster-whisper (vacío para omitir)")
     parser.add_argument("--ruido-db", type=float, default=None, help="SNR del ruido agregado (p. ej. 15)")
+    parser.add_argument("--fondo", choices=("rosa", "musica"), default="rosa", help="qué ruido: extractor (rosa) o música")
+    parser.add_argument("--eco", action="store_true", help="agrega eco de cocina")
     parser.add_argument("--limite", type=int, default=0, help="evaluar solo las primeras N frases")
     args = parser.parse_args()
 
@@ -92,7 +135,8 @@ def main() -> int:
         # endpointer conserva ~300 ms previos: se reproduce esa situación.
         spoken = WAKE.sub("", case["text"]) or case["text"]
         clip = tts.synthesize(spoken).with_silence(300, 300).resampled(MIC_RATE)
-        audio = (add_noise(clip.samples, args.ruido_db, rng) * 32767).astype(np.int16)
+        samples = reverb(clip.samples, rng) if args.eco else clip.samples
+        audio = (add_background(samples, args.fondo, args.ruido_db, rng) * 32767).astype(np.int16)
         for name, engine in engines.items():
             start = time.perf_counter()
             heard = engine.transcribe(audio)
@@ -104,7 +148,9 @@ def main() -> int:
         print(f"\r{n}/{len(cases)}", end="", file=sys.stderr, flush=True)
     print(file=sys.stderr)
 
-    noise = f"ruido rosa a {args.ruido_db:g} dB SNR" if args.ruido_db is not None else "sin ruido"
+    noise = f"{'música' if args.fondo == 'musica' else 'ruido rosa'} a {args.ruido_db:g} dB SNR" if args.ruido_db is not None else "sin ruido"
+    if args.eco:
+        noise += " · con eco"
     print(f"\n{len(cases)} frases · voz {args.voz.stem} · {noise}\n")
     print(f"{'motor':<10}{'intención correcta':>20}{'tiempo medio':>15}{'p90':>10}")
     for name in engines:
