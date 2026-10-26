@@ -99,7 +99,7 @@ VENV_PY="$(pipx environment --value PIPX_LOCAL_VENVS 2>/dev/null || echo "$HOME/
 
 if [ ! -f "$CONFIG/voxa/config.toml" ]; then
   instalar_archivo "$REPO/config/default.toml" "$CONFIG/voxa/config.toml"
-  aviso "Pega el Client ID de Spotify en $CONFIG/voxa/config.toml y luego corre: voxa spotify-login"
+  aviso "Spotify, el clima y lo demás se configuran desde el celular: escanea el código de la pantalla (Ajustes)"
 else
   listo "Se conserva tu configuración: $CONFIG/voxa/config.toml"
 fi
@@ -257,8 +257,9 @@ cat <<EOF
   • Estado:        systemctl --user status voxa voxa-ui
   • Registro:      journalctl --user -u voxa -f
   • Probar a mano: voxa texto
+  • Configurar:    escanea con el celular el código de la pantalla → Ajustes
+                   (Spotify, clima, voz de la familia, calendario, Telegram, IA).
+                   Si ya no está el código: «Hey Voxa, configura VOXA».
   • Falta a mano:  inicio de sesión automático (Menú → Ventana de inicio de sesión →
-                   Usuarios → Inicio de sesión automático) y, si no lo hiciste,
-                   voxa spotify-login.
-  • Opcional:      respaldo con IA → voxa ia-clave y enabled = true en [ai].
+                   Usuarios → Inicio de sesión automático).
 EOF

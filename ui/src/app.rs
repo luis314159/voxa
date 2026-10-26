@@ -755,6 +755,7 @@ impl VoxaApp {
         let host = url.split("/?").next().unwrap_or(url);
         let lines = [
             ("Escanéalo con la cámara del celular (en el wifi de la casa).", theme::TEXT),
+            ("En «Ajustes» se configuran Spotify, el clima, el calendario y más.", theme::TEXT_DIM),
             (host, theme::TEXT_DIM),
             ("Toca para cerrar", theme::TEXT_DIM),
         ];
