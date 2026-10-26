@@ -29,10 +29,20 @@ _STT_FIXES = [
     (re.compile(r"\bonsa(s?)\b"), r"onza\1"),
     (re.compile(r"\bporciento\b"), "por ciento"),
     (re.compile(r"\bmedio dia\b"), "mediodia"),
+    (re.compile(r"\b(alarma|recordatorio) mediodia\b"), r"\1 a mediodia"),
     (re.compile(r"\bpara aguas\b"), "paraguas"),
+    (re.compile(r"\bplay list\b"), "playlist"),
+    (re.compile(r"\bal arma\b"), "alarma"),
+    # Whisper separa el pronombre («recuerda me») y pega o recorta «a las» («alas 5», «a la 7.30»).
+    (re.compile(r"\b(despierta|recuerda|avisa) me\b"), r"\1me"),
+    (re.compile(r"\balas\b"), "a las"),
+    (re.compile(r"\ba la (\d{2}|[2-9]|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|once|doce)\b"), r"a las \1"),
+    (re.compile(r"\ba (\d{1,2})\.([0-5]\d)\b"), r"a las \1 \2"),
+    # «arroz» llega como «la ros».
+    (re.compile(r"\b(de|a) la ros\b"), lambda m: "del arroz" if m.group(1) == "de" else "al arroz"),
     (re.compile(r"\b(de|a) el\b"), lambda m: "del" if m.group(1) == "de" else "al"),
     # Ninguna orden empieza con «con», «por» o «pone»: es «pon» mal reconocido.
-    (re.compile(r"^(?:con|por|pone|poner|ponga|pongan)\b"), "pon"),
+    (re.compile(r"^(?:con|por|pone|pome|poner|ponga|pongan)\b"), "pon"),
 ]
 
 

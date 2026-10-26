@@ -95,6 +95,11 @@ class TimerSkill:
                 return Response("Cancelé todos los temporizadores." if count else "No hay temporizadores.")
             case "timer.stop_alarm":
                 return self.stop_alarm()
+            case "timer.unclear":
+                return Response(
+                    "No entendí para cuándo. Dime, por ejemplo: «alarma a las siete» o «temporizador de diez minutos».",
+                    sound="error",
+                )
         return Response("Todavía no sé hacer eso con los temporizadores.", sound="error")
 
     def stop_alarm(self) -> Response:

@@ -140,3 +140,9 @@ def test_weekly_alarm_missed_while_off_moves_to_next_time(tmp_path):
     clock.now = datetime(2026, 10, 28, 9, 0)  # VOXA estuvo apagada lunes y martes
     loaded = TimerManager(store, clock=clock).active
     assert [datetime.fromtimestamp(t.ends_at) for t in loaded] == [datetime(2026, 10, 29, 6, 0)]
+
+
+async def test_an_alarm_without_a_clear_time_is_asked_again(kitchen):
+    say, timers, _, _ = kitchen
+    assert "No entendí para cuándo" in await say("Pon una alarma la media día.")
+    assert not timers.active

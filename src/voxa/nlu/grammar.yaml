@@ -21,7 +21,7 @@
 
 - intent: timer.cancel_all
   patterns:
-    - "(cancela|quita|borra|elimina) (todos|todas) [los|las] (temporizadores|timers|alarmas)"
+    - "(cancela|quita|borra|elimina) [a] (todos|todas) [los|las] (temporizadores|timers|alarmas)"
 
 # Recordatorios y alarmas a una hora fija. Los de «mañana» van primero: si no, «mañana»
 # quedaría dentro del nombre («sacar la basura mañana»).
@@ -276,7 +276,7 @@
 
 - intent: recipe.goto
   patterns:
-    - "(ve|vete|pasa|salta|regresa|regresate|vuelve|brinca) al paso {number}"
+    - "(ve|ver|vete|pasa|salta|regresa|regresate|vuelve|brinca) al paso {number}"
     - "[el] paso [numero] {number}"
 
 - intent: recipe.ingredients
@@ -386,6 +386,12 @@
 - intent: system.ack
   patterns:
     - "(ya|ok|okay|listo|gracias|muchas gracias|perfecto|ya esta|ya estuvo|bien|esta bien)"
+
+# Una alarma o un temporizador cuya hora no se entendió: se pregunta otra vez en lugar de
+# buscar «una alarma la media día» en Spotify. Va justo antes de la música genérica.
+- intent: timer.unclear
+  patterns:
+    - "(pon|ponme|crea|programa|activa|inicia) [un|una|el|la] (temporizador|timer|cronometro|alarma|despertador|recordatorio) {query}"
 
 - intent: music.play
   patterns:

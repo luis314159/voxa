@@ -203,3 +203,12 @@
 - {text: "Pon el volumen 20.", intent: volume.set, slots: {number: 20}}
 - {text: "Pon una alarma a medio día.", intent: timer.remind}
 - {text: "Necesito para aguas", intent: weather.rain}
+- {text: "¿Cuánto le falta a la ros?", intent: timer.query, slots: {name: arroz}}
+- {text: "Recuerda me alas 5 que llame a mi mamá.", intent: timer.remind, slots: {name: llame a mi mamá}}
+- {text: "despierta me mañana a las 6 y media.", intent: timer.remind}
+- {text: "Pon una, al arma a la 7.30 de la mañana.", intent: timer.remind}
+- {text: "ver al paso 3", intent: recipe.goto, slots: {number: 3}}
+- {text: "Cánsela a todos los temporizadores.", intent: timer.cancel_all}
+- {text: "por mi play list de cocina", intent: music.play, slots: {kind: playlist}}
+- {text: "Pon una alarma la media día.", intent: timer.unclear}
+- {text: "pon un temporizador de pasta", intent: timer.unclear}

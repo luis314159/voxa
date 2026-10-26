@@ -154,11 +154,11 @@ def main() -> int:
     if args.eco:
         noise += " · con eco"
     print(f"\n{len(cases)} frases · voz {args.voz.stem} · {noise}\n")
-    print(f"{'motor':<10}{'intención correcta':>20}{'tiempo medio':>15}{'p90':>10}")
+    print(f"{'motor':<15}{'intención correcta':>20}{'tiempo medio':>15}{'p90':>10}")
     for name in engines:
         t = sorted(times[name])
         p90 = t[int(0.9 * (len(t) - 1))]
-        print(f"{name:<10}{hits[name] / len(cases):>19.0%} {statistics.mean(t):>13.2f}s{p90:>9.2f}s")
+        print(f"{name:<15}{hits[name] / len(cases):>19.0%} {statistics.mean(t):>13.2f}s{p90:>9.2f}s")
     for name in engines:
         if failures[name]:
             print(f"\nFallos de {name}:")
