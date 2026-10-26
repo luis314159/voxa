@@ -89,6 +89,13 @@ def test_fuzzy_correction_does_not_touch_free_text():
     assert intent.slots["query"] == "soda estereo"
 
 
+def test_fuzzy_correction_keeps_free_text_it_did_not_change():
+    # Se corrige «cánsela»; «arroz» queda tal cual y vale como nombre.
+    assert MATCHER.match("Cánsela el temporizador del arroz").slots == {"name": "arroz"}
+    # Si la corrección cambiaría el nombre, no se acepta: «cuentas… taza» → «cuenta… tazas».
+    assert MATCHER.match("cuentas cucharadas son un cuarto de taza") is None
+
+
 def test_free_slots_keep_accents_and_enye():
     matcher = load_matcher()
     assert matcher.match("Pon a José José").slots["query"] == "josé josé"

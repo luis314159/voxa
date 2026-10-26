@@ -118,10 +118,10 @@ class Matcher:
         if intent := self._match_text(text, raw, allow_free_text=True):
             return intent
         # El STT a veces escribe mal una palabra («pausa» → «pauza»): se corrige
-        # contra el vocabulario, pero solo para intenciones sin texto libre.
+        # contra el vocabulario; el texto libre solo vale si la corrección no lo tocó.
         corrected = self._correct(text)
         if corrected != text:
-            return self._match_text(corrected, raw, allow_free_text=False)
+            return self._match_text(corrected, raw, allow_free_text=False, heard=text)
         return None
 
     @property
@@ -137,13 +137,14 @@ class Matcher:
         intent = self.match(text)
         return intent is None or any(slot in _FREE_SLOTS for slot in intent.slots)
 
-    def _match_text(self, text: str, raw: str, *, allow_free_text: bool) -> Intent | None:
+    def _match_text(self, text: str, raw: str, *, allow_free_text: bool, heard: str = "") -> Intent | None:
         for spec in self._intents:
             for pattern in spec.patterns:
                 m = pattern.regex.match(text)
                 if m is None:
                     continue
-                if not allow_free_text and any(m.groupdict().get(s) for s in _FREE_SLOTS):
+                free = [m.group(s) for s in _FREE_SLOTS if m.groupdict().get(s)]
+                if not allow_free_text and any(f" {value.strip()} " not in f" {heard} " for value in free):
                     continue  # el texto «corregido» de una canción o un nombre ya no es lo que se dijo
                 slots = self._convert_slots(m.groupdict(), spec)
                 if slots is None:

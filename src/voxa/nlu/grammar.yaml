@@ -174,7 +174,7 @@
 
 - intent: volume.set
   patterns:
-    - "[pon|sube|baja|cambia|deja] [el] (volumen|sonido) (a|al|en|de) {number}"
+    - "[pon|sube|baja|cambia|deja] [el] (volumen|sonido) [a|al|en|de] {number}"
     - "(volumen|sonido) {number}"
 
 - intent: volume.mute

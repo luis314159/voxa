@@ -28,6 +28,8 @@ _STT_FIXES = [
     (re.compile(r"\btasa(s?)\b"), r"taza\1"),
     (re.compile(r"\bonsa(s?)\b"), r"onza\1"),
     (re.compile(r"\bporciento\b"), "por ciento"),
+    (re.compile(r"\bmedio dia\b"), "mediodia"),
+    (re.compile(r"\bpara aguas\b"), "paraguas"),
     (re.compile(r"\b(de|a) el\b"), lambda m: "del" if m.group(1) == "de" else "al"),
     # Ninguna orden empieza con «con», «por» o «pone»: es «pon» mal reconocido.
     (re.compile(r"^(?:con|por|pone|poner|ponga|pongan)\b"), "pon"),

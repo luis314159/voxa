@@ -198,3 +198,8 @@
 - {text: "Pon una alarma a las 7.30 de la mañana.", intent: timer.remind}
 - {text: "200 gramos de mantequilla en tasas", intent: kitchen.convert, slots: {unit: tazas}}
 - {text: "Cuánto le falta el arroz.", intent: timer.query, slots: {name: arroz}}
+- {text: "Cánsela el temporizador del arroz.", intent: timer.cancel, slots: {name: arroz}}
+- {text: "se arcabó el café", intent: shopping.add, slots: {query: café}}
+- {text: "Pon el volumen 20.", intent: volume.set, slots: {number: 20}}
+- {text: "Pon una alarma a medio día.", intent: timer.remind}
+- {text: "Necesito para aguas", intent: weather.rain}
