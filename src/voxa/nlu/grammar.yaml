@@ -157,6 +157,17 @@
     - "(cancela|quita|borra|elimina|deten|para|apaga) [el|la|mi] (temporizador|timer|cronometro|alarma|recordatorio|despertador) [(del|de la|de|para) {name}]"
     - "(cancela|quita|borra|elimina) (el|la) (del|de la|de los|de las|de|para) {name}"
 
+# Modo niños: se enciende por voz (para todos); apagarlo es desde el celular.
+- intent: kids.off
+  patterns:
+    - "(quita|apaga|desactiva|cancela|termina|sal del) [el] modo (ninos|nino|infantil)"
+
+- intent: kids.on
+  patterns:
+    - "(pon|activa|enciende|prende|ponte en|entra en|entra al) [el] modo (ninos|nino|infantil)"
+    - "modo (ninos|infantil)"
+    - "[ya] (vienen|estan|hay|van a venir|llegaron) (ninos|los ninos|mis sobrinos|los sobrinos|los nietos|mis nietos)"
+
 - intent: system.mute_mic
   patterns:
     - "(deja de escuchar|no escuches|apaga el microfono|desactiva el microfono|silencia el microfono|modo privado|apagate)"

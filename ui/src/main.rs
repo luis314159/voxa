@@ -11,6 +11,7 @@
 mod app;
 mod backgrounds;
 mod format;
+mod i18n;
 mod link;
 mod protocol;
 mod theme;

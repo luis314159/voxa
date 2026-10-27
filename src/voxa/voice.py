@@ -22,6 +22,7 @@ from voxa.core.assistant import Assistant
 from voxa.core.people import speaking
 from voxa.core.speech import speech_chunks
 from voxa.core.types import Response
+from voxa.i18n import in_language
 
 log = logging.getLogger(__name__)
 
@@ -149,7 +150,7 @@ class VoiceSession:
 
         start = time.perf_counter()
         with speaking(person):
-            response = await self.assistant.handle_text(text)
+            response = await self.assistant.handle_text(text, getattr(self._stt, "last_language", None))
         timings.nlu_and_action = time.perf_counter() - start
         self.observer.exchange(text, response)
         timings.tts = await self.say(response)
@@ -170,7 +171,8 @@ class VoiceSession:
         if response.spoken:
             return 0.0
         if response.speech and self._tts:
-            return await self.say_stream(_iterate(speech_chunks(response.speech)))
+            with in_language(response.language):  # casa bilingüe: la voz del idioma de la respuesta
+                return await self.say_stream(_iterate(speech_chunks(response.speech)))
         async with self._speaking:
             if response.sound or response.speech:
                 await self._output.play(self._sounds.get(response.sound or "ok", self._sounds["ok"]))

@@ -6,6 +6,7 @@ import re
 
 from voxa.core.types import OK, Intent, Response
 from voxa.i18n import tr
+from voxa.kids import KidsRules
 from voxa.services.music_backend import BackendUnavailable, MusicBackend
 from voxa.services.video import VideoNotFound, VideoPlayer, VideoSearch, VideoUnavailable
 
@@ -36,10 +37,13 @@ def speakable_title(title: str) -> str:
 class VideoSkill:
     """«Pon un video de cómo hacer pozole», y mientras se ve: pausa, sigue, adelanta, cierra."""
 
-    def __init__(self, search: VideoSearch, player: VideoPlayer, music: MusicBackend | None = None) -> None:
+    def __init__(
+        self, search: VideoSearch, player: VideoPlayer, music: MusicBackend | None = None, kids: KidsRules | None = None
+    ) -> None:
         self._search = search
         self._player = player
         self._music = music
+        self._kids = kids
 
     @property
     def active(self) -> bool:
@@ -57,6 +61,8 @@ class VideoSkill:
     async def _handle(self, intent: Intent) -> Response:
         player = self._player
         if intent.name == "video.play":
+            if self._kids is not None and (hours := self._kids.video_hours()):
+                return Response(tr("Los videos son de {start} a {end}.", start=hours[0], end=hours[1]), sound="error")
             query = intent.slots["query"].strip()
             if intent.slots.get("kind") == "recipe":
                 query = tr("receta de {dish}", dish=_ARTICLE.sub("", query))  # «cómo se hace el pozole»

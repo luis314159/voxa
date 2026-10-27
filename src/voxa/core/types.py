@@ -32,6 +32,8 @@ class Response:
     """Ya se dijo en voz alta mientras llegaba (respuesta de la IA): solo falta mostrarla."""
     target: str | None = None
     """Dato para la acción, p. ej. el nombre de quien va a grabar su voz."""
+    language: str | None = None
+    """En qué idioma está (casa bilingüe: el de la frase); ``None`` = el de la casa."""
 
 
 OK = Response(sound="ok")

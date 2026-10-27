@@ -34,6 +34,11 @@ alarm_repeat_seconds = 30
 alarm_timeout_minutes = 10
 
 [voice]
+# Idioma de la casa: "es" o "en" (también en Ajustes → Funciones).
+language = "es"
+# Casa bilingüe: también entiende el otro idioma y contesta cada frase en el idioma en que se dijo
+# (Whisper detecta el idioma; el primer arranque baja la voz del otro idioma).
+bilingual = false
 # Reconocimiento de voz: "vosk" (rápido), "whisper" (preciso) o "hibrido"
 # (Vosk para comandos; Whisper cuando la frase trae nombres de canciones o videos).
 stt = "hibrido"

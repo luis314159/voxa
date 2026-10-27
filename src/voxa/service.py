@@ -21,6 +21,8 @@ from voxa.core.types import Response
 from voxa.display import Display, DisplayServer
 from voxa.health import Health, Problem
 from voxa.i18n import tr
+from voxa.kids import skip_explicit
+from voxa.services.music_backend import BackendUnavailable
 from voxa.services.http import UrllibHttp
 from voxa.skills.enroll import ENROLL_ACTION
 from voxa.skills.timers import ring_phrase
@@ -43,6 +45,7 @@ UNANSWERED_SECONDS = 45.0
 """Si una alarma suena este tiempo sin que nadie la apague, se avisa en los demás cuartos."""
 SETUP_SECONDS = 600.0
 _MIC_RETRY_SECONDS = 30.0
+_CLEAN_MUSIC_SECONDS = 10.0
 # Lo que se ve encima del video mientras VOXA escucha o piensa (el video tapa la pantalla).
 _VIDEO_OSD = {"listening": "🎙 Te escucho…", "thinking": "Un momento…"}
 WAKE_PHRASE = "Hey Voxa"
@@ -149,12 +152,13 @@ class Service:
         await self._apply(result.response)
         return result
 
-    async def handle_text(self, text: str, *, speak: bool = True) -> Response:
+    async def handle_text(self, text: str, *, speak: bool = True, button: bool = False) -> Response:
         """Orden escrita o botón de la pantalla: misma ruta que una hablada, con respuesta en voz si la hay.
 
         ``speak=False``: desde el celular, sin hablar en la cocina (solo un sonido si no hay texto).
+        ``button``: una orden fija de un botón («pausa»), que va en español aunque la casa hable inglés.
         """
-        response = await self.app.assistant.handle_text(text)
+        response = await self.app.assistant.handle_text(text, button=button)
         self.exchange(text, response)
         if self.session is not None and speak:
             await self.session.say(response)
@@ -468,6 +472,17 @@ class Service:
             if self.mic is not None and not self.muted and not self.mic.is_open and not self._turn.locked():
                 self._open_microphone()
 
+    async def _clean_music(self) -> None:
+        """Modo niños: si suena una canción que Spotify marca como explícita, se salta."""
+        kids, music = self.app.kids, self.app.music
+        while kids is not None and music is not None:
+            await asyncio.sleep(_CLEAN_MUSIC_SECONDS)
+            if kids.watching_music() and not self._turn.locked():
+                try:
+                    await skip_explicit(music)
+                except BackendUnavailable as exc:
+                    log.debug("Modo niños: no pude revisar la canción: %s", exc)
+
     def _telegram_bot(self) -> ShoppingBot | None:
         config = self.app.config
         token = read_token(config.telegram_token_path)
@@ -489,6 +504,7 @@ class Service:
             asyncio.create_task(self._listen_for_wake()),
             asyncio.create_task(self._calendar_reminders()),
             asyncio.create_task(self._departure_reminders()),
+            asyncio.create_task(self._clean_music()),
         ]
         if self.app.updater is not None:
             self.app.updater.on_change = self.display.publish

@@ -285,11 +285,26 @@
 </section>
 
 <section>
+  <h2>Modo niños</h2>
+  <p class="ayuda">Cuando VOXA reconoce la voz de un niño: música sin canciones explícitas (con Spotify), volumen con tope, respuestas de la IA para niños y videos solo en su horario. Por voz se enciende con «Hey Voxa, modo niños» (para todos); se apaga solo aquí.</p>
+  <div class="interruptor"><span>Encendido</span><input type="checkbox" id="ninos-encendido"></div>
+  <div class="campo"><span class="detalle">¿Quiénes son niños? (graba su voz arriba)</span><div class="fila" id="ninos-quienes" style="flex-wrap:wrap"></div></div>
+  <div class="interruptor"><span>Para todos (visitas, o si no han grabado su voz)</span><input type="checkbox" id="ninos-todos"></div>
+  <div class="interruptor"><span>Sin canciones explícitas</span><input type="checkbox" id="ninos-limpia"></div>
+  <label class="campo"><span>Volumen máximo</span><select id="ninos-volumen"><option value="40">40 %</option><option value="50">50 %</option><option value="60">60 %</option><option value="70">70 %</option><option value="80">80 %</option><option value="100">Sin tope</option></select></label>
+  <div class="fila"><label class="campo" style="flex:1"><span>Videos desde</span><input type="time" id="ninos-desde"></label><label class="campo" style="flex:1"><span>hasta</span><input type="time" id="ninos-hasta"></label></div>
+  <p class="ayuda">Sin horario, los niños pueden pedir videos a cualquier hora.</p>
+  <button id="ninos-guardar" style="width:100%;margin-top:10px">Guardar</button>
+  <p class="ayuda" id="ninos-respuesta"></p>
+</section>
+
+<section>
   <h2>Funciones</h2>
   <div class="interruptor"><span>Videos de YouTube</span><input type="checkbox" data-ajuste="video.enabled"></div>
   <div class="interruptor"><span>Avisar si hay versión nueva</span><input type="checkbox" data-ajuste="update.check"></div>
   <div class="interruptor"><span>Actualizarse sola de madrugada</span><input type="checkbox" data-ajuste="update.automatic"></div>
   <label class="campo"><span>Idioma de VOXA / VOXA's language</span><select id="idioma"><option value="es">Español</option><option value="en">English</option></select></label>
+  <div class="interruptor"><span>Casa bilingüe: también entiende el otro idioma y contesta en el de cada frase</span><input type="checkbox" data-ajuste="voice.bilingual"></div>
   <label class="campo"><span>Reconocimiento de voz (más preciso = más lento)</span><select id="whisper"><option value="tiny">Rápido (tiny)</option><option value="base">Normal (base)</option><option value="small">Preciso (small)</option></select></label>
   <p class="ayuda" id="version"></p>
 </section>
@@ -299,6 +314,264 @@
 "use strict";
 const $ = (id) => document.getElementById(id);
 let estado = null, recibido = 0;
+
+// --- Inglés: la página habla el idioma de la casa ------------------------------------------
+// Español → inglés. {nombre} es un hueco que tr() llena con su valor.
+const EN = {
+  // Arriba y pestañas
+  "conectando…": "connecting…",
+  "en línea": "online",
+  "sin conexión con VOXA": "can't reach VOXA",
+  "Cocina": "Kitchen",
+  "Ajustes": "Settings",
+  // Música y receta
+  "Sonando": "Now playing",
+  "Anterior": "Previous",
+  "Pausa": "Pause",
+  "Siguiente": "Next",
+  "Receta": "Recipe",
+  "‹ Anterior": "‹ Back",
+  "Siguiente paso ›": "Next step ›",
+  "Paso {n} de {total}": "Step {n} of {total}",
+  "{ingredientes} ingredientes · {pasos} pasos": "{ingredientes} ingredients · {pasos} steps",
+  // Temporizadores
+  "Temporizadores": "Timers",
+  "No hay temporizadores.": "No timers.",
+  "Alarma": "Alarm",
+  "Temporizador": "Timer",
+  "En pausa": "Paused",
+  "¡Sonando!": "Ringing!",
+  "Detener": "Stop",
+  "Detener alarma": "Stop alarm",
+  "Cancelar": "Cancel",
+  // Lista del súper
+  "Lista del súper": "Shopping list",
+  "Agregar…": "Add…",
+  "Quitar {cosa}": "Remove {cosa}",
+  // Pendientes
+  "Pendientes": "To do",
+  "«Llamar al plomero»": "«Call the plumber»",
+  "¿De quién?": "Whose?",
+  "De la casa": "Household",
+  "No hay pendientes.": "Nothing to do.",
+  "Ya está: {tarea}": "Done: {tarea}",
+  // Playlists
+  "Mis playlists": "My playlists",
+  "♥ Mis Me gusta": "♥ My Liked Songs",
+  "Buscar en Spotify…": "Search Spotify…",
+  "Buscar": "Search",
+  "{n} canciones": "{n} songs",
+  "Poner {nombre}": "Play {nombre}",
+  "Poniendo…": "Starting…",
+  "No encontré playlists.": "No playlists found.",
+  "Cargando…": "Loading…",
+  "Buscando…": "Searching…",
+  // Casa (avisos a los cuartos)
+  "Casa": "House",
+  "«Ya está la comida»": "«Dinner's ready»",
+  "Avisar": "Announce",
+  "¿Dónde?": "Where?",
+  "En toda la casa": "Whole house",
+  "{cuarto} (aquí)": "{cuarto} (here)",
+  "conectado": "connected",
+  "sin conexión": "offline",
+  "Se oyó en: {cuartos}.": "Heard in: {cuartos}.",
+  "No hay cuartos conectados para ese aviso.": "No rooms are connected for that announcement.",
+  // Escríbele a VOXA y fotos
+  "Escríbele a VOXA": "Message VOXA",
+  "«Pon algo tranquilo para cocinar»": "«Play something chill for cooking»",
+  "Enviar": "Send",
+  "Que lo diga en voz alta en la cocina": "Say it out loud in the kitchen",
+  "Fondo de pantalla": "Wallpaper",
+  "Sube fotos de la familia: entran en la rotación de fondos de la cocina.": "Upload family photos: they join the kitchen's wallpaper rotation.",
+  "Subir fotos": "Upload photos",
+  "Subiendo {archivo}…": "Uploading {archivo}…",
+  "No se pudo subir.": "Couldn't upload it.",
+  // Ajustes: revisar
+  "Revisa la instalación y dice qué falta configurar.": "Checks the setup and tells you what's left to configure.",
+  "Revisar": "Check",
+  "Revisando…": "Checking…",
+  "✓ Todo en orden.": "✓ All good.",
+  "VOXA se está reiniciando…": "VOXA is restarting…",
+  "Listo: VOXA ya usa los ajustes nuevos.": "Done: VOXA is using the new settings.",
+  "VOXA tarda en volver. Revisa la PC de la cocina.": "VOXA is taking a while to come back. Check the kitchen PC.",
+  // Voz de la familia
+  "Voz de la familia": "Family voices",
+  "Para que VOXA reconozca a cada quien y no se active con la tele. Escribe tu nombre, toca «Grabar» y ve a la cocina: VOXA te guía en voz alta (como un minuto). También se le puede decir «Hey Voxa, aprende mi voz».": "So VOXA can tell who's who and doesn't wake up for the TV. Type your name, tap «Record» and go to the kitchen: VOXA guides you out loud (about a minute). You can also say «Hey Voxa, learn my voice».",
+  "Tu nombre": "Your name",
+  "Grabar": "Record",
+  "Conoce a: {personas}": "Knows: {personas}",
+  "Todavía no conoce la voz de nadie": "Doesn't know anyone's voice yet",
+  "Grabando a {nombre}…": "Recording {nombre}…",
+  // Spotify
+  "La música ya funciona desde YouTube, sin cuenta. Spotify (Premium) agrega tus playlists, tus Me gusta y poner la música en otras bocinas. Se hace una sola vez, en unos 5 minutos:": "Music already works from YouTube, no account needed. Spotify (Premium) adds your playlists, your Liked Songs and playing music on other speakers. It's a one-time setup, about 5 minutes:",
+  "Abre": "Open",
+  "con tu cuenta de Spotify y toca «Create app».": "with your Spotify account and tap «Create app».",
+  "Nombre:": "Name:",
+  "VOXA de la casa": "Home VOXA",
+  ". Descripción:": ". Description:",
+  "Asistente de la cocina": "Kitchen assistant",
+  ". En «Redirect URIs» agrega estas dos:": ". Under «Redirect URIs», add these two:",
+  "Copiar": "Copy",
+  "Copiado": "Copied",
+  "Mantén presionado": "Press and hold",
+  "Marca «Web API», acepta los términos y guarda. Copia el «Client ID» y pégalo aquí (sirve para VOXA y para Spotifast).": "Check «Web API», accept the terms and save. Copy the «Client ID» and paste it here (it works for VOXA and for Spotifast).",
+  "Toca «Conectar con Spotify» y acepta. Cuando el navegador diga que no puede abrir la página, copia la dirección completa y pégala abajo.": "Tap «Connect to Spotify» and accept. When the browser says it can't open the page, copy the full address and paste it below.",
+  "Para que la música suene en la cocina: «Abrir Spotifast en la cocina» y, en esa pantalla, «Sign in with Spotify» y «Set up playback here».": "To play music in the kitchen: «Open Spotifast in the kitchen» and, on that screen, «Sign in with Spotify» and «Set up playback here».",
+  "Guardar": "Save",
+  "Conectar con Spotify": "Connect to Spotify",
+  "Abrir Spotifast en la cocina": "Open Spotifast in the kitchen",
+  "¿De dónde sale la música?": "Where does the music come from?",
+  "Spotify si está conectado; si no, YouTube": "Spotify if connected; otherwise YouTube",
+  "Solo Spotify": "Spotify only",
+  "Solo YouTube (sin cuenta)": "YouTube only (no account)",
+  "Listo": "Done",
+  "Falta conectar": "Not connected yet",
+  "Sin conectar (la música sale de YouTube)": "Not connected (music comes from YouTube)",
+  "Conectado · vuelve a conectar para tus Me gusta": "Connected · connect again for your Liked Songs",
+  "Conectado": "Connected",
+  "Client ID (guardado: {id})": "Client ID (saved: {id})",
+  "Después de aceptar, copia la dirección de la página que no abre y pégala aquí.": "After you accept, copy the address of the page that won't open and paste it here.",
+  // Clima
+  "Clima": "Weather",
+  "Ciudad (p. ej. Monterrey)": "City (e.g. Monterrey)",
+  "Sin ubicación": "No location",
+  "No encontré esa ciudad.": "I couldn't find that city.",
+  "Guardando…": "Saving…",
+  // Calendario
+  "Calendario": "Calendar",
+  "Para «¿qué tengo hoy?» y lo de hoy en «buenos días». En Google Calendar (desde una computadora): Configuración → tu calendario → «Dirección secreta en formato iCal». Pégala aquí; VOXA solo lo lee.": "For «what do I have today?» and today's plans in «good morning». In Google Calendar (on a computer): Settings → your calendar → «Secret address in iCal format». Paste it here; VOXA only reads it.",
+  "¿De quién es este calendario?": "Whose calendar is this?",
+  "De la familia": "Family",
+  "Avisar antes de cada evento": "Remind me before each event",
+  "No avisar": "No reminder",
+  "5 minutos antes": "5 minutes before",
+  "10 minutos antes": "10 minutes before",
+  "15 minutos antes": "15 minutes before",
+  "30 minutos antes": "30 minutes before",
+  "Sin calendario": "No calendar",
+  "Apagado": "Off",
+  "Trae {n} eventos.": "It has {n} events.",
+  // Telegram
+  "Lista del súper en Telegram": "Shopping list on Telegram",
+  "Para apuntar cosas desde la calle. En Telegram, háblale a @BotFather, manda /newbot y copia el token que te da.": "To add things while you're out. In Telegram, message @BotFather, send /newbot and copy the token it gives you.",
+  "Token del bot": "Bot token",
+  "Vincular un chat": "Link a chat",
+  "Mándale este código al bot desde Telegram (vence en 10 minutos):": "Send this code to the bot from Telegram (it expires in 10 minutes):",
+  "Sin bot": "No bot",
+  "{n} chat(s) vinculados": "{n} chat(s) linked",
+  "Falta vincular un chat": "No chat linked yet",
+  "Quitar": "Remove",
+  "Busca @{bot} en Telegram (o agrégalo al grupo de la familia) y mándale el código.": "Find @{bot} on Telegram (or add it to the family group) and send it the code.",
+  // Respaldo con IA
+  "Respaldo con IA": "AI backup",
+  "Para lo que VOXA no entiende sola (recetas, dudas de cocina). Es de paga, con tope al mes; solo se manda el texto de la frase.": "For what VOXA can't figure out on its own (recipes, cooking questions). It's paid, with a monthly cap; only the text of what you said is sent.",
+  "Proveedor": "Provider",
+  "Compatible con OpenAI (Gemini, Groq, Ollama…)": "OpenAI-compatible (Gemini, Groq, Ollama…)",
+  "Modelo (vacío: el recomendado)": "Model (empty: the recommended one)",
+  "Dirección del servicio": "Service address",
+  "Tope al mes (USD)": "Monthly cap (USD)",
+  "Probar": "Test",
+  "Llave (API key)": "API key",
+  "Guardar llave": "Save key",
+  "Encendida": "On",
+  "Apagada": "Off",
+  "Preguntando…": "Asking…",
+  // Cuartos
+  "Cuartos": "Rooms",
+  "Nombre de este cuarto": "Name of this room",
+  "Nombre de este cuarto ({cuarto})": "Name of this room ({cuarto})",
+  "Este es: {cuarto} (la principal)": "This is: {cuarto} (the main one)",
+  "Este es: {cuarto} · {estado}": "This is: {cuarto} · {estado}",
+  "sin conexión con la principal": "can't reach the main one",
+  "unido a la casa": "joined to the house",
+  "VOXA también puede estar en la sala, el comedor o las recámaras: otra PC o una Raspberry Pi con micrófono y bocina (la pantalla es opcional). La lista del súper y el calendario son los de esta; los avisos llegan a todos.": "VOXA can also be in the living room, dining room or bedrooms: another PC or a Raspberry Pi with a mic and speaker (a screen is optional). They share this one's shopping list and calendar; announcements reach all of them.",
+  "Cuarto nuevo (p. ej. Sala)": "New room (e.g. Living room)",
+  "Agregar": "Add",
+  "Ese cuarto tiene pantalla": "That room has a screen",
+  "En la terminal de esa PC (Linux Mint o Ubuntu, conectada al wifi de la casa), pega esto:": "In that PC's terminal (Linux Mint or Ubuntu, on the home Wi-Fi), paste this:",
+  "Lleva la clave de esta VOXA: compártelo solo con esa PC.": "It carries this VOXA's key: share it only with that PC.",
+  "Copiado.": "Copied.",
+  "Mantén presionado el texto para copiarlo.": "Press and hold the text to copy it.",
+  "¿Esta VOXA es de otro cuarto? Pega la dirección que da la principal (Ajustes → Cuartos → Agregar).": "Is this VOXA for another room? Paste the address from the main one (Settings → Rooms → Add).",
+  "Este cuarto (Sala…)": "This room (Living room…)",
+  "Unir": "Join",
+  // Rutina de la mañana
+  "Rutina de la mañana": "Morning routine",
+  "Los días de escuela VOXA avisa 15 y 5 minutos antes de salir y a la hora, con lo que no hay que olvidar. «Buenos días» y «¿cuánto falta para salir?» también lo dicen.": "On school days VOXA gives a heads-up 15 and 5 minutes before leaving and right on time, with what not to forget. «Good morning» and «how long until we leave?» tell you too.",
+  "Hora de salida (vacío: sin avisos)": "Leaving time (empty: no reminders)",
+  "Días": "Days",
+  "No olviden (separado por comas)": "Don't forget (comma-separated)",
+  "mochila, lonche, uniforme": "backpack, lunch, uniform",
+  "Música de «buenos días» (opcional)": "«Good morning» music (optional)",
+  "«mi playlist de la mañana»": "«my morning playlist»",
+  // Modo niños
+  "Modo niños": "Kids mode",
+  "Cuando VOXA reconoce la voz de un niño: música sin canciones explícitas (con Spotify), volumen con tope, respuestas de la IA para niños y videos solo en su horario. Por voz se enciende con «Hey Voxa, modo niños» (para todos); se apaga solo aquí.": "When VOXA recognizes a child's voice: no explicit songs (with Spotify), a volume limit, kid-friendly AI answers and videos only during their hours. By voice, «Hey Voxa, kids mode» turns it on (for everyone); it can only be turned off here.",
+  "Encendido": "On",
+  "¿Quiénes son niños? (graba su voz arriba)": "Who are the kids? (record their voice above)",
+  "Para todos (visitas, o si no han grabado su voz)": "For everyone (visitors, or if no one recorded their voice)",
+  "Sin canciones explícitas": "No explicit songs",
+  "Volumen máximo": "Maximum volume",
+  "Sin tope": "No limit",
+  "Videos desde": "Videos from",
+  "hasta": "until",
+  "Sin horario, los niños pueden pedir videos a cualquier hora.": "With no hours set, kids can ask for videos at any time.",
+  "Todavía nadie ha grabado su voz.": "No one has recorded their voice yet.",
+  // Funciones
+  "Funciones": "Features",
+  "Videos de YouTube": "YouTube videos",
+  "Avisar si hay versión nueva": "Tell me when there's a new version",
+  "Actualizarse sola de madrugada": "Update itself overnight",
+  "Casa bilingüe: también entiende el otro idioma y contesta en el de cada frase": "Bilingual house: also understands the other language and answers in the language of each sentence",
+  "Reconocimiento de voz (más preciso = más lento)": "Speech recognition (more accurate = slower)",
+  "Rápido (tiny)": "Fast (tiny)",
+  "Preciso (small)": "Accurate (small)",
+  "VOXA {version} · hay una versión nueva: {nueva} (dile «actualízate»)": "VOXA {version} · new version available: {nueva} (say «update yourself»)"
+};
+let idioma = "es";
+
+function tr(texto, valores) {
+  const t = idioma === "en" && Object.hasOwn(EN, texto) ? EN[texto] : texto;
+  return valores ? t.replace(/\{(\w+)\}/g, (hueco, k) => (k in valores ? String(valores[k]) : hueco)) : t;
+}
+
+// Texto fijo del HTML (nodos y atributos), apuntado una vez al cargar.
+const FIJOS = [];
+{
+  const paseo = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+  for (let n; (n = paseo.nextNode());) if (n.data.trim() && !n.parentNode.closest("script, style")) FIJOS.push([n, "data"]);
+  for (const e of document.querySelectorAll("[placeholder], [title], [aria-label]"))
+    for (const atr of ["placeholder", "title", "aria-label"]) if (e.hasAttribute(atr)) FIJOS.push([e, atr]);
+}
+const PUESTO = new WeakMap(); // nodo → { atributo: [español, lo que se puso] }
+
+function traducirPagina() {
+  document.documentElement.lang = idioma;
+  for (const [n, atr] of FIJOS) {
+    const actual = atr === "data" ? n.data : n.getAttribute(atr);
+    if (actual == null) continue;
+    let puesto = PUESTO.get(n);
+    if (!puesto) PUESTO.set(n, (puesto = {}));
+    // Si el script cambió el texto, ese es el nuevo original.
+    const es = puesto[atr] && puesto[atr][1] === actual ? puesto[atr][0] : actual;
+    const llave = es.trim().replace(/\s+/g, " ");
+    const nuevo = idioma === "en" && Object.hasOwn(EN, llave) ? es.match(/^\s*/)[0] + EN[llave] + es.match(/\s*$/)[0] : es;
+    if (nuevo !== actual) { if (atr === "data") n.data = nuevo; else n.setAttribute(atr, nuevo); }
+    puesto[atr] = [es, nuevo];
+  }
+}
+
+function ponerIdioma(nuevo) {
+  nuevo = nuevo === "en" ? "en" : "es";
+  if (nuevo === idioma) return;
+  idioma = nuevo;
+  traducirPagina();
+  pintar();
+  actualizarTareas();
+  actualizarCasa();
+  if (!$("vista-ajustes").hidden) cargarAjustes();
+}
 
 async function api(ruta, datos) {
   const opciones = datos === undefined ? {} : { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(datos) };
@@ -340,20 +613,21 @@ function pintar() {
   if (rec) {
     $("receta-titulo").textContent = rec.title;
     const paso = rec.current >= 0 ? rec.steps[rec.current] : null;
-    $("receta-donde").textContent = paso ? `Paso ${rec.current + 1} de ${rec.steps.length}` : `${rec.ingredients.length} ingredientes · ${rec.steps.length} pasos`;
+    $("receta-donde").textContent = paso ? tr("Paso {n} de {total}", { n: rec.current + 1, total: rec.steps.length })
+      : tr("{ingredientes} ingredientes · {pasos} pasos", { ingredientes: rec.ingredients.length, pasos: rec.steps.length });
     $("receta-paso").textContent = paso ? paso.text : rec.ingredients.join(" · ");
   }
 
   const cont = $("temporizadores");
   cont.replaceChildren();
-  if (!estado.timers.length) cont.append(el("p", "vacio", "No hay temporizadores."));
+  if (!estado.timers.length) cont.append(el("p", "vacio", tr("No hay temporizadores.")));
   for (const t of estado.timers) {
     const fila = el("div", "temporizador" + (t.ringing ? " sonando" : ""));
     const izq = el("div");
-    izq.append(el("div", "nombre", capital(t.label) || (t.kind === "reminder" ? "Alarma" : "Temporizador")));
-    let detalle = t.repeat ? capital(t.repeat) : t.paused_remaining != null ? "En pausa" : t.ringing ? "¡Sonando!" : "";
+    izq.append(el("div", "nombre", capital(t.label) || (t.kind === "reminder" ? tr("Alarma") : tr("Temporizador"))));
+    let detalle = t.repeat ? capital(t.repeat) : t.paused_remaining != null ? tr("En pausa") : t.ringing ? tr("¡Sonando!") : "";
     if (t.kind === "reminder" && !t.ringing) {
-      const hora = new Date(t.ends_at * 1000).toLocaleTimeString("es-MX", { hour: "numeric", minute: "2-digit" });
+      const hora = new Date(t.ends_at * 1000).toLocaleTimeString(idioma === "en" ? "en-US" : "es-MX", { hour: "numeric", minute: "2-digit" });
       detalle = detalle ? `${detalle} · ${hora}` : hora;
     }
     izq.append(el("div", "detalle", detalle));
@@ -362,8 +636,8 @@ function pintar() {
       const restante = t.paused_remaining != null ? t.paused_remaining : t.ends_at - ahora;
       der.append(el("span", "cuenta", reloj(restante)));
     }
-    const boton = el("button", "", t.ringing ? "Detener" : "✕");
-    boton.setAttribute("aria-label", t.ringing ? "Detener alarma" : "Cancelar");
+    const boton = el("button", "", t.ringing ? tr("Detener") : "✕");
+    boton.setAttribute("aria-label", t.ringing ? tr("Detener alarma") : tr("Cancelar"));
     boton.onclick = () => t.ringing ? orden("ya") : api("/api/temporizador/cancelar", { id: t.id }).then(actualizar);
     der.append(boton);
     fila.append(izq, der);
@@ -375,7 +649,7 @@ function pintar() {
   for (const cosa of estado.shopping) {
     const li = el("li");
     const quitar = el("button", "", "✓");
-    quitar.setAttribute("aria-label", "Quitar " + cosa);
+    quitar.setAttribute("aria-label", tr("Quitar {cosa}", { cosa }));
     quitar.onclick = () => api("/api/lista", { quitar: cosa }).then(actualizar);
     li.append(el("span", "", capital(cosa)), quitar);
     lista.append(li);
@@ -386,10 +660,11 @@ async function actualizar() {
   try {
     estado = await api("/api/estado");
     recibido = Date.now() / 1000;
-    $("conexion").textContent = "en línea";
+    if (estado.language) ponerIdioma(estado.language);
+    $("conexion").textContent = tr("en línea");
     pintar();
   } catch (e) {
-    $("conexion").textContent = "sin conexión con VOXA";
+    $("conexion").textContent = tr("sin conexión con VOXA");
   }
 }
 
@@ -423,10 +698,10 @@ document.querySelectorAll("[data-orden]").forEach((b) => { b.onclick = () => ord
 $("subir").onclick = () => $("foto").click();
 $("foto").onchange = async () => {
   for (const archivo of $("foto").files) {
-    $("respuesta").textContent = `Subiendo ${archivo.name}…`;
+    $("respuesta").textContent = tr("Subiendo {archivo}…", { archivo: archivo.name });
     const r = await fetch("/api/foto", { method: "POST", body: archivo });
     const json = await r.json().catch(() => ({}));
-    $("respuesta").textContent = json.respuesta || json.error || "No se pudo subir.";
+    $("respuesta").textContent = json.respuesta || json.error || tr("No se pudo subir.");
   }
   $("foto").value = "";
 };
@@ -434,23 +709,23 @@ $("foto").onchange = async () => {
 // --- Pendientes ---------------------------------------------------------------------------
 function pintarTareas(datos) {
   const sel = $("tarea-persona"), elegido = sel.value;
-  sel.replaceChildren(new Option("De la casa", ""), ...datos.personas.map((p) => new Option(p, p)));
+  sel.replaceChildren(new Option(tr("De la casa"), ""), ...datos.personas.map((p) => new Option(p, p)));
   sel.value = elegido;
   const grupos = new Map();
   for (const t of datos.tareas) {
-    const quien = t.persona || "De la casa";
+    const quien = t.persona || tr("De la casa");
     if (!grupos.has(quien)) grupos.set(quien, []);
     grupos.get(quien).push(t);
   }
   const cont = $("tareas");
   cont.replaceChildren();
-  if (!datos.tareas.length) cont.append(el("p", "vacio", "No hay pendientes."));
+  if (!datos.tareas.length) cont.append(el("p", "vacio", tr("No hay pendientes.")));
   for (const [quien, lista] of grupos) {
     cont.append(el("div", "detalle", quien));
     const ul = el("ul");
     for (const t of lista) {
       const li = el("li"), hecha = el("button", "", "✓");
-      hecha.setAttribute("aria-label", "Ya está: " + t.texto);
+      hecha.setAttribute("aria-label", tr("Ya está: {tarea}", { tarea: t.texto }));
       hecha.onclick = () => api("/api/tareas", { hecha: t.id }).then(pintarTareas);
       li.append(el("span", "", capital(t.texto)), hecha);
       ul.append(li);
@@ -474,25 +749,25 @@ function mostrarPlaylists(lista) {
   $("playlists").replaceChildren(...lista.map((p) => {
     const li = el("li"), izq = el("div"), poner = el("button", "principal", "▶");
     izq.append(el("div", "nombre", p.nombre));
-    izq.append(el("div", "detalle", [p.de, p.canciones != null ? `${p.canciones} canciones` : ""].filter(Boolean).join(" · ")));
-    poner.setAttribute("aria-label", "Poner " + p.nombre);
+    izq.append(el("div", "detalle", [p.de, p.canciones != null ? tr("{n} canciones", { n: p.canciones }) : ""].filter(Boolean).join(" · ")));
+    poner.setAttribute("aria-label", tr("Poner {nombre}", { nombre: p.nombre }));
     poner.onclick = async () => {
-      decir("playlist-respuesta", "Poniendo…");
+      decir("playlist-respuesta", tr("Poniendo…"));
       try { decir("playlist-respuesta", (await api("/api/playlists/poner", { uri: p.uri, nombre: p.nombre })).respuesta); actualizar(); }
       catch (e) { decir("playlist-respuesta", e.message); }
     };
     li.append(izq, poner);
     return li;
   }));
-  if (!lista.length) decir("playlist-respuesta", "No encontré playlists.");
+  if (!lista.length) decir("playlist-respuesta", tr("No encontré playlists."));
 }
 $("me-gusta").onclick = async () => {
-  decir("playlist-respuesta", "Poniendo…");
+  decir("playlist-respuesta", tr("Poniendo…"));
   try { decir("playlist-respuesta", (await api("/api/playlists/poner", { uri: "me-gusta", nombre: "Me gusta" })).respuesta); actualizar(); }
   catch (e) { decir("playlist-respuesta", e.message); }
 };
 $("mis-playlists").onclick = async () => {
-  decir("playlist-respuesta", "Cargando…");
+  decir("playlist-respuesta", tr("Cargando…"));
   try { mostrarPlaylists((await api("/api/playlists")).playlists); decir("playlist-respuesta", ""); }
   catch (e) { decir("playlist-respuesta", e.message); }
 };
@@ -500,7 +775,7 @@ $("form-playlist").onsubmit = async (ev) => {
   ev.preventDefault();
   const texto = $("playlist-texto").value.trim();
   if (!texto) return;
-  decir("playlist-respuesta", "Buscando…");
+  decir("playlist-respuesta", tr("Buscando…"));
   try { mostrarPlaylists((await api("/api/playlists/buscar", { texto })).playlists); decir("playlist-respuesta", ""); }
   catch (e) { decir("playlist-respuesta", e.message); }
 };
@@ -513,14 +788,14 @@ function pintarCasa(casa) {
   const cuartos = casa.cuartos || [];
   $("casa").hidden = !casa.principal || !cuartos.length;
   if ($("casa").hidden) return;
-  $("casa-cuartos").replaceChildren(...[{ nombre: `${casa.cuarto} (aquí)`, en_linea: true }, ...cuartos].map((c) => {
+  $("casa-cuartos").replaceChildren(...[{ nombre: tr("{cuarto} (aquí)", { cuarto: casa.cuarto }), en_linea: true }, ...cuartos].map((c) => {
     const li = el("li"), nombre = el("span");
     nombre.append(el("span", "punto" + (c.en_linea ? " en-linea" : "")), document.createTextNode(c.nombre));
-    li.append(nombre, el("span", "detalle", c.en_linea ? "conectado" : "sin conexión"));
+    li.append(nombre, el("span", "detalle", c.en_linea ? tr("conectado") : tr("sin conexión")));
     return li;
   }));
   const donde = $("aviso-donde"), elegido = donde.value;
-  donde.replaceChildren(new Option("En toda la casa", ""), new Option(casa.cuarto, casa.cuarto),
+  donde.replaceChildren(new Option(tr("En toda la casa"), ""), new Option(casa.cuarto, casa.cuarto),
     ...cuartos.map((c) => new Option(c.nombre, c.nombre)));
   donde.value = elegido;
 }
@@ -535,7 +810,7 @@ $("form-aviso").onsubmit = async (ev) => {
   if (!texto) return;
   try {
     const r = await api("/api/casa/aviso", { texto, desde: "celular", a: $("aviso-donde").value });
-    decir("aviso-respuesta", r.llego_a.length ? `Se oyó en: ${r.llego_a.join(", ")}.` : "No hay cuartos conectados para ese aviso.");
+    decir("aviso-respuesta", r.llego_a.length ? tr("Se oyó en: {cuartos}.", { cuartos: r.llego_a.join(", ") }) : tr("No hay cuartos conectados para ese aviso."));
     $("aviso-texto").value = "";
   } catch (e) { decir("aviso-respuesta", e.message); }
 };
@@ -544,13 +819,14 @@ function pintarCuartos(casa) {
   if (!casa || !casa.cuarto) return;
   invitacion = casa.invitacion;
   $("cuarto-estado").replaceChildren(casa.principal
-    ? marca(true, `Este es: ${casa.cuarto} (la principal)`)
-    : marca(casa.en_linea !== false, `Este es: ${casa.cuarto} · ${casa.en_linea === false ? "sin conexión con la principal" : "unido a la casa"}`));
-  $("cuarto-nombre").placeholder = `Nombre de este cuarto (${casa.cuarto})`;
+    ? marca(true, tr("Este es: {cuarto} (la principal)", { cuarto: casa.cuarto }))
+    : marca(casa.en_linea !== false, tr("Este es: {cuarto} · {estado}", {
+      cuarto: casa.cuarto, estado: casa.en_linea === false ? tr("sin conexión con la principal") : tr("unido a la casa") })));
+  $("cuarto-nombre").placeholder = tr("Nombre de este cuarto ({cuarto})", { cuarto: casa.cuarto });
   $("cuartos-principal").hidden = !casa.principal;
   $("cuartos-unir").hidden = casa.principal && (casa.cuartos || []).length > 0;
   $("cuartos-lista").replaceChildren(...(casa.cuartos || []).map((c) => {
-    const li = el("li"), nombre = el("span"), olvidar = el("button", "", "Quitar");
+    const li = el("li"), nombre = el("span"), olvidar = el("button", "", tr("Quitar"));
     nombre.append(el("span", "punto" + (c.en_linea ? " en-linea" : "")), document.createTextNode(c.nombre));
     olvidar.onclick = () => api("/api/casa/olvidar", { nombre: c.nombre }).then(cargarAjustes, (e) => decir("cuartos-respuesta", e.message));
     li.append(nombre, olvidar);
@@ -571,8 +847,8 @@ $("form-invitar").onsubmit = (ev) => {
 };
 $("invitar-pantalla").onchange = () => { if (!$("invitacion").hidden) $("form-invitar").requestSubmit(); };
 $("copiar-comando").onclick = async () => {
-  try { await navigator.clipboard.writeText($("invitar-comando").textContent); decir("cuartos-respuesta", "Copiado."); }
-  catch (e) { decir("cuartos-respuesta", "Mantén presionado el texto para copiarlo."); }
+  try { await navigator.clipboard.writeText($("invitar-comando").textContent); decir("cuartos-respuesta", tr("Copiado.")); }
+  catch (e) { decir("cuartos-respuesta", tr("Mantén presionado el texto para copiarlo.")); }
 };
 $("form-cuarto").onsubmit = async (ev) => {
   ev.preventDefault();
@@ -611,41 +887,42 @@ async function cargarAjustes() {
   let a;
   try { a = await api("/api/ajustes"); } catch (e) { return; }
   $("voz-estado").replaceChildren(a.voz.personas.length
-    ? marca(a.voz.verificador, "Conoce a: " + a.voz.personas.map((p) => capital(p.replace(/-/g, " "))).join(", "))
-    : marca(false, "Todavía no conoce la voz de nadie"));
-  if (a.voz.grabando) decir("voz-respuesta", `Grabando a ${a.voz.grabando}…`);
+    ? marca(a.voz.verificador, tr("Conoce a: {personas}", { personas: a.voz.personas.map((p) => capital(p.replace(/-/g, " "))).join(", ") }))
+    : marca(false, tr("Todavía no conoce la voz de nadie")));
+  if (a.voz.grabando) decir("voz-respuesta", tr("Grabando a {nombre}…", { nombre: a.voz.grabando }));
 
   const sp = a.spotify;
   $("spotify-estado").replaceChildren(marca(sp.autorizado && sp.me_gusta !== false,
-    !sp.autorizado ? (sp.client_id ? "Falta conectar" : "Sin conectar (la música sale de YouTube)")
-      : sp.me_gusta === false ? "Conectado · vuelve a conectar para tus Me gusta" : "Conectado"));
+    !sp.autorizado ? (sp.client_id ? tr("Falta conectar") : tr("Sin conectar (la música sale de YouTube)"))
+      : sp.me_gusta === false ? tr("Conectado · vuelve a conectar para tus Me gusta") : tr("Conectado")));
   decir("spotify-redirect", sp.redirect);
   decir("spotify-redirect2", sp.redirect_spotifast);
   $("musica-fuente").value = sp.musica;
-  $("spotify-id").placeholder = sp.client_id ? `Client ID (guardado: ${sp.client_id})` : "Client ID";
+  $("spotify-id").placeholder = sp.client_id ? tr("Client ID (guardado: {id})", { id: sp.client_id }) : "Client ID";
 
   const cl = a.clima;
-  $("clima-estado").replaceChildren(marca(cl.lat != null, cl.lugar || (cl.lat != null ? `${cl.lat}, ${cl.lon}` : "Sin ubicación")));
+  $("clima-estado").replaceChildren(marca(cl.lat != null, cl.lugar || (cl.lat != null ? `${cl.lat}, ${cl.lon}` : tr("Sin ubicación"))));
 
   const cal = a.calendario;
-  $("cal-estado").replaceChildren(marca(cal.enabled && cal.url, !cal.url ? "Sin calendario" : cal.enabled ? "Conectado" : "Apagado"));
+  $("cal-estado").replaceChildren(marca(cal.enabled && cal.url, !cal.url ? tr("Sin calendario") : cal.enabled ? tr("Conectado") : tr("Apagado")));
 
   $("cal-avisar").value = String(cal.avisar);
   const quien = $("cal-persona"), elegido = quien.value;
-  quien.replaceChildren(new Option("De la familia", ""), ...a.voz.personas.map((p) => new Option(p + (cal.personas.includes(p) ? " ✓" : ""), p)));
+  quien.replaceChildren(new Option(tr("De la familia"), ""), ...a.voz.personas.map((p) => new Option(p + (cal.personas.includes(p) ? " ✓" : ""), p)));
   quien.value = elegido;
   const tg = a.telegram;
   $("tg-estado").replaceChildren(marca(tg.enabled && tg.token && tg.chats.length > 0,
-    !tg.token ? "Sin bot" : !tg.enabled ? "Apagado" : tg.chats.length ? `${tg.chats.length} chat(s) vinculados` : "Falta vincular un chat"));
+    !tg.token ? tr("Sin bot") : !tg.enabled ? tr("Apagado")
+      : tg.chats.length ? tr("{n} chat(s) vinculados", { n: tg.chats.length }) : tr("Falta vincular un chat")));
   $("tg-chats").replaceChildren(...tg.chats.map((c) => {
-    const li = el("li"), quitar = el("button", "", "Quitar");
+    const li = el("li"), quitar = el("button", "", tr("Quitar"));
     quitar.onclick = () => api("/api/telegram/quitar", { id: c.id }).then(cargarAjustes, (e) => decir("tg-respuesta", e.message));
     li.append(el("span", "", c.nombre), quitar);
     return li;
   }));
 
   const ia = a.ia;
-  $("ia-estado").replaceChildren(marca(ia.enabled && ia.listo, !ia.enabled ? "Apagada" : ia.estado || "Encendida"));
+  $("ia-estado").replaceChildren(marca(ia.enabled && ia.listo, !ia.enabled ? tr("Apagada") : ia.estado || tr("Encendida")));
   $("ia-proveedor").value = ia.provider;
   $("ia-modelo").value = ia.model || "";
   $("ia-endpoint").value = ia.endpoint || "";
@@ -653,40 +930,56 @@ async function cargarAjustes() {
   $("ia-encendida").checked = ia.enabled;
   $("ia-endpoint-campo").hidden = !["azure", "compatible"].includes(ia.provider);
 
-  const valores = { "video.enabled": a.funciones.video, "update.check": a.funciones.avisar_version, "update.automatic": a.funciones.actualizar_solo };
+  const valores = { "video.enabled": a.funciones.video, "update.check": a.funciones.avisar_version, "update.automatic": a.funciones.actualizar_solo, "voice.bilingual": a.voz.bilingue };
   document.querySelectorAll("[data-ajuste]").forEach((c) => { c.checked = Boolean(valores[c.dataset.ajuste]); });
   $("whisper").value = a.voz.whisper;
   $("idioma").value = a.voz.idioma;
+  if (a.voz.idioma) ponerIdioma(a.voz.idioma);
   $("rutina-salida").value = a.rutina.salida;
   $("rutina-llevar").value = a.rutina.llevar;
   $("rutina-musica").value = a.rutina.musica;
-  $("rutina-dias").replaceChildren(...["L", "M", "M", "J", "V", "S", "D"].map((letra, i) => {
+  $("rutina-dias").replaceChildren(...(idioma === "en" ? ["M", "T", "W", "T", "F", "S", "S"] : ["L", "M", "M", "J", "V", "S", "D"]).map((letra, i) => {
     const etiqueta = el("label", "voz"), caja = document.createElement("input");
     caja.type = "checkbox"; caja.value = i; caja.checked = a.rutina.dias.includes(i);
     etiqueta.append(caja, document.createTextNode(letra));
     return etiqueta;
   }));
+  const ninos = a.ninos;
+  $("ninos-encendido").checked = ninos.enabled;
+  $("ninos-todos").checked = ninos.everyone;
+  $("ninos-limpia").checked = ninos.clean_music;
+  $("ninos-volumen").value = String(ninos.max_volume || 100);
+  $("ninos-desde").value = ninos.video_from;
+  $("ninos-hasta").value = ninos.video_until;
+  const nombres = a.voz.personas.map((p) => capital(p.replace(/-/g, " ")));
+  $("ninos-quienes").replaceChildren(...(nombres.length ? nombres.map((nombre) => {
+    const etiqueta = el("label", "voz"), caja = document.createElement("input");
+    caja.type = "checkbox"; caja.value = nombre;
+    caja.checked = ninos.children.some((n) => n.toLowerCase() === nombre.toLowerCase());
+    etiqueta.append(caja, document.createTextNode(nombre));
+    return etiqueta;
+  }) : [el("span", "detalle", tr("Todavía nadie ha grabado su voz."))]));
   // Con el paquete .deb, la PC se actualiza sola de madrugada (lo hace el sistema).
   document.querySelector('[data-ajuste="update.automatic"]').closest(".interruptor").hidden = Boolean(a.paquete);
   pintarCuartos(a.casa);
-  decir("version", `VOXA ${a.version}` + (a.nueva ? ` · hay una versión nueva: ${a.nueva} (dile «actualízate»)` : ""));
+  decir("version", a.nueva ? tr("VOXA {version} · hay una versión nueva: {nueva} (dile «actualízate»)", { version: a.version, nueva: a.nueva }) : `VOXA ${a.version}`);
 }
 
 async function esperarReinicio() {
   const aviso = $("aviso-ajustes");
   aviso.hidden = false;
-  aviso.textContent = "VOXA se está reiniciando…";
+  aviso.textContent = tr("VOXA se está reiniciando…");
   await pausa(4000);
   for (let i = 0; i < 40; i++) {
     try {
       await api("/api/ajustes");
-      aviso.textContent = "Listo: VOXA ya usa los ajustes nuevos.";
+      aviso.textContent = tr("Listo: VOXA ya usa los ajustes nuevos.");
       setTimeout(() => { aviso.hidden = true; }, 3000);
       cargarAjustes();
       return;
     } catch (e) { await pausa(1500); }
   }
-  aviso.textContent = "VOXA tarda en volver. Revisa la PC de la cocina.";
+  aviso.textContent = tr("VOXA tarda en volver. Revisa la PC de la cocina.");
 }
 
 function despues(r) { if (r.reinicio) esperarReinicio(); else cargarAjustes(); }
@@ -705,10 +998,10 @@ async function guardar(seccion, valores, salida) {
 
 async function secreto(tipo, valor, salida, persona) {
   if (!valor) return false;
-  decir(salida, "Revisando…");
+  decir(salida, tr("Revisando…"));
   try {
     const r = await api("/api/secreto", { tipo, valor, persona: persona || "" });
-    decir(salida, r.respuesta + (r.bot ? ` Bot: @${r.bot}.` : "") + (r.eventos != null ? ` Trae ${r.eventos} eventos.` : ""));
+    decir(salida, r.respuesta + (r.bot ? ` Bot: @${r.bot}.` : "") + (r.eventos != null ? " " + tr("Trae {n} eventos.", { n: r.eventos }) : ""));
     despues(r);
     return true;
   } catch (e) { decir(salida, e.message); return false; }
@@ -716,11 +1009,11 @@ async function secreto(tipo, valor, salida, persona) {
 
 $("revisar").onclick = async () => {
   const cont = $("hallazgos");
-  cont.textContent = "Revisando…";
+  cont.textContent = tr("Revisando…");
   try {
     const r = await api("/api/ajustes/revisar", {});
     const pendientes = r.hallazgos.filter((h) => h.estado !== "ok");
-    if (!pendientes.length) { cont.replaceChildren(el("p", "ok", "✓ Todo en orden.")); return; }
+    if (!pendientes.length) { cont.replaceChildren(el("p", "ok", tr("✓ Todo en orden."))); return; }
     cont.replaceChildren(...pendientes.map((h) => {
       const d = el("div", "hallazgo");
       d.append(el("span", h.estado, `${MARCAS[h.estado] || ""} ${h.grupo} · ${h.nombre}`));
@@ -748,7 +1041,7 @@ $("spotify-conectar").onclick = async () => {
     const r = await api("/api/spotify/autorizar", {});
     if (ventana) ventana.location = r.url; else location.href = r.url;
     $("form-spotify-codigo").hidden = false;
-    decir("spotify-respuesta", "Después de aceptar, copia la dirección de la página que no abre y pégala aquí.");
+    decir("spotify-respuesta", tr("Después de aceptar, copia la dirección de la página que no abre y pégala aquí."));
   } catch (e) {
     if (ventana) ventana.close();
     decir("spotify-respuesta", e.message);
@@ -761,9 +1054,9 @@ $("spotify-abrir").onclick = async () => {
 $("musica-fuente").onchange = () => guardar("music", { provider: $("musica-fuente").value }, "spotify-respuesta");
 document.querySelectorAll("[data-copiar]").forEach((b) => {
   b.onclick = async () => {
-    try { await navigator.clipboard.writeText($(b.dataset.copiar).textContent); b.textContent = "Copiado"; }
-    catch (e) { b.textContent = "Mantén presionado"; }
-    setTimeout(() => { b.textContent = "Copiar"; }, 2000);
+    try { await navigator.clipboard.writeText($(b.dataset.copiar).textContent); b.textContent = tr("Copiado"); }
+    catch (e) { b.textContent = tr("Mantén presionado"); }
+    setTimeout(() => { b.textContent = tr("Copiar"); }, 2000);
   };
 });
 $("form-spotify-codigo").onsubmit = async (ev) => {
@@ -779,14 +1072,14 @@ $("form-spotify-codigo").onsubmit = async (ev) => {
 $("form-clima").onsubmit = async (ev) => {
   ev.preventDefault();
   const cont = $("clima-lugares");
-  cont.textContent = "Buscando…";
+  cont.textContent = tr("Buscando…");
   try {
     const r = await api("/api/clima/buscar", { texto: $("clima-texto").value });
-    if (!r.lugares.length) { cont.textContent = "No encontré esa ciudad."; return; }
+    if (!r.lugares.length) { cont.textContent = tr("No encontré esa ciudad."); return; }
     cont.replaceChildren(...r.lugares.map((l) => {
       const b = el("button", "lugar", l.nombre);
       b.onclick = async () => {
-        cont.textContent = "Guardando…";
+        cont.textContent = tr("Guardando…");
         if (await guardar("weather", { latitude: l.lat, longitude: l.lon, place: l.nombre })) cont.replaceChildren();
       };
       return b;
@@ -807,7 +1100,7 @@ $("tg-vincular").onclick = async () => {
     const r = await api("/api/telegram/codigo", {});
     $("tg-codigo").hidden = false;
     decir("tg-numero", r.codigo);
-    decir("tg-respuesta", `Busca @${r.bot} en Telegram (o agrégalo al grupo de la familia) y mándale el código.`);
+    decir("tg-respuesta", tr("Busca @{bot} en Telegram (o agrégalo al grupo de la familia) y mándale el código.", { bot: r.bot }));
   } catch (e) { decir("tg-respuesta", e.message); }
 };
 
@@ -822,7 +1115,7 @@ $("form-ia-llave").onsubmit = async (ev) => {
   if (await secreto("ia", $("ia-llave").value.trim(), "ia-respuesta")) $("ia-llave").value = "";
 };
 $("ia-probar").onclick = async () => {
-  decir("ia-respuesta", "Preguntando…");
+  decir("ia-respuesta", tr("Preguntando…"));
   try {
     const r = await api("/api/ia/probar", {});
     decir("ia-respuesta", `«${r.pregunta}» → ${r.respuesta} (${r.segundos} s · ${r.uso})`);
@@ -838,6 +1131,15 @@ $("rutina-guardar").onclick = () => guardar("routine", {
   checklist: $("rutina-llevar").value.trim(),
   morning_music: $("rutina-musica").value.trim(),
 }, "rutina-respuesta");
+$("ninos-guardar").onclick = () => guardar("kids", {
+  enabled: $("ninos-encendido").checked,
+  everyone: $("ninos-todos").checked,
+  clean_music: $("ninos-limpia").checked,
+  max_volume: Number($("ninos-volumen").value),
+  children: [...$("ninos-quienes").querySelectorAll("input:checked")].map((c) => c.value),
+  video_from: $("ninos-desde").value,
+  video_until: $("ninos-hasta").value,
+}, "ninos-respuesta");
 $("idioma").onchange = () => guardar("voice", { language: $("idioma").value });
 $("whisper").onchange = () => guardar("voice", { whisper_model: $("whisper").value });
 if (location.hash === "#ajustes") mostrarVista("ajustes");

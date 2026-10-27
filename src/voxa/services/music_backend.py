@@ -75,6 +75,8 @@ class NowPlaying:
     art_url: str | None = None
     position: float | None = None
     length: float | None = None
+    explicit: bool = False
+    """Spotify la marca como explícita (solo la Web API lo sabe)."""
 
 
 class MusicBackend(Protocol):

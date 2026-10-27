@@ -62,6 +62,11 @@ class SpotifyWebApi:
         self.device_name = device_name
         self._clock = clock
         self._own: tuple[float, list[Playlist]] | None = None
+        self.clean: Callable[[], bool] = lambda: False
+        """Modo niños: elegir canciones sin la marca «explicit»."""
+
+    def _clean(self, tracks: list[dict]) -> list[dict]:
+        return [t for t in tracks if not t.get("explicit")] if self.clean() else tracks
 
     async def _api(self, method: str, path: str, *, params=None, body=None, retry: bool = True) -> Any:
         headers = {"Authorization": f"Bearer {await self._auth.access_token()}"}
@@ -119,7 +124,7 @@ class SpotifyWebApi:
         if kind is None and " de " in query:
             # «persiana americana de soda stereo»: canción de un artista.
             title, artist = query.rsplit(" de ", 1)
-            tracks = self._items(await self._search(f'track:"{title}" artist:"{artist}"', "track", 1), "tracks")
+            tracks = self._clean(self._items(await self._search(f'track:"{title}" artist:"{artist}"', "track", 5 if self.clean() else 1), "tracks"))
             if tracks:
                 return self._track_body(tracks[0]), PlayResult(tracks[0]["name"], _artists(tracks[0]), "track")
 
@@ -128,7 +133,7 @@ class SpotifyWebApi:
         )
         results = await self._search(query, types)
         artists = self._items(results, "artists")
-        tracks = self._items(results, "tracks")
+        tracks = self._clean(self._items(results, "tracks"))
         albums = self._items(results, "albums")
         playlists = self._items(results, "playlists")
 
@@ -270,7 +275,8 @@ class SpotifyWebApi:
             for offset in range(0, LIKED_TRACKS, 50):
                 data = await self._api("GET", "/me/tracks", params={"limit": 50, "offset": offset, "market": "from_token"})
                 items = (data or {}).get("items") or []
-                uris += [i["track"]["uri"] for i in items if i and (i.get("track") or {}).get("uri")]
+                tracks = [i["track"] for i in items if i and (i.get("track") or {}).get("uri")]
+                uris += [t["uri"] for t in self._clean(tracks)]
                 if not (data or {}).get("next"):
                     break
         except BackendUnavailable as exc:
@@ -290,7 +296,8 @@ class SpotifyWebApi:
         item = (data or {}).get("item")
         if not item:
             return None
-        return NowPlaying(item["name"], _artists(item), playing=bool(data.get("is_playing")))
+        return NowPlaying(item["name"], _artists(item), playing=bool(data.get("is_playing")),
+                          explicit=bool(item.get("explicit")))
 
     async def transfer(self, device: str) -> str:
         target = await self._find_device(device)

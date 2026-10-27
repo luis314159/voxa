@@ -35,9 +35,13 @@ EDITABLE: dict[str, dict[str, Any]] = {
     "video": {"enabled": bool},
     "update": {"check": bool, "automatic": bool},
     "web": {"enabled": bool},
-    "voice": {"whisper_model": ("tiny", "base", "small"), "language": ("es", "en")},
+    "voice": {"whisper_model": ("tiny", "base", "small"), "language": ("es", "en"), "bilingual": bool},
     "routine": {"departure": "time", "departure_days": "days", "checklist": str, "morning_music": str},
     "house": {"room": str, "main": str},
+    "kids": {
+        "enabled": bool, "children": "names", "everyone": bool, "clean_music": bool, "max_volume": int,
+        "video_from": "time", "video_until": "time",
+    },
 }
 _TEXT_LIMIT = 300
 
@@ -76,6 +80,11 @@ def validate(section: str, values: dict[str, Any]) -> dict[str, Any]:
                 raise SettingsError(f"«{section}.{key}» debe ser una hora como 07:30")
             clean[key] = value.strip()
             continue
+        if kind == "names":
+            if not isinstance(value, list) or not all(isinstance(n, str) and 0 < len(n.strip()) <= 40 for n in value):
+                raise SettingsError(f"«{section}.{key}» deben ser nombres cortos")
+            clean[key] = sorted({n.strip() for n in value})
+            continue
         if kind == "days":
             if not isinstance(value, list) or not all(isinstance(d, int) and 0 <= d <= 6 for d in value):
                 raise SettingsError(f"«{section}.{key}» deben ser días de 0 (lunes) a 6 (domingo)")
@@ -101,6 +110,8 @@ def validate(section: str, values: dict[str, Any]) -> dict[str, Any]:
     if section == "weather":
         if not -90 <= clean.get("latitude", 0) <= 90 or not -180 <= clean.get("longitude", 0) <= 180:
             raise SettingsError("coordenadas fuera de rango")
+    if section == "kids" and clean.get("max_volume", 0) > 100:
+        raise SettingsError("el volumen máximo va de 0 a 100")
     return clean
 
 

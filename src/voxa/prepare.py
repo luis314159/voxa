@@ -31,7 +31,7 @@ from typing import Callable
 
 from voxa.audio.speaker import MODEL_SHA256 as SPEAKER_SHA256
 from voxa.audio.speaker import MODEL_URL as SPEAKER_URL
-from voxa.config import Config
+from voxa.config import MODEL_DEFAULTS, Config
 
 log = logging.getLogger(__name__)
 
@@ -86,9 +86,21 @@ def model_downloads(config: Config) -> list[Download]:
     piper = Path(config.voice.piper_voice).expanduser()
     wake = Path(config.wake.feature_dir).expanduser()
     base, onnx_sha, json_sha = PIPER_VOICES.get(config.voice.language, PIPER_VOICES["es"])
-    return [
+    voices = [
         Download("la voz de VOXA", f"{base}/{piper.name}", onnx_sha, piper),
         Download("la voz de VOXA (ajustes)", f"{base}/{piper.name}.json", json_sha, piper.with_name(piper.name + ".json")),
+    ]
+    if config.voice.bilingual:  # la voz del otro idioma, para contestar en él
+        other = "en" if config.voice.language == "es" else "es"
+        second = Path(MODEL_DEFAULTS[other][1]).expanduser()
+        base, onnx_sha, json_sha = PIPER_VOICES[other]
+        voices += [
+            Download("la voz del otro idioma", f"{base}/{second.name}", onnx_sha, second),
+            Download("la voz del otro idioma (ajustes)", f"{base}/{second.name}.json", json_sha,
+                     second.with_name(second.name + ".json")),
+        ]
+    return [
+        *voices,
         Download("«Hey Voxa» (1 de 2)", f"{WAKE}/melspectrogram.onnx",
                  "ba2b0e0f8b7b875369a2c89cb13360ff53bac436f2895cced9f479fa65eb176f", wake / "melspectrogram.onnx"),
         Download("«Hey Voxa» (2 de 2)", f"{WAKE}/embedding_model.onnx",

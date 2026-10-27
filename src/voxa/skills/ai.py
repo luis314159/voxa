@@ -22,6 +22,7 @@ from voxa.core.phrases import clock_words, date_phrase
 from voxa.core.speech import SpeechChunker
 from voxa.core.types import Response
 from voxa.i18n import english
+from voxa.kids import AI_HINT as KIDS_HINT
 from voxa.services.ai import COMMAND, AiAnswer, AiError, AiSetupError, ChatModel, Tool, cost_usd
 from voxa.state.ai_usage import AiUsage
 from voxa.state.recipe import Recipe
@@ -192,6 +193,8 @@ class AiFallback:
         memory_seconds: float = 180.0,
         memory_turns: int = 4,
     ) -> None:
+        self.for_kids: Callable[[], bool] = lambda: False
+        """Lo pone la app: si quien pregunta tiene las reglas del modo niños."""
         self.start_recipe: StartRecipe | None = None
         """Lo pone la app: si la IA manda una receta desde una pregunta libre, se abre en modo receta."""
         self.extra_context: Callable[[], str] = str
@@ -224,8 +227,9 @@ class AiFallback:
         tools: tuple[Tool, ...] = (COMMAND, RECIPE_TOOL) if self.start_recipe else (COMMAND,)
         system = SYSTEM_PROMPT + RECIPE_HINT if self.start_recipe else SYSTEM_PROMPT
         if english():
-            # La familia habla inglés: la respuesta, en inglés; las órdenes para VOXA siguen en español.
             system += ENGLISH_HINT
+        if self.for_kids():
+            system += KIDS_HINT
         spoken = ""
         if self.speak is None:
             answer = await self._ask(text, system, [*self._history, question], tools)

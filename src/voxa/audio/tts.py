@@ -73,3 +73,24 @@ class PiperTts:
             return None
         digest = hashlib.sha1(f"{self._cache_prefix}|{text}".encode()).hexdigest()[:16]
         return self._cache_dir / f"{digest}.wav"
+
+
+class BilingualTts:
+    """Casa bilingüe: cada respuesta con la voz de su idioma (``voxa.i18n.language`` de esa tarea)."""
+
+    def __init__(self, voices: dict[str, TextToSpeech], home: str) -> None:
+        self._voices = voices
+        self._home = home
+
+    def synthesize(self, text: str) -> Clip:
+        from voxa.i18n import language
+
+        return self._voices.get(language(), self._voices[self._home]).synthesize(text)
+
+    def phonemes(self, text: str) -> str:
+        return self._voices[self._home].phonemes(text)  # type: ignore[attr-defined]
+
+    def warm_up(self, phrases: list[str]) -> None:
+        home = self._voices[self._home]
+        if hasattr(home, "warm_up"):
+            home.warm_up(phrases)

@@ -25,6 +25,7 @@ from typing import Awaitable, Callable, Protocol
 from voxa.core.phrases import days_phrase
 from voxa.core.types import Response
 from voxa.health import Health
+from voxa.i18n import home_language, localize
 from voxa.services.music_backend import BackendUnavailable, NowPlaying
 from voxa.services.weather import Weather, WeatherUnavailable
 from voxa.state.timers import TimerManager, display_label
@@ -119,13 +120,14 @@ class Display:
             "music": self._music_snapshot(),
             "weather": self._weather_snapshot(),
             "muted": self.muted,
-            "problems": [{"id": p.id, "text": p.text} for p in self.health.problems] if self.health else [],
+            "problems": [{"id": p.id, "text": localize(p.text)} for p in self.health.problems] if self.health else [],
             "video": {"title": self.video_title} if self.video_title else None,
             "wake_word": self.wake_word,
             "shopping": list(self.shopping),
             "recipe": self.recipe(),
             "photo": self.photo,
             "phone": self._phone(),
+            "language": home_language(),
         }
 
     def _phone(self) -> str | None:
@@ -144,7 +146,7 @@ class Display:
             "rain_probability": w.rain_probability,
             "code": w.code,
             "is_day": w.is_day,
-            "description": w.description,
+            "description": localize(w.description),
         }
 
     def _music_snapshot(self) -> dict | None:
@@ -259,7 +261,7 @@ class DisplayCommands(Protocol):
     """Lo que la pantalla puede pedir (``voxa.service.Service``)."""
 
     async def talk(self) -> object: ...
-    async def handle_text(self, text: str) -> object: ...
+    async def handle_text(self, text: str, *, button: bool = False) -> object: ...
     async def cancel_timer(self, timer_id: int) -> None: ...
     async def stop_alarm(self) -> None: ...
     async def set_muted(self, on: bool) -> None: ...
@@ -344,7 +346,7 @@ class DisplayServer:
         if kind == "talk":
             action = commands.talk()
         elif kind == "say" and isinstance(message.get("text"), str) and message["text"].strip():
-            action = commands.handle_text(message["text"].strip()[:_MAX_SAY_CHARS])
+            action = commands.handle_text(message["text"].strip()[:_MAX_SAY_CHARS], button=True)
         elif kind == "cancel_timer" and isinstance(message.get("id"), int):
             action = commands.cancel_timer(message["id"])
         elif kind == "stop_alarm":

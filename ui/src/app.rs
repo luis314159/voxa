@@ -9,6 +9,7 @@ use egui::{Align2, Color32, CornerRadius, Painter, Pos2, Rect, Sense, Ui, pos2, 
 
 use crate::backgrounds::Backgrounds;
 use crate::format;
+use crate::i18n::{self, t};
 use crate::link::Link;
 use crate::protocol::{Command, Diagnostics, Music, Phase, Recipe, State, Timer, Weather};
 use crate::theme;
@@ -41,6 +42,17 @@ const HINTS: [&str; 9] = [
     "«Súbele a la música»",
     "«¿Va a llover hoy?»",
     "«¿Qué canción es esta?»",
+];
+const HINTS_EN: [&str; 9] = [
+    "«Set a timer for 10 minutes for the rice»",
+    "«How much time is left on the rice?»",
+    "«Remind me to take out the trash at 8 pm»",
+    "«Play Juan Gabriel»",
+    "«Play some music for cooking»",
+    "«Play a video of how to make pozole»",
+    "«Turn the music up»",
+    "«Is it going to rain today?»",
+    "«What song is this?»",
 ];
 
 pub struct Options {
@@ -136,6 +148,7 @@ impl Frame {
 impl eframe::App for VoxaApp {
     fn ui(&mut self, ui: &mut Ui, _frame: &mut eframe::Frame) {
         let (state, connected) = self.link.snapshot();
+        i18n::set_language(&state.language);
         let rect = ui.max_rect();
         let f = Frame {
             s: (rect.width() / 1920.0).min(rect.height() / 1080.0),
@@ -231,7 +244,7 @@ impl eframe::App for VoxaApp {
             widgets::shadow_text(&painter,
                 pos2(right.right(), footer),
                 Align2::RIGHT_BOTTOM,
-                "Sin conexión con VOXA · reintentando…",
+                t("Sin conexión con VOXA · reintentando…", "Can't reach VOXA · retrying…"),
                 theme::regular(f.px(24.0)),
                 theme::TEXT_DIM,
             );
@@ -290,7 +303,7 @@ impl VoxaApp {
         if state.recipe.is_some() {
             // Con receta, la respuesta ya está en la tarjeta (el paso): basta un renglón fijo para el estado.
             let line = if listening {
-                Some((if state.phase == Phase::Listening { "Te escucho…" } else { "Un momento…" }.to_owned(), theme::CYAN))
+                Some((listening_text(state.phase).to_owned(), theme::CYAN))
             } else if fade > 0.0 {
                 state.heard.as_ref().map(|heard| (format!("«{heard}»"), theme::alpha(theme::TEXT_DIM, fade)))
             } else {
@@ -302,7 +315,7 @@ impl VoxaApp {
             return y + f.px(56.0);
         }
         if listening {
-            let text = if state.phase == Phase::Listening { "Te escucho…" } else { "Un momento…" };
+            let text = listening_text(state.phase);
             widgets::shadow_text(painter, pos2(area.left(), y), Align2::LEFT_TOP, text, theme::regular(f.px(52.0)), theme::CYAN);
         } else if fade > 0.0 {
             if let Some(heard) = &state.heard {
@@ -462,15 +475,16 @@ impl VoxaApp {
         let font = theme::regular(f.px(28.0));
         if state.phase == Phase::Idle {
             if state.muted {
-                widgets::shadow_text(painter, below, Align2::RIGHT_TOP, "Micrófono apagado", font, theme::ALARM);
+                widgets::shadow_text(painter, below, Align2::RIGHT_TOP, t("Micrófono apagado", "Microphone off"), font, theme::ALARM);
             } else if let Some(problem) = problem {
                 let more = state.problems.len() - 1;
-                let text = if more > 0 { format!("{} · y {more} más", problem.text) } else { problem.text.clone() };
+                let text = if more > 0 { format!("{} · {}", problem.text, and_more(more)) } else { problem.text.clone() };
                 widgets::shadow_text(painter, below, Align2::RIGHT_TOP, text, font, theme::ALARM);
             } else {
                 let invite = match &state.wake_word {
+                    Some(phrase) if i18n::english() => format!("Say «{phrase}» or tap here"),
                     Some(phrase) => format!("Di «{phrase}» o toca aquí"),
-                    None => "Toca para hablar".to_owned(),
+                    None => t("Toca para hablar", "Tap to talk").to_owned(),
                 };
                 widgets::shadow_text(painter, below, Align2::RIGHT_TOP, invite, font, theme::TEXT_DIM);
             }
@@ -497,7 +511,12 @@ impl VoxaApp {
         }
         let hidden = state.timers.len() - shown;
         if hidden > 0 {
-            let text = if hidden == 1 { "y 1 temporizador más".to_owned() } else { format!("y {hidden} temporizadores más") };
+            let text = match (hidden, i18n::english()) {
+                (1, false) => "y 1 temporizador más".to_owned(),
+                (1, true) => "and 1 more timer".to_owned(),
+                (_, false) => format!("y {hidden} temporizadores más"),
+                (_, true) => format!("and {hidden} more timers"),
+            };
             widgets::shadow_text(painter, pos2(area.left(), y), Align2::LEFT_TOP, text, theme::regular(f.px(32.0)), theme::TEXT_DIM);
             y += f.px(56.0);
         }
@@ -516,7 +535,9 @@ impl VoxaApp {
 
         // Encabezado: platillo y en qué paso va, con la barra de avance debajo.
         let where_text = match step {
+            Some((n, _)) if i18n::english() => format!("Step {} of {total}", n + 1),
             Some((n, _)) => format!("Paso {} de {total}", n + 1),
+            None if i18n::english() => format!("{} servings · {total} steps", recipe.servings),
             None => format!("{} porciones · {total} pasos", recipe.servings),
         };
         let where_rect = widgets::shadow_text(painter, inner.right_top(), Align2::RIGHT_TOP, where_text, theme::regular(f.px(32.0)), theme::CYAN);
@@ -543,7 +564,7 @@ impl VoxaApp {
         let footer_right = inner.right() - 2.0 * size - f.px(20.0) - f.px(28.0);
         match step {
             Some((_, current)) if current.minutes > 0 => {
-                let label = format!("Contar {}", format::duration(f64::from(current.minutes) * 60.0));
+                let label = format!("{} {}", t("Contar", "Time"), format::duration(f64::from(current.minutes) * 60.0));
                 let font = theme::strong(f.px(32.0));
                 let width = painter.layout_no_wrap(label.clone(), font.clone(), theme::BG).size().x + f.px(56.0);
                 let pill = Rect::from_min_size(pos2(inner.left(), row_y - size / 2.0), vec2(width.min(footer_right - inner.left()), size));
@@ -556,7 +577,7 @@ impl VoxaApp {
             }
             Some(_) => {}
             None => {
-                let hint = "Di «siguiente paso» para empezar";
+                let hint = t("Di «siguiente paso» para empezar", "Say «next step» to start");
                 widgets::fitted_text(painter, pos2(inner.left(), row_y), Align2::LEFT_CENTER, hint, theme::regular(f.px(30.0)), theme::TEXT_DIM, footer_right - inner.left());
             }
         }
@@ -568,7 +589,10 @@ impl VoxaApp {
                 // Lo que sigue, en un renglón al fondo (si hay lugar); el paso usa la letra más grande que quepa.
                 let mut room = body.height();
                 if room >= f.px(170.0) {
-                    let next = recipe.steps.get(n + 1).map_or_else(|| "Último paso".to_owned(), |s| format!("Después: {}", s.text));
+                    let next = recipe.steps.get(n + 1).map_or_else(
+                        || t("Último paso", "Last step").to_owned(),
+                        |s| format!("{} {}", t("Después:", "Next:"), s.text),
+                    );
                     let next_font = theme::regular(f.px(30.0));
                     widgets::fitted_text(painter, pos2(body.left(), body.bottom()), Align2::LEFT_BOTTOM, &next, next_font, theme::TEXT_DIM, body.width());
                     room -= f.px(52.0);
@@ -594,7 +618,7 @@ impl VoxaApp {
         let radius = CornerRadius::same(f.px(28.0) as u8);
         let response = ui.interact(card, ui.scope_id().with(("temporizador", timer.id)), Sense::click());
         let pad = f.px(32.0);
-        let fallback = if timer.is_reminder() { "Alarma" } else { "Temporizador" };
+        let fallback = if timer.is_reminder() { t("Alarma", "Alarm") } else { t("Temporizador", "Timer") };
         let label = timer.label.as_deref().map(format::capitalize).unwrap_or_else(|| fallback.into());
         // Un recordatorio muestra a qué hora suena («8:00 p. m.»), no una cuenta de horas.
         let rings_at = chrono::DateTime::from_timestamp(timer.ends_at as i64, 0)
@@ -606,11 +630,15 @@ impl VoxaApp {
             painter.rect_stroke(card, radius, egui::Stroke::new(f.px(3.0), theme::ALARM), egui::StrokeKind::Inside);
             let title = match (timer.is_reminder(), &timer.label, &rings_at) {
                 (true, Some(_), _) => label.clone(),
-                (true, None, Some((time, suffix))) => format!("¡Son las {time}{}!", suffix.map(|s| format!(" {s}")).unwrap_or_default()),
+                (true, None, Some((time, suffix))) => {
+                    let suffix = suffix.map(|s| format!(" {s}")).unwrap_or_default();
+                    if i18n::english() { format!("It's {time}{suffix}!") } else { format!("¡Son las {time}{suffix}!") }
+                }
+                _ if i18n::english() => format!("{label} is done!"),
                 _ => format!("¡{label} listo!"),
             };
             widgets::fitted_text(painter, card.left_top() + vec2(pad, pad * 0.8), Align2::LEFT_TOP, &title, theme::strong(f.px(52.0)), theme::TEXT, card.width() - pad * 2.0);
-            widgets::shadow_text(painter, card.left_bottom() + vec2(pad, -pad * 0.8), Align2::LEFT_BOTTOM, "Toca para detener la alarma", theme::regular(f.px(30.0)), theme::TEXT);
+            widgets::shadow_text(painter, card.left_bottom() + vec2(pad, -pad * 0.8), Align2::LEFT_BOTTOM, t("Toca para detener la alarma", "Tap to stop the alarm"), theme::regular(f.px(30.0)), theme::TEXT);
             if response.clicked() {
                 self.send(Command::StopAlarm);
             }
@@ -623,9 +651,9 @@ impl VoxaApp {
         let subtitle = if let Some(days) = &timer.repeat {
             format::capitalize(days) // «De lunes a viernes»
         } else if timer.is_reminder() {
-            format!("en {}", format::duration((timer.remaining(f.now) / 60.0).ceil() * 60.0))
+            format!("{} {}", t("en", "in"), format::duration((timer.remaining(f.now) / 60.0).ceil() * 60.0))
         } else if timer.paused_remaining.is_some() {
-            format!("En pausa · {}", format::duration(timer.total))
+            format!("{} · {}", t("En pausa", "Paused"), format::duration(timer.total))
         } else {
             format::duration(timer.total)
         };
@@ -683,12 +711,17 @@ impl VoxaApp {
 
     fn hints(&self, painter: &Painter, f: &Frame, area: Rect, wake_word: Option<&str>) {
         let mut y = area.top() + f.px(40.0);
-        let title = wake_word.map_or_else(|| "Prueba decir:".to_owned(), |phrase| format!("Prueba decir «{phrase}» y luego:"));
+        let title = match wake_word {
+            None => t("Prueba decir:", "Try saying:").to_owned(),
+            Some(phrase) if i18n::english() => format!("Try saying «{phrase}» and then:"),
+            Some(phrase) => format!("Prueba decir «{phrase}» y luego:"),
+        };
+        let hints = if i18n::english() { &HINTS_EN } else { &HINTS };
         widgets::shadow_text(painter, pos2(area.left(), y), Align2::LEFT_TOP, title, theme::regular(f.px(34.0)), theme::TEXT_DIM);
         y += f.px(64.0);
         let n = (f.time / 8.0) as usize;
         for row in 0..3 {
-            let hint = HINTS[(n + row) % HINTS.len()];
+            let hint = hints[(n + row) % hints.len()];
             let color = theme::alpha(theme::TEXT, if row == 0 { 0.9 } else { 0.45 });
             let galley = painter.layout(hint.to_owned(), theme::regular(f.px(40.0)), color, area.width());
             let height = galley.size().y;
@@ -747,17 +780,19 @@ impl VoxaApp {
         let touched = ui.interact(rect, ui.scope_id().with("codigo-celular"), Sense::click()).clicked();
         painter.rect_filled(rect, CornerRadius::ZERO, theme::alpha(theme::BG, 0.94));
         let center = rect.center();
-        widgets::shadow_text(painter, pos2(center.x, rect.top() + f.px(110.0)), Align2::CENTER_TOP, "VOXA en tu celular", theme::strong(f.px(64.0)), theme::TEXT);
+        widgets::shadow_text(painter, pos2(center.x, rect.top() + f.px(110.0)), Align2::CENTER_TOP, t("VOXA en tu celular", "VOXA on your phone"), theme::strong(f.px(64.0)), theme::TEXT);
         if let Some((_, Some(qr))) = &self.phone_qr {
             qr.paint(painter, pos2(center.x, center.y + f.px(20.0)), f.px(560.0));
         }
         // Sin la clave: lo que se lee es solo a dónde se conecta.
         let host = url.split("/?").next().unwrap_or(url);
         let lines = [
-            ("Escanéalo con la cámara del celular (en el wifi de la casa).", theme::TEXT),
-            ("En «Ajustes» se configuran Spotify, el clima, el calendario y más.", theme::TEXT_DIM),
+            (t("Escanéalo con la cámara del celular (en el wifi de la casa).",
+               "Scan it with your phone's camera (on the home wifi)."), theme::TEXT),
+            (t("En «Ajustes» se configuran Spotify, el clima, el calendario y más.",
+               "In «Settings» you set up Spotify, the weather, the calendar and more."), theme::TEXT_DIM),
             (host, theme::TEXT_DIM),
-            ("Toca para cerrar", theme::TEXT_DIM),
+            (t("Toca para cerrar", "Tap to close"), theme::TEXT_DIM),
         ];
         let mut y = center.y + f.px(330.0);
         for (text, color) in lines {
@@ -845,7 +880,7 @@ fn shopping_card(painter: &Painter, f: &Frame, area: Rect, items: &[String]) {
     let height = (pad * 1.6 + header + per_column as f32 * row).min(area.height());
     let card = Rect::from_min_size(area.min, vec2(area.width(), height));
     painter.rect_filled(card, CornerRadius::same(f.px(28.0) as u8), theme::CARD);
-    let title = format!("Lista del súper · {}", items.len());
+    let title = format!("{} · {}", t("Lista del súper", "Shopping list"), items.len());
     widgets::shadow_text(painter, card.left_top() + vec2(pad, pad * 0.8), Align2::LEFT_TOP, title, theme::regular(f.px(32.0)), theme::TEXT_DIM);
     let column = (card.width() - pad * 2.0) / 2.0;
     let font = theme::regular(f.px(36.0));
@@ -856,14 +891,14 @@ fn shopping_card(painter: &Painter, f: &Frame, area: Rect, items: &[String]) {
         widgets::fitted_text(painter, at + vec2(f.px(28.0), 0.0), Align2::LEFT_TOP, &format::capitalize(item), font.clone(), theme::TEXT, column - f.px(40.0));
     }
     if more > 0 {
-        widgets::shadow_text(painter, slot(shown) + vec2(f.px(28.0), 0.0), Align2::LEFT_TOP, format!("y {more} más"), font, theme::TEXT_DIM);
+        widgets::shadow_text(painter, slot(shown) + vec2(f.px(28.0), 0.0), Align2::LEFT_TOP, and_more(more), font, theme::TEXT_DIM);
     }
 }
 
 /// Ingredientes en dos columnas, los que quepan, y «y N más».
 fn ingredient_columns(painter: &Painter, f: &Frame, area: Rect, items: &[String]) {
     let row = f.px(46.0);
-    widgets::shadow_text(painter, area.left_top(), Align2::LEFT_TOP, "Ingredientes", theme::regular(f.px(30.0)), theme::TEXT_DIM);
+    widgets::shadow_text(painter, area.left_top(), Align2::LEFT_TOP, t("Ingredientes", "Ingredients"), theme::regular(f.px(30.0)), theme::TEXT_DIM);
     let top = area.top() + f.px(52.0);
     let rows_fit = (((area.bottom() - top) / row).floor() as usize).max(1);
     let capacity = rows_fit * 2;
@@ -879,7 +914,7 @@ fn ingredient_columns(painter: &Painter, f: &Frame, area: Rect, items: &[String]
         widgets::fitted_text(painter, at + vec2(f.px(28.0), 0.0), Align2::LEFT_TOP, &format::capitalize(item), font.clone(), theme::TEXT, column - f.px(44.0));
     }
     if more > 0 {
-        widgets::shadow_text(painter, slot(shown) + vec2(f.px(28.0), 0.0), Align2::LEFT_TOP, format!("y {more} más"), font, theme::TEXT_DIM);
+        widgets::shadow_text(painter, slot(shown) + vec2(f.px(28.0), 0.0), Align2::LEFT_TOP, and_more(more), font, theme::TEXT_DIM);
     }
 }
 
@@ -905,24 +940,28 @@ fn weather_block(painter: &Painter, f: &Frame, area: Rect, weather: &Weather) {
     let font = theme::regular(f.px(28.0));
     let mut detail = format::capitalize(&weather.description);
     if weather.rain_probability >= 30 {
-        detail = format!("{detail} · lluvia {} %", weather.rain_probability);
+        detail = format!("{detail} · {} {} %", t("lluvia", "rain"), weather.rain_probability);
     }
     let y = icon_center.y + icon / 2.0 + f.px(14.0);
     let width = area.width().max(f.px(200.0));
     widgets::fitted_text(painter, pos2(area.left(), y), Align2::LEFT_TOP, &detail, font.clone(), theme::TEXT_DIM, width);
-    let range = format!("Máx {}° · Mín {}°", weather.high, weather.low);
+    let range = format!("{} {}° · {} {}°", t("Máx", "High"), weather.high, t("Mín", "Low"), weather.low);
     widgets::fitted_text(painter, pos2(area.left(), y + f.px(38.0)), Align2::LEFT_TOP, &range, font, theme::TEXT_DIM, width);
 }
 
 /// La pantalla de diagnóstico: bloques de «etiqueta: valor» en dos columnas, problemas y registro.
 fn draw_diagnostics(painter: &Painter, f: &Frame, rect: Rect, report: Option<&Diagnostics>, connected: bool) {
     let area = rect.shrink(f.px(72.0));
-    widgets::shadow_text(painter, area.left_top(), Align2::LEFT_TOP, "Diagnóstico", theme::strong(f.px(56.0)), theme::TEXT);
-    widgets::shadow_text(painter, area.right_top(), Align2::RIGHT_TOP, "Toca para cerrar", theme::regular(f.px(28.0)), theme::TEXT_DIM);
+    widgets::shadow_text(painter, area.left_top(), Align2::LEFT_TOP, t("Diagnóstico", "Diagnostics"), theme::strong(f.px(56.0)), theme::TEXT);
+    widgets::shadow_text(painter, area.right_top(), Align2::RIGHT_TOP, t("Toca para cerrar", "Tap to close"), theme::regular(f.px(28.0)), theme::TEXT_DIM);
     let report = match report {
         Some(report) if connected => report,
         _ => {
-            let text = if connected { "Pidiendo el reporte a VOXA…" } else { "Sin conexión con VOXA: revisa «systemctl --user status voxa»" };
+            let text = if connected {
+                t("Pidiendo el reporte a VOXA…", "Asking VOXA for the report…")
+            } else {
+                t("Sin conexión con VOXA: revisa «systemctl --user status voxa»", "Can't reach VOXA: check «systemctl --user status voxa»")
+            };
             widgets::shadow_text(painter, area.left_top() + vec2(0.0, f.px(100.0)), Align2::LEFT_TOP, text, theme::regular(f.px(34.0)), theme::TEXT_DIM);
             return;
         }
@@ -951,7 +990,7 @@ fn draw_diagnostics(painter: &Painter, f: &Frame, rect: Rect, report: Option<&Di
 
     let mut y = column_y[0].max(column_y[1]);
     if report.problems.is_empty() {
-        widgets::shadow_text(painter, pos2(area.left(), y), Align2::LEFT_TOP, "Sin problemas detectados", label_font.clone(), theme::CYAN);
+        widgets::shadow_text(painter, pos2(area.left(), y), Align2::LEFT_TOP, t("Sin problemas detectados", "No problems found"), label_font.clone(), theme::CYAN);
         y += line;
     }
     for problem in &report.problems {
@@ -983,4 +1022,13 @@ fn schedule_repaint(ui: &Ui, f: &Frame, state: &State, backgrounds: Option<&Back
         let next_photo = backgrounds.map_or(Duration::MAX, Backgrounds::next_change);
         ui.ctx().request_repaint_after(to_next_second.min(next_photo));
     }
+}
+
+fn listening_text(phase: Phase) -> &'static str {
+    if phase == Phase::Listening { t("Te escucho…", "Listening…") } else { t("Un momento…", "One moment…") }
+}
+
+/// «y 3 más» / «and 3 more».
+fn and_more(more: usize) -> String {
+    if i18n::english() { format!("and {more} more") } else { format!("y {more} más") }
 }

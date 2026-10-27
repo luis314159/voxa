@@ -61,6 +61,8 @@ class WeatherConfig:
 class VoiceConfig:
     language: str = "es"
     """Idioma de la casa: «es» o «en» (gramática, voz, reconocimiento y respuestas)."""
+    bilingual: bool = False
+    """Casa bilingüe: también entiende el otro idioma y contesta cada frase en el idioma en que se dijo."""
     stt: str = "hibrido"
     vosk_model: str = "~/.local/share/voxa/models/vosk-model-small-es-0.42"
     whisper_model: str = "base"
@@ -91,6 +93,20 @@ class RoutineConfig:
     """Días con salida (0 = lunes)."""
     checklist: str = ""
     """Lo que no hay que olvidar al salir («mochila, lonche, uniforme»)."""
+
+
+@dataclass(frozen=True)
+class KidsConfig:
+    enabled: bool = False
+    children: tuple[str, ...] = ()
+    """Quiénes son niños, como se llaman en «aprende mi voz»: las reglas aplican cuando VOXA reconoce su voz."""
+    everyone: bool = False
+    """Las reglas aplican a todos (niños chicos, visitas, o si nadie ha grabado su voz)."""
+    clean_music: bool = True
+    max_volume: int = 70
+    video_from: str = ""
+    video_until: str = ""
+    """Horario en que los niños pueden pedir videos («16:00» a «19:00»); vacío: a cualquier hora."""
 
 
 @dataclass(frozen=True)
@@ -168,6 +184,7 @@ class Config:
     voice: VoiceConfig = field(default_factory=VoiceConfig)
     wake: WakeConfig = field(default_factory=WakeConfig)
     routine: RoutineConfig = field(default_factory=RoutineConfig)
+    kids: KidsConfig = field(default_factory=KidsConfig)
     display: DisplayConfig = field(default_factory=DisplayConfig)
     video: VideoConfig = field(default_factory=VideoConfig)
     ai: AiConfig = field(default_factory=AiConfig)

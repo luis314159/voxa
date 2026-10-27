@@ -241,6 +241,17 @@
     - "(cancel|stop|delete|remove) [the|my] {name} (timer|alarm|reminder)"
     - "(cancel|stop|delete|remove) the (timer|alarm|reminder) [(for the|for) {name}]"
 
+# Kids mode: turned on by voice (for everyone); turning it off is from the phone.
+- intent: kids.off
+  patterns:
+    - "(turn off|disable|stop|exit|leave|end) [the] (kids|kid|children|child) mode"
+
+- intent: kids.on
+  patterns:
+    - "(turn on|enable|start|activate|switch to|go to|put on) [the] (kids|kid|children|child) mode"
+    - "(kids|kid|children) mode"
+    - "(the kids are here|kids are coming|the kids are coming|the grandkids are here|the grandkids are coming)"
+
 - intent: system.mute_mic
   patterns:
     - "(stop listening|mute the microphone|turn off the microphone|privacy mode|go to sleep)"

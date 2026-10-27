@@ -99,8 +99,8 @@ class RecordingCommands:
     async def talk(self):
         self.calls.append("talk")
 
-    async def handle_text(self, text):
-        self.calls.append(f"say:{text}")
+    async def handle_text(self, text, *, button=False):
+        self.calls.append(f"say:{text}" if button else f"text:{text}")
 
     async def cancel_timer(self, timer_id):
         self.calls.append(f"cancel:{timer_id}")

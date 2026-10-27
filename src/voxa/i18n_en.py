@@ -160,6 +160,13 @@ EN: dict[str, str] = {
     "falta conectar Spotify": "Spotify isn't connected",
     "Spotifast no responde": "Spotifast isn't responding",
     "no puedo usar la IA": "I can't use the AI",
+    # what the screen shows in amber
+    "Sin internet": "No internet",
+    "Falta conectar Spotify": "Spotify isn't connected",
+    "«Hey Voxa» no está disponible": "«Hey Voxa» isn't available",
+    "Faltan los modelos de voz": "The voice models are missing",
+    "La IA no está lista": "The AI isn't ready",
+    "La IA no funciona": "The AI isn't working",
     "No te entendí. Puedes preguntarme «¿qué puedes hacer?».": "Sorry, I didn't get that. You can ask me «what can you do?».",
     "Algo salió mal. Inténtalo de nuevo.": "Something went wrong. Please try again.",
     "Todavía no sé hacer eso.": "I can't do that yet.",
@@ -298,6 +305,13 @@ EN: dict[str, str] = {
     "Listo, aunque todavía te confundo a veces. Si no te hago caso, repítelo en un lugar más silencioso.":
         "Done, though I still mix you up sometimes. If I don't answer you, do it again somewhere quieter.",
     "Listo, ya reconozco tu voz.": "Done, I know your voice now.",
+    # --- kids mode -------------------------------------------------------------------------------------------------
+    "Listo, modo niños para todos: música sin groserías, volumen con tope y la IA para niños. Se apaga desde el celular.":
+        "Done, kids mode for everyone: clean music, a volume limit and kid-friendly AI answers. Turn it off from your phone.",
+    "El modo niños ya está apagado.": "Kids mode is already off.",
+    "El modo niños se apaga desde el celular: Ajustes, Modo niños.": "Kids mode is turned off from your phone: Settings, Kids mode.",
+    "Volumen al {percent}, el máximo del modo niños.": "Volume at {percent}, the kids mode limit.",
+    "Los videos son de {start} a {end}.": "Videos are from {start} to {end}.",
     # --- leaving in the morning ---------------------------------------------------------------------------------------------
     "un minuto": "one minute",
     "{count} minutos": "{count} minutes",

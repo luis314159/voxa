@@ -41,8 +41,10 @@ _STT_FIXES = [
     # «arroz» llega como «la ros».
     (re.compile(r"\b(de|a) la ros\b"), lambda m: "del arroz" if m.group(1) == "de" else "al arroz"),
     (re.compile(r"\b(de|a) el\b"), lambda m: "del" if m.group(1) == "de" else "al"),
-    # Ninguna orden empieza con «con», «por» o «pone»: es «pon» mal reconocido.
-    (re.compile(r"^(?:con|por|pone|pome|poner|ponga|pongan)\b"), "pon"),
+    # Ninguna orden empieza con «con», «por» o «pone»: es «pon» mal reconocido. Salvo las preguntas
+    # («¿por qué…?», «¿con qué sustituyo…?»), que son para la IA.
+    (re.compile(r"^(?:con|por|pone|pome|poner|ponga|pongan)\b(?!\s+(?:que|cual|cuales|cuanto|cuanta|cuantos|cuantas"
+                r"|quien|quienes|donde|como|cuando)\b)"), "pon"),
 ]
 
 

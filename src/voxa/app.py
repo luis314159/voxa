@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
+import logging
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Awaitable, Callable
 
-from voxa.config import Config
+from voxa.config import MODEL_DEFAULTS, Config, config_path
 from voxa.core.assistant import Assistant
 from voxa.health import Check, internet_check, player_check, spotify_check
 from voxa.nlu.matcher import Matcher, load_matcher
@@ -26,13 +27,16 @@ from voxa.services.weather import OpenMeteo
 from voxa.services.youtube_music import YouTubeMusic
 from voxa.skills.ai import AiFallback
 from voxa.skills.clock import ClockSkill
+from voxa.skills.kids import KidsSkill
 from voxa.skills.kitchen import KitchenSkill
 from voxa.skills.music import MusicSkill
 from voxa.skills.recipe import RecipeSkill
 from voxa.skills.routine import RoutineSkill
 from voxa.departure import Departure
 from voxa.house import SHARED_DOMAINS, House
-from voxa.i18n import set_language
+from voxa.i18n import other_language, set_language
+from voxa.kids import KidsRules
+from voxa.kids import saver as kids_saver
 from voxa.skills.calendar import CalendarSkill
 from voxa.skills.house import HouseSkill, RemoteSkill
 from voxa.skills.enroll import EnrollSkill
@@ -55,9 +59,11 @@ from voxa.update import Updater
 
 if TYPE_CHECKING:  # el audio (numpy, sounddevice…) solo se importa al usar la voz
     from voxa.audio.stt import SpeechToText
-    from voxa.audio.tts import PiperTts
+    from voxa.audio.tts import BilingualTts, PiperTts
     from voxa.audio.wakeword import WakeWordDetector
     from voxa.voice import VoiceSession
+
+log = logging.getLogger(__name__)
 
 
 @dataclass
@@ -81,6 +87,7 @@ class App:
     """Para el celular: las playlists de la cuenta y ponerlas con un toque."""
     house: House | None = None
     tasks: TaskList = field(default_factory=TaskList)
+    kids: KidsRules | None = None
 
 
 class SetupError(Exception):
@@ -103,26 +110,37 @@ def build_stt(config: Config, matcher: Matcher) -> SpeechToText:
     vosk_hint = "Descarga vosk-model-small-es de https://alphacephei.com/vosk/models."
     if voice.stt == "vosk":
         return VoskStt(_existing(voice.vosk_model, "el modelo de Vosk", vosk_hint))
+    also = (other_language(voice.language),) if voice.bilingual else ()  # Whisper detecta el idioma
     if voice.stt == "whisper":
-        return WhisperStt(voice.whisper_model, language=voice.language)
+        return WhisperStt(voice.whisper_model, language=voice.language, also=also)
     if voice.stt == "hibrido":
         fast = VoskStt(_existing(voice.vosk_model, "el modelo de Vosk", vosk_hint))
         closed = VoskStt(Path(voice.vosk_model).expanduser(), matcher.vocabulary, model=fast.model)
         return HybridStt(
-            fast, WhisperStt(voice.whisper_model, language=voice.language), matcher.needs_accurate_stt,
+            fast, WhisperStt(voice.whisper_model, language=voice.language, also=also), matcher.needs_accurate_stt,
             matcher.understands, closed=closed
         )
     raise SetupError(f"Motor de STT desconocido: {voice.stt!r} (usa vosk, whisper o hibrido).")
 
 
-def build_tts(config: Config) -> PiperTts:
+def build_tts(config: Config) -> PiperTts | BilingualTts:
     from voxa.audio.pronunciation import DEFAULT_LEXICON, Lexicon
-    from voxa.audio.tts import PiperTts
+    from voxa.audio.tts import BilingualTts, PiperTts
 
     hint = "Descarga una voz con: python -m piper.download_voices es_MX-claude-high --download-dir models/piper"
-    model = _existing(config.voice.piper_voice, "la voz de Piper", hint)
+    voice = config.voice
+    model = _existing(voice.piper_voice, "la voz de Piper", hint)
     lexicon = Lexicon.load(DEFAULT_LEXICON, config.pronunciation_path)
-    return PiperTts(model, config.tts_cache_dir, config.voice.speech_rate, lexicon)
+    home = PiperTts(model, config.tts_cache_dir, voice.speech_rate, lexicon)
+    if not voice.bilingual:
+        return home
+    other = other_language(voice.language)
+    second = Path(MODEL_DEFAULTS[other][1]).expanduser()
+    if not second.exists():
+        log.warning("Casa bilingüe sin la voz de %s (%s): «voxa preparar» la baja", other, second)
+        return home
+    return BilingualTts({voice.language: home, other: PiperTts(second, config.tts_cache_dir, voice.speech_rate, lexicon)},
+                        voice.language)
 
 
 def build_wake(config: Config) -> WakeWordDetector:
@@ -170,11 +188,16 @@ def build_voice(config: Config, app: App, *, simulated: bool = False) -> VoiceSe
     return session
 
 
-def build_spotify(config: Config) -> MusicBackend:
-    """Tres capas: Web API + Connect, CLI de Spotifast y MPRIS (ver plan §6.1)."""
+def build_spotify(config: Config, clean: Callable[[], bool] | None = None) -> MusicBackend:
+    """Tres capas: Web API + Connect, CLI de Spotifast y MPRIS (ver plan §6.1).
+
+    ``clean``: si hay que evitar canciones explícitas (modo niños).
+    """
     http = UrllibHttp()
     auth = SpotifyAuth(config.spotify.client_id, config.spotify.redirect_uri, config.spotify_token_path, http)
     web = SpotifyWebApi(auth, http, config.spotify.device_name)
+    if clean is not None:
+        web.clean = clean
     cli = SpotifastCli(config.spotifast.command)
     mpris = PlayerctlBackend(config.spotifast.mpris_player)
     return LayeredMusicBackend(search_order=[web, cli], control_order=[mpris, cli, web])
@@ -184,12 +207,12 @@ def spotify_ready(config: Config) -> bool:
     return bool(config.spotify.client_id) and config.spotify_token_path.exists()
 
 
-def build_music(config: Config) -> MusicRouter:
+def build_music(config: Config, clean: Callable[[], bool] | None = None) -> MusicRouter:
     """Spotify si está conectado (o se pidió), y YouTube (sin cuenta) de respaldo o como única música."""
     provider = config.music.provider
     spotify = None
     if provider == "spotify" or (provider == "auto" and spotify_ready(config)):
-        spotify = build_spotify(config)
+        spotify = build_spotify(config, clean)
     youtube = None if provider == "spotify" else YouTubeMusic(ytdlp=(config.video.ytdlp,), mpv=config.video.mpv)
     mpris = PlayerctlBackend(config.spotifast.mpris_player)
     return MusicRouter(spotify, youtube, spotify_now_playing=mpris.now_playing)
@@ -202,7 +225,8 @@ def build_app(config: Config, *, simulated: bool = False, on_ring: Callable[[Tim
         repeat_seconds=config.timers.alarm_repeat_seconds,
         ring_timeout_seconds=config.timers.alarm_timeout_minutes * 60,
     )
-    music: MusicBackend = SimulatedMusic() if simulated else build_music(config)
+    kids = KidsRules(config.kids, save=None if simulated else kids_saver(config_path()))
+    music: MusicBackend = SimulatedMusic() if simulated else build_music(config, kids.clean_music)
     now_playing = music.now_playing if simulated else music.display_now_playing
     volume: VolumeControl = SimulatedVolume() if simulated else WpctlVolume()
     calendar, personal = None, {}
@@ -222,8 +246,9 @@ def build_app(config: Config, *, simulated: bool = False, on_ring: Callable[[Tim
     tasks = TaskList(None if simulated else config.state_dir / "pendientes.json")
     tasks_skill = TasksSkill(tasks)
     skills = {
-        "music": MusicSkill(music),
-        "volume": VolumeSkill(volume, config.volume.step),
+        "music": MusicSkill(music, kids),
+        "volume": VolumeSkill(volume, config.volume.step, kids),
+        "kids": KidsSkill(kids),
         "timer": TimerSkill(timers),
         "clock": ClockSkill(),
         "weather": WeatherSkill(weather),
@@ -248,7 +273,7 @@ def build_app(config: Config, *, simulated: bool = False, on_ring: Callable[[Tim
     player = None
     if video is not None:
         search, player = video
-        skills["video"] = VideoSkill(search, player, music)
+        skills["video"] = VideoSkill(search, player, music, kids)
     updater = None
     if config.update.check and not simulated:
         updater = Updater(UrllibHttp(), config.state_dir / "actualizacion", automatic=config.update.automatic)
@@ -268,9 +293,12 @@ def build_app(config: Config, *, simulated: bool = False, on_ring: Callable[[Tim
     set_language(config.voice.language)
     matcher = load_matcher(language=config.voice.language)
     video_active = (lambda: player.current is not None) if player is not None else None
-    commands = load_matcher() if config.voice.language != "es" else None  # por si la IA ordena en español
-    assistant = Assistant(matcher, skills, timers, video_active=video_active, command_matcher=commands)
+    other = load_matcher(language=other_language(config.voice.language))
+    assistant = Assistant(matcher, skills, timers, video_active=video_active, other=other,
+                          bilingual=config.voice.bilingual)
     ai, ai_problem = build_ai(config, assistant)
+    if ai is not None:
+        ai.for_kids = kids.applies
     assistant.fallback = ai
     skills["system"].open_questions = ai is not None
     if ai is not None:  # recetas paso a paso: la IA las arma y ve la que está en curso
@@ -279,7 +307,7 @@ def build_app(config: Config, *, simulated: bool = False, on_ring: Callable[[Tim
         ai.extra_context = recipe.summary
     return App(
         assistant, timers, matcher, now_playing, weather, player, checks, config, shopping, recipe, updater, ai, ai_problem,
-        music, house, tasks,
+        music, house, tasks, kids,
     )
 
 

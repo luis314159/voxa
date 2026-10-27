@@ -7,7 +7,7 @@ from dataclasses import replace
 from typing import Awaitable, Callable, Mapping
 
 from voxa.core.types import OK, Intent, Response, Skill
-from voxa.i18n import localize
+from voxa.i18n import guess_language, home_language, in_language, localize
 from voxa.nlu.matcher import Matcher
 from voxa.state.timers import TimerManager
 
@@ -42,11 +42,15 @@ class Assistant:
         timers: TimerManager | None = None,
         fallback: Fallback | None = None,
         video_active: Callable[[], bool] | None = None,
-        command_matcher: Matcher | None = None,
+        other: Matcher | None = None,
+        *,
+        bilingual: bool = False,
     ) -> None:
         self._matcher = matcher
-        self._commands = command_matcher
-        """Respaldo para las órdenes de la IA en español cuando la casa habla otro idioma."""
+        self._other = other
+        """La gramática del otro idioma: los botones de la pantalla y a veces la IA mandan órdenes en
+        español aunque la casa hable inglés; en una casa bilingüe, se prueba con cada frase."""
+        self.bilingual = bilingual and other is not None
         self._skills = dict(skills)
         self._timers = timers
         self.fallback = fallback
@@ -61,19 +65,41 @@ class Assistant:
         """Qué reproductor reciben «pausa», «siguiente»…: el video mientras hay uno puesto."""
         return "video" if self._video_active() else "music"
 
-    async def handle_text(self, text: str) -> Response:
-        intent = self._matcher.match(text)
-        if intent is None:
+    async def handle_text(self, text: str, language: str | None = None, *, button: bool = False) -> Response:
+        """``language``: el que oyó el STT (casa bilingüe), que se prueba primero.
+
+        ``button``: una orden fija de la pantalla o del celular («pausa»): se entiende en cualquier idioma y
+        se contesta en el de la casa.
+        """
+        for matcher in self._matchers(language, everything=button):
+            intent = matcher.match(text)
+            if intent is None:
+                continue
+            log.info("«%s» → %s %s", text, intent.name, intent.slots)
+            said_in = matcher.language.code if self.bilingual and not button else home_language()
+            with in_language(said_in):
+                response = _localized(await self.handle_intent(intent))
+            return self._remember(self._marked(response, said_in))
+        said_in = (language or guess_language(text)) if self.bilingual else home_language()
+        with in_language(said_in):
             response = await self.fallback(text) if self.fallback else None
-            return self._remember(_localized(response or NOT_UNDERSTOOD))
-        log.info("«%s» → %s %s", text, intent.name, intent.slots)
-        return self._remember(_localized(await self.handle_intent(intent)))
+            response = _localized(response or NOT_UNDERSTOOD)
+        return self._remember(self._marked(response, said_in))
+
+    def _marked(self, response: Response, language: str) -> Response:
+        """En una casa bilingüe, la respuesta lleva su idioma (para la voz con que se dice)."""
+        return replace(response, language=language) if self.bilingual else response
+
+    def _matchers(self, language: str | None, *, everything: bool = False) -> list[Matcher]:
+        if self._other is None or not (self.bilingual or everything):
+            return [self._matcher]
+        if language == self._other.language.code:
+            return [self._other, self._matcher]
+        return [self._matcher, self._other]
 
     async def try_command(self, text: str) -> Response | None:
         """Ejecuta ``text`` si es una orden que las reglas entienden (la IA traduce a estas); si no, ``None``."""
-        intent = self._matcher.match(text)
-        if intent is None and self._commands is not None:
-            intent = self._commands.match(text)
+        intent = next((i for m in self._matchers(None, everything=True) if (i := m.match(text))), None)
         if intent is None:
             return None
         log.info("«%s» → %s %s (vía IA)", text, intent.name, intent.slots)

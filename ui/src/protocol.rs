@@ -39,6 +39,9 @@ pub struct State {
     pub photo: bool,
     /// Dirección (con la clave) para abrir VOXA en el celular: se muestra como código QR.
     pub phone: Option<String>,
+    /// Idioma de la casa: «es» o «en» (vacío con un VOXA anterior: español).
+    #[serde(default)]
+    pub language: String,
 }
 
 #[derive(Debug, Clone, Deserialize, PartialEq)]

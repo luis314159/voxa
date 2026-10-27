@@ -4,6 +4,7 @@ import logging
 
 from voxa.core.types import OK, Intent, Response
 from voxa.i18n import tr
+from voxa.kids import KidsRules
 from voxa.services.pipewire import VolumeControl, VolumeUnavailable
 
 log = logging.getLogger(__name__)
@@ -13,9 +14,13 @@ _BIG = ("mucho", "bastante", "lot")
 
 
 class VolumeSkill:
-    def __init__(self, control: VolumeControl, step: int = 10) -> None:
+    def __init__(self, control: VolumeControl, step: int = 10, kids: KidsRules | None = None) -> None:
         self._control = control
         self._step = step
+        self._kids = kids
+
+    def _capped(self, percent: int) -> int:
+        return self._kids.volume(percent) if self._kids is not None else percent
 
     def _step_for(self, text: str) -> int:
         words = text.split()
@@ -35,14 +40,20 @@ class VolumeSkill:
     async def _handle(self, intent: Intent) -> Response:
         match intent.name:
             case "volume.set":
-                percent = max(0, min(100, intent.slots["number"]))
+                asked = max(0, min(100, intent.slots["number"]))
+                percent = self._capped(asked)
                 await self._control.set(percent)
                 await self._control.mute(False)
+                if percent < asked:
+                    return Response(tr("Volumen al {percent}, el máximo del modo niños.", percent=percent))
                 return Response(tr("Volumen al {percent}.", percent=percent))
             case "volume.up" | "volume.down":
                 state = await self._control.get()
                 delta = self._step_for(intent.text) * (1 if intent.name == "volume.up" else -1)
-                await self._control.set(state.percent + delta)
+                target = state.percent + delta
+                if delta > 0:
+                    target = max(state.percent, self._capped(target))  # con tope de niños: no pasa de ahí
+                await self._control.set(target)
                 if state.muted and delta > 0:
                     await self._control.mute(False)
                 return OK

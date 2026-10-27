@@ -13,26 +13,14 @@ Lo que falta para que VOXA sea un producto excelente para familias, en orden de 
    - qué tan seguido se activa «Hey Voxa» por error y qué tan seguido no oye;
    - qué tan seguido entiende la orden;
    - si reconoce bien a cada persona.
-2. **Terminar inglés.** Ya funcionan:
-   - el idioma de la casa;
-   - la gramática, la voz y el reconocimiento en inglés;
-   - las respuestas de lo de todos los días.
-
-   Falta:
-   - recetas y conversiones de cocina;
-   - los textos de la pantalla (Rust) y de la página del celular;
-   - la grabación guiada de «aprende mi voz»;
-   - que «avisa a todos» use el nombre del cuarto en inglés;
-   - las dos lenguas a la vez: Whisper detecta el idioma de cada frase y VOXA contesta en ese idioma.
+2. **Inglés y casas bilingües, en una casa real.** Ya está todo en inglés (también recetas, conversiones, pantalla, celular y «aprende mi voz») y el modo bilingüe contesta cada frase en su idioma. Falta medirlo con una familia:
+   - qué tan seguido Whisper confunde el idioma en órdenes muy cortas;
+   - si conviene un Vosk cerrado también para el otro idioma (hoy las órdenes cortas solo van rápido en el idioma de la casa);
+   - nombres de temporizadores entre idiomas: «the rice timer» no encuentra el temporizador «arroz».
 3. **Confirmar los comandos de Spotifast en la PC real.** VOXA usa `play-search`, `now-playing --raw` y `like`, pero la documentación pública solo muestra `spotifast [LINK]`. Si no existen, la capa de Spotifast se salta sola; hay que revisarlo con `voxa -v texto`.
 
 ## Siguiente
 
-- **Modo niños:**
-  - sin canciones explícitas (Spotify trae la marca `explicit`);
-  - volumen máximo;
-  - respuestas de la IA para niños;
-  - horario en que los niños pueden pedir videos.
 - **Horas de silencio:**
   - de noche, voz bajita y sin sonidos fuertes;
   - las alarmas siguen sonando, pero sin avisar en los otros cuartos.
@@ -46,6 +34,8 @@ Lo que falta para que VOXA sea un producto excelente para familias, en orden de 
 - **Privacidad visible:**
   - una página en el celular que explique qué se queda en la PC y qué sale a internet;
   - una marca en la pantalla cuando la IA (de paga) está encendida.
+
+- **Modo niños, siguiente paso:** con YouTube no se sabe si una canción es explícita; probar si YouTube Music lo expone, o un filtro por letra.
 
 ## Producto e instalación
 

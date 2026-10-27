@@ -193,7 +193,7 @@ class WebServer:
     # --- lo que hace -----------------------------------------------------------------------
     def _state(self) -> dict:
         snapshot = self._service.display.snapshot()
-        keys = ("phase", "heard", "answer", "timers", "music", "shopping", "recipe", "muted", "weather")
+        keys = ("phase", "heard", "answer", "timers", "music", "shopping", "recipe", "muted", "weather", "language")
         return {"now": time.time(), **{k: snapshot.get(k) for k in keys}}
 
     async def _post(self, path: str, data: dict) -> tuple[int, Any]:
@@ -209,7 +209,7 @@ class WebServer:
                 action = {"pausa": "pausa", "sigue": "sigue", "siguiente": "siguiente", "anterior": "anterior"}
                 if data.get("accion") not in action:
                     return 400, {"error": "acción desconocida"}
-                response = await service.handle_text(action[data["accion"]], speak=False)
+                response = await service.handle_text(action[data["accion"]], speak=False, button=True)
                 return 200, {"respuesta": response.speech or "Listo."}
             case "/api/playlists/buscar":
                 if len(text) < 2:

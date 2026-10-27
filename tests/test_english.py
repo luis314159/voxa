@@ -175,3 +175,21 @@ def test_rooms_are_said_in_english():
     set_language("en")
     assert place_name("Cuarto de Ana") == "Ana's room" and place_name("Cuarto de la tele") == "the TV room"
     assert _spoken("Dinner is ready.", "Cocina") == "Message from the kitchen: Dinner is ready."
+
+
+def test_the_screen_gets_the_house_language():
+    from voxa.display import Display
+    from voxa.health import Health, Problem
+    from voxa.i18n import set_language
+    from voxa.state.timers import TimerManager
+
+    async def nothing():
+        return None
+
+    display = Display(TimerManager(), nothing)
+    display.health = Health()
+    display.health.report(Problem("internet", "Sin internet"))
+    assert display.snapshot()["language"] == "es" and display.snapshot()["problems"][0]["text"] == "Sin internet"
+    set_language("en")
+    snapshot = display.snapshot()
+    assert snapshot["language"] == "en" and snapshot["problems"][0]["text"] == "No internet"

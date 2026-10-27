@@ -232,3 +232,7 @@
 - {text: "qué pendientes tengo", intent: tasks.list}
 - {text: "ya hice la tarea de mate", intent: tasks.done}
 - {text: "¿cuánto falta para salir?", intent: routine.departure}
+
+# --- preguntas para la IA (no son órdenes) ---
+- {text: "¿por qué se extinguieron los dinosaurios?", intent: null}
+- {text: "¿con qué sustituyo el huevo en un pastel?", intent: null}

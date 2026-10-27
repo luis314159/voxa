@@ -5,6 +5,7 @@ import logging
 from voxa.core.phrases import capitalize, join_words
 from voxa.core.types import OK, Intent, Response
 from voxa.i18n import english, tr
+from voxa.kids import KidsRules
 from voxa.services.music_backend import AuthRequired, BackendUnavailable, MusicBackend, NeedsPermission, NothingFound
 from voxa.skills.mood import mood_search
 
@@ -16,8 +17,9 @@ MAX_SAID = 8
 
 
 class MusicSkill:
-    def __init__(self, backend: MusicBackend) -> None:
+    def __init__(self, backend: MusicBackend, kids: KidsRules | None = None) -> None:
         self._backend = backend
+        self._kids = kids
 
     async def handle(self, intent: Intent) -> Response:
         try:
@@ -44,6 +46,7 @@ class MusicSkill:
                 # «Pon algo tranquilo para cocinar», «pon salsa», «música de los 80»: una playlist.
                 if kind == "liked":
                     result = await backend.play_liked()
+                    self._started()
                     return Response(capitalize(result.describe()) + ".")
                 if kind == "mood" and english():  # «play some music for cooking»
                     query, kind = f"{query} music", "playlist"
@@ -52,6 +55,7 @@ class MusicSkill:
                 elif kind in (None, "artist") and not english() and (search := mood_search(query)) is not None:
                     query, kind = search, "playlist"
                 result = await backend.play(query, kind)
+                self._started()
                 return Response(capitalize(result.describe()) + ".")
             case "media.pause":
                 await backend.pause()
@@ -92,3 +96,7 @@ class MusicSkill:
             case _:
                 return Response("Todavía no sé hacer eso con la música.", sound="error")
         return OK
+
+    def _started(self) -> None:
+        if self._kids is not None:
+            self._kids.music_started()

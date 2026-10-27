@@ -1,15 +1,26 @@
-//! Textos en español para la pantalla.
+//! Fechas, horas y duraciones para la pantalla, en el idioma de la casa.
 
 use chrono::{Datelike, NaiveDate, NaiveTime, Timelike};
+
+use crate::i18n;
 
 const DAYS: [&str; 7] = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"];
 const MONTHS: [&str; 12] = [
     "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre",
     "noviembre", "diciembre",
 ];
+const DAYS_EN: [&str; 7] = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+const MONTHS_EN: [&str; 12] = [
+    "January", "February", "March", "April", "May", "June", "July", "August", "September", "October",
+    "November", "December",
+];
 
-/// «jueves 23 de octubre»
+/// «jueves 23 de octubre» («Thursday, October 23»)
 pub fn date(date: NaiveDate) -> String {
+    if i18n::english() {
+        let day = DAYS_EN[date.weekday().num_days_from_monday() as usize];
+        return format!("{day}, {} {}", MONTHS_EN[date.month0() as usize], date.day());
+    }
     let day = DAYS[date.weekday().num_days_from_monday() as usize];
     let month = MONTHS[date.month0() as usize];
     format!("{day} {} de {month}", date.day())
@@ -21,7 +32,13 @@ pub fn clock(time: NaiveTime, twenty_four: bool) -> (String, Option<&'static str
         return (format!("{}:{:02}", time.hour(), time.minute()), None);
     }
     let (pm, hour) = time.hour12();
-    (format!("{hour}:{:02}", time.minute()), Some(if pm { "p. m." } else { "a. m." }))
+    let suffix = match (pm, i18n::english()) {
+        (true, true) => "PM",
+        (false, true) => "AM",
+        (true, false) => "p. m.",
+        (false, false) => "a. m.",
+    };
+    (format!("{hour}:{:02}", time.minute()), Some(suffix))
 }
 
 /// Cuenta regresiva: «9», «4:05», «1:02:03». Redondea hacia arriba: «0:01» hasta el final.
@@ -67,6 +84,10 @@ mod tests {
     fn spanish_date() {
         assert_eq!(date(NaiveDate::from_ymd_opt(2026, 10, 23).unwrap()), "viernes 23 de octubre");
         assert_eq!(date(NaiveDate::from_ymd_opt(2026, 9, 16).unwrap()), "miércoles 16 de septiembre");
+        i18n::set_language("en");
+        assert_eq!(date(NaiveDate::from_ymd_opt(2026, 10, 23).unwrap()), "Friday, October 23");
+        assert_eq!(clock(NaiveTime::from_hms_opt(16, 5, 0).unwrap(), false), ("4:05".into(), Some("PM")));
+        i18n::set_language("es");
     }
 
     #[test]
