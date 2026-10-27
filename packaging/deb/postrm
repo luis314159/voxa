@@ -1,0 +1,13 @@
+#!/bin/sh
+# Al quitar el paquete: el entorno de Python que creó postinst (dpkg no lo conoce).
+# La configuración y los modelos de cada usuario (~/.config/voxa, ~/.local/share/voxa) se respetan.
+set -e
+
+case "$1" in
+  remove|purge)
+    rm -rf /opt/voxa/venv
+    rmdir /opt/voxa 2>/dev/null || true
+    ;;
+esac
+
+exit 0

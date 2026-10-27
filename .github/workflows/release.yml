@@ -39,6 +39,26 @@ jobs:
           for f in voxa/VERSION voxa/ui/bin/voxa-ui voxa/scripts/install.sh voxa/pyproject.toml voxa/src/voxa/audio/hey_voxa.npz; do
             grep -qx "$f" contenido.txt || { echo "Falta $f"; exit 1; }
           done
+      - name: Paquete .deb (doble clic en Mint, Ubuntu y Raspberry Pi OS)
+        run: |
+          python3 -m pip wheel --no-deps -q -w rueda .
+          bash scripts/empaquetar-deb.sh "${{ matrix.arch }}" "dist/voxa-linux-${{ matrix.arch }}.tar.gz" rueda/voxa-*.whl dist
+          dpkg-deb -I dist/voxa_*.deb
+      - name: El .deb se instala y VOXA arranca su primera vez
+        run: |
+          sudo VOXA_SIN_ARRANQUE=1 apt-get install -y ./dist/voxa_*.deb
+          voxa --version
+          test -x /opt/voxa/venv/bin/yt-dlp
+          systemctl --global is-enabled voxa.service
+          systemctl is-enabled voxa-actualizar.timer voxa-ytdlp.timer
+          # Baja los modelos de verdad: así se revisan las huellas fijadas en voxa/prepare.py.
+          voxa preparar || true
+          test -d ~/.local/share/voxa/models/vosk-model-small-es-0.42
+          test -f ~/.local/share/voxa/models/piper/es_MX-claude-high.onnx
+          test -f ~/.local/share/voxa/models/wakeword/embedding_model.onnx
+          voxa revisar || true
+          sudo apt-get remove -y voxa
+          test ! -e /opt/voxa/venv
       - uses: actions/upload-artifact@v4
         with:
           name: paquete-${{ matrix.arch }}
@@ -67,15 +87,20 @@ jobs:
       - name: Instalador y huellas
         run: |
           cp scripts/instalar-voxa.sh dist/
-          cd dist && sha256sum voxa-linux-*.tar.gz instalar-voxa.sh > SHA256SUMS && cat SHA256SUMS
+          cd dist && sha256sum voxa-linux-*.tar.gz voxa_*.deb instalar-voxa.sh > SHA256SUMS && cat SHA256SUMS
       - name: Publicar
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           cat > notas.md <<EOF
-          ## Instalar o actualizar
+          ## Instalar
 
-          En la PC (Linux Mint / Ubuntu 22.04 o más nuevo, de 64 bits; también ARM de 64 bits):
+          **Lo más fácil:** baja el paquete de tu PC y ábrelo con doble clic (Linux Mint, Ubuntu o Raspberry Pi OS de 64 bits):
+          \`voxa_${VERSION}_amd64.deb\` (PC normal) o \`voxa_${VERSION}_arm64.deb\` (Raspberry Pi). Al terminar,
+          cierra la sesión y vuelve a entrar: la pantalla muestra un código para configurarla desde el celular.
+          Se actualiza sola de madrugada.
+
+          **Con la terminal** (u otras distribuciones):
 
           \`\`\`bash
           curl -fLO https://github.com/${GITHUB_REPOSITORY}/releases/latest/download/instalar-voxa.sh

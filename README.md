@@ -134,6 +134,14 @@ Sin `--simulado`, usa Spotify, Spotifast y PipeWire reales. Para configurarlos, 
 
 ## Instalar en la PC de la cocina
 
+**Lo más fácil (sin terminal):** en [Releases](https://github.com/luis314159/voxa/releases/latest), baja `voxa_X.Y.Z_amd64.deb` (PC normal) o `voxa_X.Y.Z_arm64.deb` (Raspberry Pi) y ábrelo con doble clic. Funciona en Linux Mint, Ubuntu y Raspberry Pi OS de 64 bits.
+
+- Pide la contraseña una vez e instala lo necesario.
+- Al volver a entrar a la sesión, VOXA baja sola sus modelos de voz, con la huella de cada uno, y lo muestra en la pantalla. Después enseña el código para configurarla desde el celular.
+- Se actualiza sola de madrugada. «Hey Voxa, actualízate» lo hace al momento.
+
+Con la terminal (u otras distribuciones), desde un release:
+
 Desde un release (Linux Mint / Ubuntu 22.04 o más nuevo, de 64 bits; también ARM de 64 bits como una Raspberry Pi 4/5). No hace falta git ni compilar: la pantalla viene lista.
 
 ```bash

@@ -1,0 +1,4 @@
+#!/bin/sh
+# VOXA instalada con el paquete .deb: su entorno de Python está en /opt/voxa/venv.
+export VOXA_APP_DIR=/opt/voxa/app
+exec /opt/voxa/venv/bin/voxa "$@"

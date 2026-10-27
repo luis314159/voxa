@@ -1,0 +1,8 @@
+[Unit]
+Description=VOXA: actualiza yt-dlp y deno (YouTube cambia seguido)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/voxa/venv/bin/pip install --disable-pip-version-check --no-cache-dir --quiet --upgrade yt-dlp[default] deno

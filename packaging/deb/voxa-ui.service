@@ -1,0 +1,10 @@
+[Unit]
+Description=VOXA: pantalla de cocina
+After=voxa.service
+# La arranca /etc/xdg/autostart/voxa-ui.desktop al iniciar la sesión gráfica (le pasa DISPLAY).
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/voxa-ui --completa
+Restart=always
+RestartSec=2

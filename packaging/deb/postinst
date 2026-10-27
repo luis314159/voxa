@@ -1,0 +1,39 @@
+#!/bin/sh
+# Después de instalar o actualizar el paquete: el entorno de Python de VOXA y el arranque automático.
+set -e
+
+VENV=/opt/voxa/venv
+
+case "$1" in
+  configure)
+    if [ ! -x "$VENV/bin/python" ]; then
+      python3 -m venv "$VENV"
+    fi
+    echo "VOXA: instalando sus bibliotecas de Python (unos minutos, necesita internet)…"
+    if ! "$VENV/bin/pip" install --disable-pip-version-check --no-cache-dir --quiet --upgrade \
+        "$(ls /opt/voxa/wheels/voxa-*.whl | head -1)[audio,ia]" "yt-dlp[default]" deno; then
+      echo "No se pudo instalar VOXA: revisa la conexión a internet y vuelve a abrir el paquete" >&2
+      echo "(o en una terminal: sudo dpkg --configure -a)." >&2
+      exit 1
+    fi
+    # Cada sesión gráfica arranca VOXA (servicio de usuario); la pantalla, por /etc/xdg/autostart.
+    systemctl --global enable voxa.service >/dev/null 2>&1 || true
+    if [ -d /run/systemd/system ]; then
+      systemctl daemon-reload || true
+      systemctl enable --now voxa-ytdlp.timer voxa-actualizar.timer >/dev/null 2>&1 || true
+      if [ -z "${VOXA_SIN_ARRANQUE:-}" ]; then
+        # Quien ya tiene la sesión abierta: VOXA arranca (o se reinicia tras una actualización).
+        for uid in $(loginctl list-users --no-legend 2>/dev/null | awk '{print $1}'); do
+          user="$(id -nu "$uid" 2>/dev/null)" || continue
+          systemctl --user -M "$user@" daemon-reload >/dev/null 2>&1 || true
+          systemctl --user -M "$user@" restart voxa.service >/dev/null 2>&1 || true
+          systemctl --user -M "$user@" try-restart voxa-ui.service >/dev/null 2>&1 || true
+        done
+      fi
+    fi
+    echo "VOXA quedó instalada. Cierra la sesión y vuelve a entrar (o reinicia la PC): la pantalla de la"
+    echo "cocina aparece sola y muestra un código para configurarla desde el celular."
+    ;;
+esac
+
+exit 0

@@ -1,0 +1,8 @@
+[Unit]
+Description=VOXA: instala la versión más reciente (con su huella)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/voxa/app/packaging/deb/actualizar.sh

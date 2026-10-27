@@ -1,0 +1,18 @@
+#!/bin/sh
+# Antes de quitar el paquete (no en una actualización): se apaga el arranque automático.
+set -e
+
+case "$1" in
+  remove|deconfigure)
+    systemctl --global disable voxa.service >/dev/null 2>&1 || true
+    if [ -d /run/systemd/system ]; then
+      systemctl disable --now voxa-ytdlp.timer voxa-actualizar.timer >/dev/null 2>&1 || true
+      for uid in $(loginctl list-users --no-legend 2>/dev/null | awk '{print $1}'); do
+        user="$(id -nu "$uid" 2>/dev/null)" || continue
+        systemctl --user -M "$user@" stop voxa-ui.service voxa.service >/dev/null 2>&1 || true
+      done
+    fi
+    ;;
+esac
+
+exit 0

@@ -41,6 +41,12 @@ class _SpotifyPending:
     server: asyncio.base_events.Server | None = None
 
 
+def _from_package() -> bool:
+    from voxa.update import from_package
+
+    return from_package()
+
+
 class SettingsApi:
     def __init__(
         self,
@@ -107,6 +113,7 @@ class SettingsApi:
                 "whisper": config.voice.whisper_model,
             },
             "casa": {**(app.house.status() if app.house else {}), "invitacion": self.invitation()},
+            "paquete": _from_package(),
             "funciones": {
                 "video": config.video.enabled, "actualizar_solo": config.update.automatic,
                 "avisar_version": config.update.check,

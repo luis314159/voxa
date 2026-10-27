@@ -60,9 +60,9 @@ class WeatherConfig:
 @dataclass(frozen=True)
 class VoiceConfig:
     stt: str = "hibrido"
-    vosk_model: str = ""
+    vosk_model: str = "~/.local/share/voxa/models/vosk-model-small-es-0.42"
     whisper_model: str = "base"
-    piper_voice: str = ""
+    piper_voice: str = "~/.local/share/voxa/models/piper/es_MX-claude-high.onnx"
     speech_rate: float = 1.0
     input_device: str = ""
     output_device: str = ""

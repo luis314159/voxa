@@ -1,0 +1,11 @@
+[Unit]
+Description=VOXA: busca versión nueva de madrugada
+
+[Timer]
+OnCalendar=*-*-* 03:30
+RandomizedDelaySec=1h
+# Si la PC estaba apagada a esa hora, se hace al encenderla.
+Persistent=true
+
+[Install]
+WantedBy=timers.target

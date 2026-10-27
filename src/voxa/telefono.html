@@ -595,6 +595,8 @@ async function cargarAjustes() {
   const valores = { "video.enabled": a.funciones.video, "update.check": a.funciones.avisar_version, "update.automatic": a.funciones.actualizar_solo };
   document.querySelectorAll("[data-ajuste]").forEach((c) => { c.checked = Boolean(valores[c.dataset.ajuste]); });
   $("whisper").value = a.voz.whisper;
+  // Con el paquete .deb, la PC se actualiza sola de madrugada (lo hace el sistema).
+  document.querySelector('[data-ajuste="update.automatic"]').closest(".interruptor").hidden = Boolean(a.paquete);
   pintarCuartos(a.casa);
   decir("version", `VOXA ${a.version}` + (a.nueva ? ` · hay una versión nueva: ${a.nueva} (dile «actualízate»)` : ""));
 }

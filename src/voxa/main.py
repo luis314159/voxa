@@ -131,6 +131,24 @@ async def run_voice_mode(config: Config, simulated: bool) -> None:
             print(f"   {result.timings}")
 
 
+async def _first_start(config: Config, service: Service) -> None:
+    """Recién instalada (paquete .deb): baja lo que falta mostrando el avance en la pantalla."""
+    from voxa import prepare
+
+    if not prepare.missing(config):
+        return
+    log = logging.getLogger(__name__)
+
+    def show(text: str) -> None:
+        service.display.exchange("Preparando VOXA", Response(text))
+
+    problems = await prepare.prepare_async(config, show)
+    for problem in problems:
+        log.warning("Primer arranque: %s", problem)
+    show("Listo. Para configurarla, escanea el código con tu celular." if not problems
+         else "Casi listo: " + "; ".join(problems))
+
+
 async def run_service(config: Config, simulated: bool) -> None:
     """Modo permanente (systemd): sin teclado; las órdenes llegan por la pantalla y, en la Fase 3, «Hey Voxa»."""
     from voxa.audio.devices import Microphone
@@ -139,6 +157,8 @@ async def run_service(config: Config, simulated: bool) -> None:
     service = _service(config, simulated, on_ring_print=False)
     # La pantalla se conecta desde el principio: si falta la voz, al menos lo dice en ámbar.
     async with service.running(_display_port(config)):
+        if not simulated:
+            await _first_start(config, service)
         try:
             session = await _with_voice(config, service, simulated)
         except SetupError as exc:
@@ -246,6 +266,14 @@ def update(check_only: bool, version: str | None, force: bool) -> int:
     elif check_only:
         print(f"Tienes la {current}.")
         return 0
+    if updates.from_package():
+        if version:
+            print("Instalada con el paquete .deb: se instala la más reciente (para otra versión, baja su .deb).")
+        print("Instalando… (VOXA se reinicia al final)")
+        if updates.launch_package_update(wait=True):
+            return 0
+        print("No se pudo arrancar la actualización. A mano: sudo systemctl start voxa-actualizar.service")
+        return 1
     print("Instalando… (VOXA se reinicia al final; puede pedir tu contraseña)")
     return updates.run_installer(version)
 
@@ -480,6 +508,7 @@ def main(argv: list[str] | None = None) -> int:
     record.add_argument("--platica", type=int, default=30, metavar="SEGUNDOS", help="segundos de plática normal")
     sub.add_parser("entrenar-verificador", help="entrena el verificador familiar con las grabaciones")
     sub.add_parser("revisar", help="revisa la instalación y dice qué falta y cómo arreglarlo")
+    sub.add_parser("preparar", help="baja lo que falta (modelos de voz, fondos, Spotifast); lo hace solo al primer arranque")
     upgrade = sub.add_parser("actualizar", help="instala la versión más reciente de VOXA (releases de GitHub)")
     upgrade.add_argument("--revisar", action="store_true", help="solo dice si hay una versión nueva")
     upgrade.add_argument("--version", metavar="X.Y.Z", help="instala esa versión (también sirve para regresar)")
@@ -508,6 +537,13 @@ def main(argv: list[str] | None = None) -> int:
         return update(args.revisar, args.version, args.forzar)
     config = load_config()
 
+    if args.command == "preparar":
+        from voxa.prepare import prepare
+
+        problems = prepare(config, print)
+        for problem in problems:
+            print(f"⚠ {problem}")
+        return 1 if problems else 0
     if args.command == "spotify-login":
         return spotify_login(config)
     if args.command == "entrenar-verificador":

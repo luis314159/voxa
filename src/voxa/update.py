@@ -76,6 +76,30 @@ def run_installer(version: str | None) -> int:
         return subprocess.run(args, check=False).returncode
 
 
+DEB_VENV = Path("/opt/voxa/venv")
+DEB_UNIT = "voxa-actualizar.service"
+
+
+def from_package() -> bool:
+    """VOXA vino del paquete .deb: las actualizaciones las instala el sistema (voxa-actualizar)."""
+    import sys
+
+    return Path(sys.prefix).resolve() == DEB_VENV
+
+
+def launch_package_update(version: str | None = None, folder: Path | None = None, *, wait: bool = False) -> bool:
+    """Arranca la actualización del paquete (systemd, como root; polkit deja hacerlo sin contraseña)."""
+    systemctl = shutil.which("systemctl")
+    if systemctl is None:
+        return False
+    args = [systemctl, "start", DEB_UNIT] if wait else [systemctl, "start", "--no-block", DEB_UNIT]
+    result = subprocess.run(args, check=False, capture_output=True, text=True)
+    if result.returncode != 0:
+        log.warning("No pude arrancar la actualización del paquete: %s", result.stderr.strip())
+        return False
+    return True
+
+
 def launch_unattended(version: str, folder: Path) -> bool:
     """Instala esa versión sin preguntar nada (sin apt ni contraseña), en una unidad aparte de systemd.
 
@@ -115,14 +139,14 @@ class Updater:
         *,
         automatic: bool = False,
         current: str = voxa.__version__,
-        launch: Callable[[str, Path], bool] = launch_unattended,
+        launch: Callable[[str, Path], bool] | None = None,
         now: Callable[[], datetime] = datetime.now,
     ) -> None:
         self._http = http
         self._folder = folder
         self.automatic = automatic
         self.current = current
-        self._launch = launch
+        self._launch = launch or (launch_package_update if from_package() else launch_unattended)
         self._now = now
         self.available: str | None = None
         """La versión nueva que hay (``None`` si ya es la más reciente o no se sabe)."""
