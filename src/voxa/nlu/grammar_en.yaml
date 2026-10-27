@@ -34,6 +34,15 @@
     - "(remind|tell) {person} to {name} (at|on) {time}"
     - "(remind|tell) {person} (at|on) {time} to {name}"
 
+# Adding to the calendar (Google): «add dentist on tuesday at 5 to the calendar».
+- intent: calendar.add
+  patterns:
+    - "(add|put|write) {query} (to|on|in) [the|my|our] calendar"
+    - "(add|put|write) (to|on|in) [the|my|our] calendar {query}"
+    - "schedule {query}"
+    - pattern: "(add|make|set up|book|schedule) [an|a] appointment {query}"
+      set: {kind: cita}
+
 - intent: tasks.add
   patterns:
     - pattern: "(add|put|write) {query} (to|on) my (tasks|to do list|todo list|to dos|todos|list of things to do)"

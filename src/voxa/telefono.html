@@ -256,6 +256,24 @@
   <p class="ayuda">Para «¿qué tengo hoy?» y lo de hoy en «buenos días». En Google Calendar (desde una computadora): Configuración → tu calendario → «Dirección secreta en formato iCal». Pégala aquí; VOXA solo lo lee.</p>
   <label class="campo"><span>¿De quién es este calendario?</span><select id="cal-persona"><option value="">De la familia</option></select></label>
   <form class="fila campo" id="form-cal"><input type="password" id="cal-url" placeholder="https://calendar.google.com/…/basic.ics" autocomplete="off"><button>Guardar</button></form>
+  <details id="gcal" style="margin-top:12px">
+    <summary>Agregar citas por voz (Google Calendar)</summary>
+    <p class="estado" id="gcal-estado"></p>
+    <p class="ayuda">Para decir «agrega dentista el martes a las 5 al calendario». Se hace una vez, en unos 10 minutos, desde una computadora:</p>
+    <ol class="ayuda" style="padding-left:18px">
+      <li>En <a href="https://console.cloud.google.com/projectcreate" target="_blank" rel="noopener">console.cloud.google.com</a> crea un proyecto («VOXA de la casa») y activa la «Google Calendar API».</li>
+      <li>En «Pantalla de consentimiento de OAuth»: tipo «Externo», tu correo, y al final «Publicar app» (en producción). Si se queda «En prueba», Google corta el permiso cada 7 días.</li>
+      <li>En «Credenciales» → «Crear credenciales» → «ID de cliente de OAuth» → tipo «App de escritorio». Copia el ID y el secreto aquí.</li>
+      <li>Toca «Conectar Google Calendar». Google avisará que la app no está verificada: es la tuya; toca «Configuración avanzada» → «Ir a VOXA». Cuando el navegador diga que no puede abrir la página, copia la dirección completa y pégala abajo.</li>
+    </ol>
+    <form id="form-gcal-cliente"><input type="text" id="gcal-id" placeholder="ID de cliente (….apps.googleusercontent.com)" autocomplete="off" style="width:100%"><div class="fila" style="margin-top:8px"><input type="password" id="gcal-secreto" placeholder="Secreto del cliente" autocomplete="off"><button>Guardar</button></div></form>
+    <button id="gcal-conectar" class="principal" style="width:100%;margin-top:10px">Conectar Google Calendar</button>
+    <form class="fila campo" id="form-gcal-codigo" hidden><input type="url" id="gcal-direccion" placeholder="http://127.0.0.1:8767/?code=…" autocomplete="off"><button class="principal">Listo</button></form>
+    <label class="campo"><span>¿En qué calendario? («primary»: el principal; o el ID de otro, de su configuración)</span><input type="text" id="gcal-calendario" autocomplete="off"></label>
+    <button id="gcal-guardar-calendario" style="width:100%">Guardar calendario</button>
+    <button id="gcal-quitar" style="width:100%;margin-top:10px">Desconectar Google</button>
+    <p class="ayuda" id="gcal-respuesta"></p>
+  </details>
   <label class="campo"><span>Avisar antes de cada evento</span><select id="cal-avisar"><option value="0">No avisar</option><option value="5">5 minutos antes</option><option value="10">10 minutos antes</option><option value="15">15 minutos antes</option><option value="30">30 minutos antes</option></select></label>
   <p class="ayuda" id="cal-respuesta"></p>
 </section>
@@ -597,6 +615,22 @@ const EN = {
   "sin datos todavía": "no data yet",
   "Lo que no entendió": "What it didn't understand",
   "¿Borrar las mediciones?": "Clear the measurements?",
+  // Google Calendar
+  "Agregar citas por voz (Google Calendar)": "Add appointments by voice (Google Calendar)",
+  "Para decir «agrega dentista el martes a las 5 al calendario». Se hace una vez, en unos 10 minutos, desde una computadora:": "To say «add dentist to the calendar on tuesday at 5». It's done once, in about 10 minutes, from a computer:",
+  "En": "At",
+  "crea un proyecto («VOXA de la casa») y activa la «Google Calendar API».": "create a project («Home VOXA») and enable the «Google Calendar API».",
+  "En «Pantalla de consentimiento de OAuth»: tipo «Externo», tu correo, y al final «Publicar app» (en producción). Si se queda «En prueba», Google corta el permiso cada 7 días.": "In «OAuth consent screen»: type «External», your email, and at the end «Publish app» (in production). If it stays «Testing», Google cuts the permission every 7 days.",
+  "En «Credenciales» → «Crear credenciales» → «ID de cliente de OAuth» → tipo «App de escritorio». Copia el ID y el secreto aquí.": "In «Credentials» → «Create credentials» → «OAuth client ID» → type «Desktop app». Copy the ID and the secret here.",
+  "Toca «Conectar Google Calendar». Google avisará que la app no está verificada: es la tuya; toca «Configuración avanzada» → «Ir a VOXA». Cuando el navegador diga que no puede abrir la página, copia la dirección completa y pégala abajo.": "Tap «Connect Google Calendar». Google will warn that the app isn't verified: it's yours; tap «Advanced» → «Go to VOXA». When the browser says it can't open the page, copy the full address and paste it below.",
+  "ID de cliente (….apps.googleusercontent.com)": "Client ID (….apps.googleusercontent.com)",
+  "Secreto del cliente": "Client secret",
+  "Conectar Google Calendar": "Connect Google Calendar",
+  "¿En qué calendario? («primary»: el principal; o el ID de otro, de su configuración)": "Which calendar? («primary»: the main one; or another one's ID, from its settings)",
+  "Guardar calendario": "Save calendar",
+  "Desconectar Google": "Disconnect Google",
+  "Google Calendar conectado: se pueden agregar citas por voz.": "Google Calendar connected: you can add appointments by voice.",
+  "Falta conectar Google Calendar.": "Google Calendar isn't connected yet.",
   // Spotify por persona
   "La cuenta de cada quien": "Each person's account",
   "Con su propia cuenta, «pon mis me gusta», «pon mi playlist…» y «me gusta esta canción» usan la de quien habla (si VOXA reconoce su voz); la música sigue sonando en la cocina. Spotify deja conectar hasta 5 cuentas por app: agrega el correo de cada quien en tu app de Spotify, en «User Management».": "With their own account, «play my likes», «play my playlist…» and «I like this song» use the account of whoever is talking (if VOXA recognizes their voice); the music still plays in the kitchen. Spotify allows up to 5 accounts per app: add each person's email in your Spotify app, under «User Management».",
@@ -1181,6 +1215,9 @@ async function cargarAjustes() {
   }));
   $("priv-local").replaceChildren(...a.privacidad.local.map((t) => el("li", "", t)));
   $("priv-internet").replaceChildren(...a.privacidad.internet.map((t) => el("li", "", t)));
+  const cal2 = a.calendario;
+  $("gcal-estado").textContent = cal2.google ? tr("Google Calendar conectado: se pueden agregar citas por voz.") : tr("Falta conectar Google Calendar.");
+  $("gcal-calendario").value = cal2.escribir_en || "primary";
   pintarCuentasSpotify(a.spotify.autorizado ? a.voz.personas : [], a.spotify.personas || []);
   const acc = a.accesibilidad;
   $("acc-velocidad").value = String(acc.velocidad);
@@ -1320,6 +1357,38 @@ async function conectarSpotify(persona) {
   }
 }
 $("spotify-conectar").onclick = () => conectarSpotify(null);
+$("form-gcal-cliente").onsubmit = async (ev) => {
+  ev.preventDefault();
+  try {
+    decir("gcal-respuesta", (await api("/api/google/cliente", { id: $("gcal-id").value.trim(), secreto: $("gcal-secreto").value.trim() })).respuesta);
+    $("gcal-id").value = ""; $("gcal-secreto").value = "";
+  } catch (e) { decir("gcal-respuesta", e.message); }
+};
+$("gcal-conectar").onclick = async () => {
+  const ventana = window.open("about:blank", "_blank");
+  try {
+    const r = await api("/api/google/autorizar", {});
+    if (ventana) ventana.location = r.url; else location.href = r.url;
+    $("form-gcal-codigo").hidden = false;
+    decir("gcal-respuesta", tr("Después de aceptar, copia la dirección de la página que no abre y pégala aquí."));
+  } catch (e) {
+    if (ventana) ventana.close();
+    decir("gcal-respuesta", e.message);
+  }
+};
+$("form-gcal-codigo").onsubmit = async (ev) => {
+  ev.preventDefault();
+  try {
+    decir("gcal-respuesta", (await api("/api/google/codigo", { direccion: $("gcal-direccion").value.trim() })).respuesta);
+    $("form-gcal-codigo").hidden = true;
+    cargarAjustes();
+  } catch (e) { decir("gcal-respuesta", e.message); }
+};
+$("gcal-guardar-calendario").onclick = () => guardar("calendar", { write_calendar: $("gcal-calendario").value.trim() || "primary" }, "gcal-respuesta");
+$("gcal-quitar").onclick = async () => {
+  try { decir("gcal-respuesta", (await api("/api/google/quitar", {})).respuesta); cargarAjustes(); }
+  catch (e) { decir("gcal-respuesta", e.message); }
+};
 $("spotify-abrir").onclick = async () => {
   try { decir("spotify-respuesta", (await api("/api/spotify/abrir", {})).respuesta); }
   catch (e) { decir("spotify-respuesta", e.message); }

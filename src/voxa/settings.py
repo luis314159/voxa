@@ -31,7 +31,7 @@ EDITABLE: dict[str, dict[str, Any]] = {
         "web_search": bool, "monthly_budget_usd": float, "daily_questions": int, "context": str,
     },
     "telegram": {"enabled": bool},
-    "calendar": {"enabled": bool, "remind_minutes": int},
+    "calendar": {"enabled": bool, "remind_minutes": int, "write_calendar": str},
     "video": {"enabled": bool},
     "update": {"check": bool, "automatic": bool},
     "web": {"enabled": bool},

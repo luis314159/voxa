@@ -34,6 +34,8 @@ class FakeInternet:
             return HttpResponse(401, {"ok": False, "description": "Unauthorized"})
         if url.endswith(".ics"):
             return HttpResponse(200, ICS)
+        if "oauth2.googleapis.com/token" in url:
+            return HttpResponse(200, {"access_token": "g", "refresh_token": "gr", "expires_in": 3600})
         if "accounts.spotify.com/api/token" in url:
             return HttpResponse(200, {"access_token": "a", "refresh_token": "r", "expires_in": 3600})
         return HttpResponse(404, "no")
@@ -191,3 +193,24 @@ async def test_each_person_connects_their_spotify(kitchen, tmp_path):
     assert service.app.config.spotify_people() == ["Ana"]
     assert (await api.post("/api/spotify/quitar", {"persona": "Ana"}))[0] == 200
     assert service.app.config.spotify_people() == []
+
+
+async def test_google_calendar_from_the_phone(kitchen, tmp_path):
+    """Para agregar citas por voz: el cliente OAuth de la familia y la autorización pegando la dirección."""
+    api, service, *_ = kitchen
+    assert (await api.post("/api/google/autorizar", {}))[0] == 400  # falta el cliente
+    assert (await api.post("/api/google/cliente", {"id": "algo", "secreto": "x"}))[0] == 400
+    status, _ = await api.post("/api/google/cliente", {"id": "123-abc.apps.googleusercontent.com",
+                                                       "secreto": "GOCSPX-secreto-largo"})
+    assert status == 200 and oct((tmp_path / "google_cliente.json").stat().st_mode)[-3:] in ("600", "666")
+    status, start = await api.post("/api/google/autorizar", {})
+    query = urllib.parse.parse_qs(urllib.parse.urlsplit(start["url"]).query)
+    assert query["scope"] == ["https://www.googleapis.com/auth/calendar.events"] and query["access_type"] == ["offline"]
+    bad = await api.post("/api/google/codigo", {"direccion": "http://127.0.0.1:8767/?code=x&state=otro"})
+    assert bad[0] == 400
+    status, done = await api.post("/api/google/codigo",
+                                  {"direccion": f"http://127.0.0.1:8767/?code=x&state={query['state'][0]}"})
+    assert status == 200 and json.loads((tmp_path / "google_token.json").read_text())["refresh_token"] == "gr"
+    summary = api.summary()["calendario"]
+    assert summary["google"] is True and "secreto" not in json.dumps(summary)
+    assert service.app.assistant.skill("calendar").writer() is not None  # ya puede agregar citas

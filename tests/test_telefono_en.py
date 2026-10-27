@@ -21,6 +21,8 @@ SIN_TRADUCIR = {
     "Azure OpenAI",
     "Normal (base)",
     "Normal",
+    "console.cloud.google.com",
+    "http://127.0.0.1:8767/?code=…",
     "No",
     "developer.spotify.com/dashboard",
     "3 min",

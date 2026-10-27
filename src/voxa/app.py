@@ -15,6 +15,7 @@ from voxa.health import Check, internet_check, player_check, spotify_check
 from voxa.nlu.matcher import Matcher, load_matcher
 from voxa.services.ai import AiSetupError, build_chat, prices_for, read_key
 from voxa.services.calendar import Calendar, personal_calendars
+from voxa.services.google_calendar import GoogleAuth, GoogleCalendarWriter, GoogleClient
 from voxa.services.http import UrllibHttp
 from voxa.services.mpris import PlayerctlBackend
 from voxa.services.music_backend import LayeredMusicBackend, MusicBackend, MusicRouter, NowPlaying
@@ -237,6 +238,19 @@ def person_accounts(config: Config, http: UrllibHttp) -> Callable[[], SpotifyAut
     return current
 
 
+def calendar_writer(config: Config) -> Callable[[], GoogleCalendarWriter | None]:
+    """Para agregar citas por voz: la cuenta de Google conectada en Ajustes → Calendario (o nada)."""
+    def current() -> GoogleCalendarWriter | None:
+        client = GoogleClient.load(config.google_client_path)
+        if client is None or not config.google_token_path.exists():
+            return None
+        http = UrllibHttp()
+        return GoogleCalendarWriter(GoogleAuth(client, config.google_token_path, http), http,
+                                    config.calendar.write_calendar)
+
+    return current
+
+
 def spotify_ready(config: Config) -> bool:
     return bool(config.spotify.client_id) and config.spotify_token_path.exists()
 
@@ -274,6 +288,7 @@ def build_app(config: Config, *, simulated: bool = False, on_ring: Callable[[Tim
             cache = config.calendar_cache_path.with_name(f"calendario-{i}.ics")
             personal[person] = Calendar(lambda url=url: url, UrllibHttp(), cache)
     agenda = CalendarSkill(calendar, personal=personal)
+    agenda.writer = calendar_writer(config)
     weather = None
     if config.weather.latitude is not None and config.weather.longitude is not None:
         weather = OpenMeteo(UrllibHttp(), config.weather.latitude, config.weather.longitude)

@@ -196,6 +196,8 @@ class CalendarConfig:
     enabled: bool = False
     remind_minutes: int = 10
     """Avisa en voz alta este tiempo antes de cada evento (0: no avisa)."""
+    write_calendar: str = "primary"
+    """En qué calendario de Google se agregan las citas por voz («primary»: el principal de la cuenta)."""
 
 
 @dataclass(frozen=True)
@@ -240,6 +242,15 @@ class Config:
     @property
     def spotify_token_path(self) -> Path:
         return self.config_dir / "spotify_token.json"
+
+    @property
+    def google_client_path(self) -> Path:
+        """El cliente OAuth de Google de la familia (Client ID y secreto, 600)."""
+        return self.config_dir / "google_cliente.json"
+
+    @property
+    def google_token_path(self) -> Path:
+        return self.config_dir / "google_token.json"
 
     def spotify_person_token_path(self, person: str) -> Path:
         """Spotify por persona: la cuenta que conectó cada quien (solo para leer su música y sus Me gusta)."""

@@ -261,6 +261,17 @@ EN: dict[str, str] = {
         "I don't have your calendar. Add it from your phone, in Settings: say «connect my phone».",
     "en {minutes} minutos: {title}.": "in {minutes} minutes: {title}.",
     "ya casi empieza: {title}.": "starting now: {title}.",
+    # adding to the calendar (Google)
+    "cita": "appointment",
+    "Listo, lo anoté en el calendario: {title}, {when}.": "Done, it's on the calendar: {title}, {when}.",
+    "{day}, todo el día": "{day}, all day",
+    "{day} a {hour}": "{day} at {hour}",
+    "¿Para cuándo? Dime, por ejemplo, «agrega dentista al calendario el martes a las 5».":
+        "For when? Say, for example, «add dentist to the calendar on tuesday at 5».",
+    "Para agregar citas, conecta Google Calendar desde el celular: Ajustes, Calendario.":
+        "To add appointments, connect Google Calendar from your phone: Settings, Calendar.",
+    "No pude agregarlo al calendario. Revisa la conexión de Google en el celular.":
+        "I couldn't add it to the calendar. Check the Google connection on your phone.",
     # --- house ------------------------------------------------------------------------------------------------------------
     "Todavía no sé hacer eso con la casa.": "I can't do that with the house yet.",
     "¿Qué aviso?": "What should I announce?",
@@ -321,8 +332,9 @@ EN: dict[str, str] = {
     "Spotify: lo que pides poner y lo que suena, con tu cuenta.": "Spotify: what you ask to play and what's playing, with your account.",
     "YouTube: las búsquedas de música y videos (sin cuenta).": "YouTube: music and video searches (no account).",
     "El clima: la ubicación aproximada de la casa va a Open-Meteo.": "Weather: the house's approximate location goes to Open-Meteo.",
-    "El calendario: VOXA lee la dirección secreta del calendario; no escribe en él.":
-        "Calendar: VOXA reads the calendar's secret address; it never writes to it.",
+    "El calendario: VOXA lo lee con su dirección secreta (iCal).": "Calendar: VOXA reads it through its secret (iCal) address.",
+    "Google Calendar: solo las citas que pides agregar («agrega dentista el martes a las 5»).":
+        "Google Calendar: only the appointments you ask to add («add dentist on tuesday at 5»).",
     "Telegram: la lista del súper, solo con los chats que vinculaste.": "Telegram: the shopping list, only with the chats you linked.",
     "Actualizaciones: VOXA pregunta a GitHub si hay versión nueva.": "Updates: VOXA asks GitHub whether there's a new version.",
     "La primera vez: los modelos de voz se bajan de su fuente, con su huella.":

@@ -137,6 +137,8 @@ Con **casa bilingüe** (`bilingual = true`, o el interruptor en Ajustes → Func
 
 **Calendario de la familia (opcional).** «¿Qué tengo hoy?», «¿qué tengo mañana?», «¿cuál es mi siguiente cita?», y lo de hoy en «buenos días»; además avisa en voz alta 10 minutos antes de cada evento (se cambia en Ajustes). Puede haber uno de la familia y uno por persona (Ajustes → Calendario → «¿De quién es?»): «¿qué tengo hoy?» junta el de la familia con el de quien pregunta (si VOXA reconoce su voz), «¿qué tiene Ana hoy?» el de Ana, y los avisos personales llevan nombre («Ana, en 10 minutos: natación»). Lee la dirección secreta iCal del calendario (Google Calendar, iCloud, Outlook), sin pedir acceso a la cuenta y solo para leer. Entiende eventos de todo el día, zonas horarias, eventos que se repiten y sus cambios. Se refresca cada 15 minutos y, sin internet, responde con la última copia.
 
+**Agregar citas por voz (Google Calendar, opcional).** «Agrega dentista el martes a las 5 al calendario», «anota en el calendario la junta de la escuela el 3 de noviembre a las 6», «agenda el cumpleaños de Ana el sábado» (todo el día) o «hazme una cita con el doctor mañana a las 10». VOXA confirma el día y la hora («el martes 3 a las 5 de la tarde»); una hora sin «de la mañana/tarde» se toma como de cita (de 1 a 7, de la tarde). Se conecta una vez en Ajustes → Calendario → «Agregar citas por voz», con un cliente OAuth propio de Google (tipo «App de escritorio», publicado en producción para que el permiso no caduque a los 7 días) y el permiso solo de eventos. También en inglés: «add dentist to the calendar on tuesday at 5».
+
 **La lista del súper en Telegram (opcional).** Para apuntar cosas desde la calle:
 
 1. Se crea un bot con @BotFather.

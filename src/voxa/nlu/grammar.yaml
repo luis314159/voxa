@@ -55,6 +55,16 @@
     - "(pon|ponme|crea|agrega|programa) [un] recordatorio (a la|a las|para la|para las) {time} [(para|de|que)] {name}"
     - "(pon|ponme|crea|agrega|programa) [un] recordatorio (para|de|que) {name} (a la|a las) {time}"
 
+# Agregar citas al calendario (Google): «agrega dentista el martes a las 5 al calendario».
+# Antes que los pendientes y la lista: «agrega … al calendario» no es del súper.
+- intent: calendar.add
+  patterns:
+    - "(agrega|anota|apunta|pon|mete|anade|guarda) {query} (al|en el|en mi|a mi|en nuestro) calendario"
+    - "(agrega|anota|apunta|pon|mete|anade|guarda) (al|en el|en mi|a mi|en nuestro) calendario {query}"
+    - "(agenda|agendame|agendanos|agendar) {query}"
+    - pattern: "(agrega|anota|apunta|hazme|haz|crea|pon) [una] cita {query}"
+      set: {kind: cita}
+
 # Pendientes de la casa y de cada persona (antes que la lista del súper: «agrega… a mis pendientes»).
 - intent: tasks.add
   patterns:

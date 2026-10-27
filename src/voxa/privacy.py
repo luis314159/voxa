@@ -31,7 +31,9 @@ def privacy_report(config: Config) -> dict[str, list[str]]:
     if config.weather.latitude is not None:
         internet.append(tr("El clima: la ubicación aproximada de la casa va a Open-Meteo."))
     if config.calendar.enabled and read_secret(config.calendar_url_path):
-        internet.append(tr("El calendario: VOXA lee la dirección secreta del calendario; no escribe en él."))
+        internet.append(tr("El calendario: VOXA lo lee con su dirección secreta (iCal)."))
+    if config.google_token_path.exists():
+        internet.append(tr("Google Calendar: solo las citas que pides agregar («agrega dentista el martes a las 5»)."))
     if config.telegram.enabled:
         internet.append(tr("Telegram: la lista del súper, solo con los chats que vinculaste."))
     if config.update.check:

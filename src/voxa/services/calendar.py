@@ -281,6 +281,10 @@ class Calendar:
     async def events(self, start: datetime, end: datetime) -> list[Event]:
         return events_between(await self._load(), start, end)
 
+    def forget(self) -> None:
+        """Que la próxima pregunta baje el calendario otra vez (se acaba de agregar algo)."""
+        self._fetched = 0.0
+
     async def check(self) -> int:
         """Baja el calendario ahora mismo; devuelve cuántos eventos trae (para probar la dirección)."""
         self._fetched = 0.0

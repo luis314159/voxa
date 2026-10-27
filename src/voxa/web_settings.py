@@ -69,6 +69,8 @@ class SettingsApi:
         self._checkup = checkup
         self._clock = clock
         self._spotify: _SpotifyPending | None = None
+        self._google: tuple[str, str, float] | None = None
+        """La autorización de Google en curso: (verificador PKCE, estado, hasta cuándo)."""
 
     @property
     def config(self):
@@ -110,7 +112,10 @@ class SettingsApi:
             },
             "calendario": {"enabled": config.calendar.enabled, "url": read_secret(config.calendar_url_path) is not None,
                            "avisar": config.calendar.remind_minutes,
-                           "personas": sorted(personal_calendars(config))},
+                           "personas": sorted(personal_calendars(config)),
+                           "google": config.google_token_path.exists(),
+                           "google_cliente": config.google_client_path.exists(),
+                           "escribir_en": config.calendar.write_calendar},
             "voz": {
                 "personas": family_names(config.wake_recordings_dir),
                 "verificador": config.verifier_path.exists(),
@@ -173,6 +178,15 @@ class SettingsApi:
                 case "/api/secreto":
                     return await self._secret(str(data.get("tipo", "")), str(data.get("valor") or "").strip(),
                                               str(data.get("persona") or "").strip()[:40] or None)
+                case "/api/google/cliente":
+                    return self._google_client(str(data.get("id") or "").strip(), str(data.get("secreto") or "").strip())
+                case "/api/google/autorizar":
+                    return self._google_start()
+                case "/api/google/codigo":
+                    return await self._google_finish(str(data.get("direccion") or ""))
+                case "/api/google/quitar":
+                    self.config.google_token_path.unlink(missing_ok=True)
+                    return 200, {"respuesta": "Listo: se desconectó Google Calendar."}
                 case "/api/spotify/autorizar":
                     return await self._spotify_start(str(data.get("persona") or "").strip()[:40] or None)
                 case "/api/spotify/quitar":
@@ -264,6 +278,45 @@ class SettingsApi:
         return 400, {"error": "¿qué llave es?"}
 
     # --- Spotify: el celular abre la autorización; la respuesta llega al 127.0.0.1 de esta PC ---
+    # --- Google Calendar (agregar citas): como Spotify, se pega la dirección de regreso -------------
+    def _google_client(self, client_id: str, secret: str) -> tuple[int, Any]:
+        from voxa.services.google_calendar import GoogleClient
+
+        if not client_id.endswith(".apps.googleusercontent.com") or len(secret) < 10:
+            return 400, {"error": "copia el «ID de cliente» (termina en .apps.googleusercontent.com) y el «Secreto del cliente»"}
+        GoogleClient(client_id[:200], secret[:200]).save(self.config.google_client_path)
+        return 200, {"respuesta": "Listo. Ahora toca «Conectar Google Calendar»."}
+
+    def _google_start(self) -> tuple[int, Any]:
+        from voxa.services.google_calendar import GoogleAuth, GoogleClient
+        from voxa.services.spotify_auth import new_verifier
+
+        client = GoogleClient.load(self.config.google_client_path)
+        if client is None:
+            return 400, {"error": "primero guarda el ID y el secreto del cliente de Google"}
+        self._google = (new_verifier(), secrets.token_urlsafe(16), self._clock() + SPOTIFY_MINUTES * 60)
+        auth = GoogleAuth(client, self.config.google_token_path, self._http)
+        return 200, {"url": auth.authorization_url(self._google[0], self._google[1])}
+
+    async def _google_finish(self, address: str) -> tuple[int, Any]:
+        from voxa.services.google_calendar import GoogleAuth, GoogleClient, GoogleError
+
+        query = dict(urllib.parse.parse_qsl(urllib.parse.urlsplit(address.strip()).query))
+        pending, client = self._google, GoogleClient.load(self.config.google_client_path)
+        if pending is None or client is None or self._clock() > pending[2]:
+            return 400, {"error": "la autorización venció: vuelve a tocar «Conectar Google Calendar»"}
+        if query.get("error"):
+            return 400, {"error": f"Google no autorizó: {query['error']}"}
+        if "code" not in query or not secrets.compare_digest(query.get("state", ""), pending[1]):
+            return 400, {"error": "esa dirección no es la de la respuesta de Google (empieza con http://127.0.0.1:8767/)"}
+        try:
+            await GoogleAuth(client, self.config.google_token_path, self._http).exchange_code(query["code"], pending[0])
+        except GoogleError as exc:
+            return 400, {"error": str(exc)}
+        self._google = None
+        return 200, {"respuesta": "Listo: ya puedes decir «agrega dentista el martes a las 5 al calendario».",
+                     "reinicio": False}
+
     def _spotify_auth(self, person: str | None):
         from voxa.services.spotify_auth import PERSON_SCOPES, SpotifyAuth
 

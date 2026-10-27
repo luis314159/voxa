@@ -9,8 +9,10 @@ from typing import Callable
 from voxa.core.people import speaker
 from voxa.core.phrases import capitalize, clock_words, join_words, weekday_name
 from voxa.core.types import Intent, Response
-from voxa.i18n import tr
+from voxa.i18n import english, tr
+from voxa.nlu.when import When, parse_when
 from voxa.services.calendar import Calendar, CalendarUnavailable, Event
+from voxa.services.google_calendar import GoogleCalendarWriter, GoogleError, GoogleNotConnected
 
 log = logging.getLogger(__name__)
 
@@ -53,6 +55,35 @@ class CalendarSkill:
         self.calendar = calendar
         self.personal = personal or {}
         self._now = now or (lambda: datetime.now().astimezone())
+        self.writer: Callable[[], GoogleCalendarWriter | None] = lambda: None
+        """Lo pone la app si la cuenta de Google está conectada: para agregar citas por voz."""
+
+    async def add(self, intent: Intent) -> Response:
+        """«Agrega dentista el martes a las 5 al calendario»."""
+        text = (intent.slots.get("query") or "").strip()
+        if intent.slots.get("kind") == "cita":
+            text = (tr("cita") + " " + text).strip()
+        when = parse_when(text, self._now().replace(tzinfo=None), english=english())
+        if when is None:
+            return Response("¿Para cuándo? Dime, por ejemplo, «agrega dentista al calendario el martes a las 5».",
+                            sound="error")
+        writer = self.writer()
+        if writer is None:
+            return Response("Para agregar citas, conecta Google Calendar desde el celular: Ajustes, Calendario.",
+                            sound="error")
+        try:
+            await writer.add(when.title, when.day if when.all_day else when.start)
+        except GoogleNotConnected:
+            return Response("Para agregar citas, conecta Google Calendar desde el celular: Ajustes, Calendario.",
+                            sound="error")
+        except GoogleError as exc:
+            log.warning("Calendario de Google: %s", exc)
+            return Response("No pude agregarlo al calendario. Revisa la conexión de Google en el celular.",
+                            sound="error")
+        if self.calendar is not None:
+            self.calendar.forget()  # que «¿qué tengo el martes?» ya la vea
+        return Response(tr("Listo, lo anoté en el calendario: {title}, {when}.", title=when.title,
+                           when=_when_phrase(when, self._now())))
 
     def has_any(self) -> bool:
         return self.calendar is not None or bool(self.personal)
@@ -70,6 +101,8 @@ class CalendarSkill:
         return sorted(events, key=lambda e: (not e.all_day, e.start))
 
     async def handle(self, intent: Intent) -> Response:
+        if intent.name == "calendar.add":
+            return await self.add(intent)
         person = (intent.slots.get("person") or "").strip().title() or speaker()
         if not self._sources(person):
             return Response(NOT_SET)
@@ -142,3 +175,17 @@ class CalendarSkill:
             "el {day} {number}", day=weekday_name(at.weekday()), number=at.day)
         return tr("Lo siguiente es {title}, {when} a {hour}.", title=event.title, when=when,
                   hour=clock_words(at.hour, at.minute, on_the_hour=""))
+
+
+def _when_phrase(when: When, now: datetime) -> str:
+    """«mañana a las 10 de la mañana», «el martes 3 de noviembre a las 5 de la tarde», «el sábado (todo el día)»."""
+    days = (when.day - now.date()).days
+    if days == 0:
+        day = tr("hoy")
+    elif days == 1:
+        day = tr("mañana")
+    else:
+        day = tr("el {day} {number}", day=weekday_name(when.day.weekday()), number=when.day.day)
+    if when.all_day:
+        return tr("{day}, todo el día", day=day)
+    return tr("{day} a {hour}", day=day, hour=clock_words(when.hour or 0, when.minute, on_the_hour=""))
