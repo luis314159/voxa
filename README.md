@@ -168,7 +168,7 @@ Sin `--simulado`, usa Spotify, Spotifast y PipeWire reales. Para configurarlos, 
 - Al volver a entrar a la sesión, VOXA baja sola sus modelos de voz, con la huella de cada uno, y lo muestra en la pantalla. Después enseña el código para configurarla desde el celular.
 - Se actualiza sola de madrugada. «Hey Voxa, actualízate» lo hace al momento.
 
-**Raspberry Pi (sin instalar nada):** cada versión trae una imagen de Raspberry Pi OS con VOXA ya instalada (`voxa-raspberrypi-X.Y.Z.img.xz`, para Raspberry Pi 4 y 5).
+**Raspberry Pi (sin instalar nada):** cada versión trae una imagen de Raspberry Pi OS con VOXA ya instalada (`voxa-raspberrypi-X.Y.Z.img.xz`, para Raspberry Pi 4 y 5, en una tarjeta de 16 GB o más).
 
 1. En Raspberry Pi Imager, en las opciones de la app → «Contenido» (*content repository*), pega `https://github.com/luis314159/voxa/releases/latest/download/os_list_voxa.json`. Aparece «VOXA» como sistema operativo.
 2. Antes de grabar, Imager deja poner el wifi de la casa, el usuario y el nombre (por ejemplo `voxa` o `sala`).
