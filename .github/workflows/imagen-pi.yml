@@ -1,7 +1,8 @@
 name: Imagen Raspberry Pi
 
 # La imagen de Raspberry Pi con VOXA ya instalada. La llama Release al publicar una versión; también
-# corre (sin publicar) cuando cambia el script, con el .deb del release más reciente, para probarla.
+# corre cuando cambia el script, con el .deb del release más reciente: si ese release todavía no tiene
+# su imagen, se la agrega; si ya la tiene, solo es una prueba.
 on:
   workflow_call:
     inputs:
@@ -33,19 +34,24 @@ jobs:
         run: |
           etiqueta="${ETIQUETA:-$(gh release view --repo "$GITHUB_REPOSITORY" --json tagName -q .tagName)}"
           echo "ETIQUETA=$etiqueta" >> "$GITHUB_ENV"
+          if [ -n "${{ inputs.etiqueta }}" ] || ! gh release view "$etiqueta" --repo "$GITHUB_REPOSITORY"                --json assets -q '.assets[].name' | grep -q '^voxa-raspberrypi-'; then
+            echo "PUBLICAR=1" >> "$GITHUB_ENV"
+          fi
           mkdir -p deb && cd deb
           gh release download "$etiqueta" --repo "$GITHUB_REPOSITORY" --pattern 'voxa_*_arm64.deb' --pattern SHA256SUMS
           grep "_arm64.deb" SHA256SUMS | sha256sum -c -
       - name: Armar la imagen
-        run: sudo bash scripts/imagen-pi.sh deb/voxa_*_arm64.deb dist
+        run: |
+          sudo bash scripts/imagen-pi.sh deb/voxa_*_arm64.deb dist
+          sudo chown -R "$(id -u):$(id -g)" dist  # la arma root; la publica el usuario normal
       - name: Publicar en el release
-        if: inputs.etiqueta != ''
+        if: env.PUBLICAR == '1'
         run: |
           cd dist
           gh release download "$ETIQUETA" --repo "$GITHUB_REPOSITORY" --pattern SHA256SUMS --clobber
           sha256sum voxa-raspberrypi-*.img.xz >> SHA256SUMS
           gh release upload "$ETIQUETA" --repo "$GITHUB_REPOSITORY" --clobber \
             voxa-raspberrypi-*.img.xz os_list_voxa.json voxa-icono.png SHA256SUMS
-      - name: Prueba (sin publicar)
-        if: inputs.etiqueta == ''
+      - name: Prueba (el release ya tenía su imagen)
+        if: env.PUBLICAR != '1'
         run: ls -l dist && cat dist/os_list_voxa.json
