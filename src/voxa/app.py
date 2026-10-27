@@ -29,6 +29,7 @@ from voxa.skills.ai import AiFallback
 from voxa.skills.clock import ClockSkill
 from voxa.skills.kids import KidsSkill
 from voxa.skills.medicine import MedicineSkill
+from voxa.skills.notes import NotesSkill
 from voxa.skills.kitchen import KitchenSkill
 from voxa.skills.music import MusicSkill
 from voxa.skills.recipe import RecipeSkill
@@ -54,6 +55,7 @@ from voxa.skills.volume import VolumeSkill
 from voxa.skills.weather import WeatherSkill
 from voxa.settings import read_secret
 from voxa.state.ai_usage import AiUsage
+from voxa.state.notes import NoteBoard
 from voxa.state.recipe import RecipeSession
 from voxa.state.shopping import ShoppingList
 from voxa.state.tasks import TaskList
@@ -93,6 +95,7 @@ class App:
     kids: KidsRules | None = None
     quiet: QuietHours = field(default_factory=lambda: QuietHours(QuietConfig()))
     medicine: MedicineTracker | None = None
+    notes: NoteBoard = field(default_factory=NoteBoard)
 
 
 class SetupError(Exception):
@@ -231,6 +234,8 @@ def build_app(config: Config, *, simulated: bool = False, on_ring: Callable[[Tim
         ring_timeout_seconds=config.timers.alarm_timeout_minutes * 60,
     )
     kids = KidsRules(config.kids, save=None if simulated else kids_saver(config_path()))
+    notes = NoteBoard(None if simulated else config.state_dir / "notas.json")
+    notes_skill = NotesSkill(notes, lambda: config.family.aliases)
     medicine = MedicineTracker(config.medicine, timers, MedicineLog(None if simulated else config.state_dir / "medicinas.json"))
     music: MusicBackend = SimulatedMusic() if simulated else build_music(config, kids.clean_music)
     now_playing = music.now_playing if simulated else music.display_now_playing
@@ -256,6 +261,7 @@ def build_app(config: Config, *, simulated: bool = False, on_ring: Callable[[Tim
         "volume": VolumeSkill(volume, config.volume.step, kids),
         "kids": KidsSkill(kids),
         "medicine": MedicineSkill(medicine),
+        "notes": notes_skill,
         "timer": TimerSkill(timers),
         "clock": ClockSkill(),
         "weather": WeatherSkill(weather),
@@ -303,6 +309,7 @@ def build_app(config: Config, *, simulated: bool = False, on_ring: Callable[[Tim
     other = load_matcher(language=other_language(config.voice.language))
     assistant = Assistant(matcher, skills, timers, video_active=video_active, other=other,
                           bilingual=config.voice.bilingual)
+    assistant.postscript = notes_skill.postscript
     ai, ai_problem = build_ai(config, assistant)
     if ai is not None:
         ai.for_kids = kids.applies
@@ -314,7 +321,7 @@ def build_app(config: Config, *, simulated: bool = False, on_ring: Callable[[Tim
         ai.extra_context = recipe.summary
     return App(
         assistant, timers, matcher, now_playing, weather, player, checks, config, shopping, recipe, updater, ai, ai_problem,
-        music, house, tasks, kids, QuietHours(config.quiet), medicine,
+        music, house, tasks, kids, QuietHours(config.quiet), medicine, notes,
     )
 
 

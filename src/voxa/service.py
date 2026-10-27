@@ -74,6 +74,7 @@ class Service:
             enroll.ready = lambda: self.session is not None and self.mic is not None and self.wake is not None
         display.shopping = app.shopping.items  # la pantalla ve la lista tal cual (se republica tras cada orden)
         display.recipe = app.recipe.snapshot
+        display.notes = app.notes.snapshot
         recipe = app.assistant.skill("recipe")
         if recipe is not None and hasattr(recipe, "on_wait"):
             recipe.on_wait = self._say_meanwhile

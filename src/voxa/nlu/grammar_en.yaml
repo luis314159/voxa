@@ -241,6 +241,24 @@
     - "(cancel|stop|delete|remove) [the|my] {name} (timer|alarm|reminder)"
     - "(cancel|stop|delete|remove) the (timer|alarm|reminder) [(for the|for) {name}]"
 
+# Notes: shown on the screen and told to whoever they're for when VOXA recognizes their voice.
+- intent: notes.add
+  patterns:
+    - "(leave|write|send) [a] (note|message) (for|to) {person} (saying that|saying|that says|that) {query}"
+    - "(leave|write) [a] (note|message) (saying|that says) {query}"
+    - "(leave|write|send) [a] (note|message) (for|to) {person} {query}"
+
+- intent: notes.read
+  patterns:
+    - "(do i have|are there|is there) (any notes|any messages|a note|a message|notes|messages) [for me]"
+    - "(read|tell me) my (notes|messages)"
+    - "did (anyone|somebody|someone) leave me a (note|message)"
+
+- intent: notes.clear
+  patterns:
+    - "(clear|delete|remove) [the|my] (notes|messages)"
+    - "i (read|heard|saw|got) my (notes|messages)"
+
 # Medicine: «I took it» answers «did you take your medicine?» (with no alarm ringing it's a question).
 - intent: medicine.later
   patterns:

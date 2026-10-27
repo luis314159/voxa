@@ -130,6 +130,12 @@ class MedicineConfig:
 
 
 @dataclass(frozen=True)
+class FamilyConfig:
+    aliases: dict[str, str] = field(default_factory=dict)
+    """Cómo más le dicen a cada quien: {"Luis": "papá, pa"} (para «déjale una nota a papá»)."""
+
+
+@dataclass(frozen=True)
 class WakeConfig:
     enabled: bool = True
     model: str = ""
@@ -207,6 +213,7 @@ class Config:
     kids: KidsConfig = field(default_factory=KidsConfig)
     quiet: QuietConfig = field(default_factory=QuietConfig)
     medicine: MedicineConfig = field(default_factory=MedicineConfig)
+    family: FamilyConfig = field(default_factory=FamilyConfig)
     display: DisplayConfig = field(default_factory=DisplayConfig)
     video: VideoConfig = field(default_factory=VideoConfig)
     ai: AiConfig = field(default_factory=AiConfig)

@@ -305,6 +305,20 @@ EN: dict[str, str] = {
     "Listo, aunque todavía te confundo a veces. Si no te hago caso, repítelo en un lugar más silencioso.":
         "Done, though I still mix you up sometimes. If I don't answer you, do it again somewhere quieter.",
     "Listo, ya reconozco tu voz.": "Done, I know your voice now.",
+    # --- notes -------------------------------------------------------------------------------------------------
+    "{author} te dejó un recado: {text}": "{author} left you a message: {text}",
+    "Te dejaron un recado: {text}": "Someone left you a message: {text}",
+    "¿Qué le digo?": "What should I tell them?",
+    "Listo, dejé la nota en la pantalla.": "Done, the note is on the screen.",
+    "Listo, le dejo la nota a {person}: se la digo cuando lo oiga.": "Done, I'll give {person} the note when I hear them.",
+    "No hay notas.": "There are no notes.",
+    "No tienes recados.": "You have no messages.",
+    "Listo, quité los recados.": "Done, I cleared the messages.",
+    "No había recados.": "There were no messages.",
+    "Todavía no sé hacer eso con las notas.": "I can't do that with notes yet.",
+    "para {person}: {text}": "for {person}: {text}",
+    "para todos: {text}": "for everyone: {text}",
+    "Por cierto, {person}: {notes}": "By the way, {person}: {notes}",
     # --- medicine -------------------------------------------------------------------------------------------------
     "{person}, es hora de tu medicina: {label}. Cuando te la tomes, dime «ya me la tomé».":
         "{person}, it's time for your medicine: {label}. When you've taken it, tell me «I took it».",

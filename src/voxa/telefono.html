@@ -130,6 +130,16 @@
   <ul id="lista"></ul>
 </section>
 
+<section>
+  <h2>Notas</h2>
+  <form id="form-nota">
+    <input type="text" id="nota-texto" placeholder="«Compra tortillas»" autocomplete="off" enterkeyhint="send" style="width:100%">
+    <div class="fila" style="margin-top:8px"><input type="text" id="nota-para" placeholder="Para (vacío: para todos)" autocomplete="off"><button class="principal">Dejar</button></div>
+  </form>
+  <ul id="notas"></ul>
+  <p class="ayuda">Se ven en la pantalla de la cocina, y VOXA se las dice a quien van cuando reconoce su voz. Por voz: «déjale una nota a papá que compre tortillas».</p>
+</section>
+
 <section id="seccion-medicinas" hidden>
   <h2>Medicinas de hoy</h2>
   <ul id="medicinas"></ul>
@@ -189,6 +199,12 @@
   <p class="ayuda">Para que VOXA reconozca a cada quien y no se active con la tele. Escribe tu nombre, toca «Grabar» y ve a la cocina: VOXA te guía en voz alta (como un minuto). También se le puede decir «Hey Voxa, aprende mi voz».</p>
   <form class="fila" id="form-voz"><input type="text" id="voz-nombre" placeholder="Tu nombre" autocomplete="off"><button class="principal">Grabar</button></form>
   <p class="ayuda" id="voz-respuesta"></p>
+  <div id="apodos-campo" hidden>
+    <p class="ayuda">¿Cómo más les dicen? Así «déjale una nota a papá» sabe a quién va (separado por comas).</p>
+    <div id="apodos"></div>
+    <button id="apodos-guardar" style="width:100%;margin-top:10px">Guardar</button>
+    <p class="ayuda" id="apodos-respuesta"></p>
+  </div>
 </section>
 
 <section>
@@ -532,6 +548,18 @@ const EN = {
   "mochila, lonche, uniforme": "backpack, lunch, uniform",
   "Música de «buenos días» (opcional)": "«Good morning» music (optional)",
   "«mi playlist de la mañana»": "«my morning playlist»",
+  // Notas
+  "Notas": "Notes",
+  "«Compra tortillas»": "«Buy tortillas»",
+  "Para (vacío: para todos)": "For (empty: everyone)",
+  "Dejar": "Leave",
+  "Se ven en la pantalla de la cocina, y VOXA se las dice a quien van cuando reconoce su voz. Por voz: «déjale una nota a papá que compre tortillas».": "They show on the kitchen screen, and VOXA tells each person theirs when it recognizes their voice. By voice: «leave a note for dad saying buy tortillas».",
+  "No hay notas.": "No notes.",
+  "Para todos": "For everyone",
+  "Para {persona}": "For {persona}",
+  "Borrar nota": "Delete note",
+  "¿Cómo más les dicen? Así «déjale una nota a papá» sabe a quién va (separado por comas).": "What else do people call them? That way «leave a note for dad» knows who it's for (comma-separated).",
+  "papá, pa": "dad, pa",
   // Medicinas
   "Medicinas de hoy": "Today's medicine",
   "Medicinas": "Medicine",
@@ -804,6 +832,28 @@ function pintarMedicinas(dosis) {
   }));
 }
 
+function pintarNotas(notas) {
+  $("notas").replaceChildren(...(notas.length ? notas.map((n) => {
+    const li = el("li"), izq = el("div"), borrar = el("button", "", "✕");
+    izq.append(el("div", "nombre", capital(n.text)));
+    izq.append(el("div", "detalle", [n.to ? tr("Para {persona}", { persona: n.to }) : tr("Para todos"), n.from].filter(Boolean).join(" · ")));
+    borrar.setAttribute("aria-label", tr("Borrar nota"));
+    borrar.onclick = () => api("/api/notas", { borrar: n.id }).then((r) => pintarNotas(r.notas));
+    li.append(izq, borrar);
+    return li;
+  }) : [el("p", "vacio", tr("No hay notas."))]));
+}
+async function actualizarNotas() { try { pintarNotas((await api("/api/notas")).notas); } catch (e) { /* sin conexión */ } }
+$("form-nota").onsubmit = async (ev) => {
+  ev.preventDefault();
+  const texto = $("nota-texto").value.trim();
+  if (!texto) return;
+  pintarNotas((await api("/api/notas", { texto, para: $("nota-para").value.trim() })).notas);
+  $("nota-texto").value = "";
+};
+actualizarNotas();
+setInterval(actualizarNotas, 15000);
+
 async function actualizarTareas() { try { pintarTareas(await api("/api/tareas")); } catch (e) { /* sin conexión */ } }
 $("form-tarea").onsubmit = async (ev) => {
   ev.preventDefault();
@@ -1015,6 +1065,13 @@ async function cargarAjustes() {
     etiqueta.append(caja, document.createTextNode(letra));
     return etiqueta;
   }));
+  $("apodos-campo").hidden = !a.voz.personas.length;
+  $("apodos").replaceChildren(...a.voz.personas.map((p) => {
+    const campo = el("label", "campo"), caja = document.createElement("input");
+    caja.type = "text"; caja.dataset.persona = p; caja.value = a.voz.apodos[p] || ""; caja.placeholder = tr("papá, pa");
+    campo.append(el("span", "", p), caja);
+    return campo;
+  }));
   $("med-encendido").checked = a.medicinas.enabled;
   $("med-cada").value = String(a.medicinas.cada);
   $("med-veces").value = String(a.medicinas.veces);
@@ -1211,6 +1268,9 @@ $("rutina-guardar").onclick = () => guardar("routine", {
   checklist: $("rutina-llevar").value.trim(),
   morning_music: $("rutina-musica").value.trim(),
 }, "rutina-respuesta");
+$("apodos-guardar").onclick = () => guardar("family", {
+  aliases: Object.fromEntries([...$("apodos").querySelectorAll("input")].map((c) => [c.dataset.persona, c.value.trim()])),
+}, "apodos-respuesta");
 $("med-guardar").onclick = () => guardar("medicine", {
   enabled: $("med-encendido").checked,
   ask_every_minutes: Number($("med-cada").value),

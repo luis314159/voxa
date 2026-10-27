@@ -157,6 +157,25 @@
     - "(cancela|quita|borra|elimina|deten|para|apaga) [el|la|mi] (temporizador|timer|cronometro|alarma|recordatorio|despertador) [(del|de la|de|para) {name}]"
     - "(cancela|quita|borra|elimina) (el|la) (del|de la|de los|de las|de|para) {name}"
 
+# Notas y recados: se ven en la pantalla y se le dicen a quien van cuando VOXA reconoce su voz.
+- intent: notes.add
+  patterns:
+    - "(dejale|deja|dejele|dejame|manda|mandale|escribele|escribe|pon|ponle|ponme) [una|un] (nota|recado|mensaje) (a|para) {person} (que dice que|diciendo que|que diga que|que diga|que dice|diciendo|que) {query}"
+    - "(dejale|deja|dejele|dejame|manda|mandale|escribele|escribe|pon|ponle|ponme) [una|un] (nota|recado|mensaje) (que diga|que dice|diciendo) {query}"
+    - "(dejale|deja|dejele|dejame|manda|mandale|escribele|escribe|pon|ponle|ponme) [una|un] (nota|recado|mensaje) (a|para) {person} {query}"
+
+- intent: notes.read
+  patterns:
+    - "(tengo|hay) (notas|recados|mensajes|alguna nota|algun recado|algun mensaje) [para mi]"
+    - "(lee|leeme|dime|cuales son) (mis|las) (notas|recados|mensajes)"
+    - "que (notas|recados|mensajes) (hay|tengo)"
+    - "alguien me dejo (un recado|una nota|un mensaje)"
+
+- intent: notes.clear
+  patterns:
+    - "(borra|quita|elimina|limpia) (las notas|los recados|mis notas|mis recados|los mensajes|mis mensajes)"
+    - "ya (lei|vi|escuche|oi) (la nota|el recado|las notas|los recados|mis recados|mis notas)"
+
 # Medicinas: «ya me la tomé» contesta a «¿ya te tomaste la medicina?» (sin alarma, es una pregunta).
 - intent: medicine.later
   patterns:

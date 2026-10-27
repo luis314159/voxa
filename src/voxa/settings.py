@@ -38,6 +38,7 @@ EDITABLE: dict[str, dict[str, Any]] = {
     "voice": {"whisper_model": ("tiny", "base", "small"), "language": ("es", "en"), "bilingual": bool},
     "routine": {"departure": "time", "departure_days": "days", "checklist": str, "morning_music": str},
     "house": {"room": str, "main": str},
+    "family": {"aliases": "aliases"},
     "medicine": {"enabled": bool, "ask_every_minutes": int, "tries": int, "notify_telegram": bool, "notify_house": bool},
     "quiet": {"enabled": bool, "start": "time", "end": "time", "level": float},
     "kids": {
@@ -81,6 +82,14 @@ def validate(section: str, values: dict[str, Any]) -> dict[str, Any]:
             if not isinstance(value, str) or (value.strip() and parse_time(value) is None):
                 raise SettingsError(f"«{section}.{key}» debe ser una hora como 07:30")
             clean[key] = value.strip()
+            continue
+        if kind == "aliases":
+            if not isinstance(value, dict) or len(value) > 20 or not all(
+                isinstance(k, str) and isinstance(v, str) and 0 < len(k.strip()) <= 40 and len(v) <= 100
+                for k, v in value.items()
+            ):
+                raise SettingsError(f"«{section}.{key}» deben ser nombres con sus apodos")
+            clean[key] = {k.strip(): v.strip() for k, v in value.items() if v.strip()}
             continue
         if kind == "names":
             if not isinstance(value, list) or not all(isinstance(n, str) and 0 < len(n.strip()) <= 40 for n in value):

@@ -18,7 +18,7 @@ import time
 from dataclasses import replace
 
 from voxa.app import build_app
-from voxa.config import Config
+from voxa.config import Config, VoiceConfig
 from voxa.core.types import Response
 from voxa.health import Problem
 from voxa.service import Service
@@ -70,10 +70,12 @@ async def main() -> None:
     parser.add_argument("--pausa", action="store_true", help="el temporizador del arroz en pausa")
     parser.add_argument("--foto", action="store_true", help="«modo foto»: solo la imagen de fondo")
     parser.add_argument("--receta", type=int, metavar="PASO", help="abre una receta en ese paso (0 = ingredientes)")
+    parser.add_argument("--notas", action="store_true", help="deja unas notas («déjale una nota a papá»)")
+    parser.add_argument("--ingles", action="store_true", help="la casa habla inglés")
     parser.add_argument("--puerto", type=int, default=8766)
     args = parser.parse_args()
 
-    app = build_app(Config(), simulated=True)
+    app = build_app(Config(voice=VoiceConfig(language="en" if args.ingles else "es")), simulated=True)
     service = Service.create(app)
     music = app.now_playing.__self__  # la música simulada de la demo
 
@@ -90,6 +92,9 @@ async def main() -> None:
             app.timers.add(0, "el pan")
     if args.lista:
         app.shopping.add(["leche", "huevos", "tortillas", "jabón para trastes", "aguacates", "café", "pan dulce"])
+    if args.notas:
+        app.notes.add("compra tortillas y crema", "Luis", "Ana")
+        app.notes.add("hay pastel en el refri", None, None)
     if args.receta is not None:
         app.recipe.start(DEMO_RECIPE)
         app.recipe.go(args.receta - 1)
@@ -109,6 +114,8 @@ async def main() -> None:
     service.display.wake_word = None if args.sin_activacion or args.silenciado else "Hey Voxa"
 
     async with service.running(args.puerto):
+        if not args.celular:
+            service.show_phone_code(False)  # la demo no está «sin configurar»
         print(f"Demo lista en el puerto {args.puerto}. Abre la pantalla: voxa-ui (Ctrl+C para salir)")
         for n in itertools.count():
             heard, answer = EXCHANGES[n % len(EXCHANGES)]

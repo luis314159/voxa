@@ -21,7 +21,6 @@ Lo que falta para que VOXA sea un producto excelente para familias, en orden de 
 
 ## Siguiente
 
-- **Notas y mensajes:** «déjale una nota a papá» aparece en la pantalla y se dice cuando VOXA reconoce su voz.
 - **Agregar al calendario por voz** («agrega dentista el martes a las 5»). Hoy solo se lee el iCal; escribir requiere conectar la cuenta de Google con OAuth.
 - **Spotify por persona:** cada quien conecta su cuenta, y «pon mis me gusta» usa la de quien habla.
 - **Reconocer mejor a quien habla en órdenes muy cortas:**
@@ -30,7 +29,7 @@ Lo que falta para que VOXA sea un producto excelente para familias, en orden de 
 - **Privacidad visible:**
   - una página en el celular que explique qué se queda en la PC y qué sale a internet;
   - una marca en la pantalla cuando la IA (de paga) está encendida.
-
+- **Apodos en todo:** «los pendientes de papá» y «¿qué tiene mamá hoy?» con los apodos de Ajustes (hoy solo las notas los usan).
 - **Modo niños, siguiente paso:** con YouTube no se sabe si una canción es explícita; probar si YouTube Music lo expone, o un filtro por letra.
 
 ## Producto e instalación

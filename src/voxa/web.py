@@ -20,6 +20,8 @@ from importlib import resources
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from voxa.core.people import resolve
+
 if TYPE_CHECKING:
     from voxa.service import Service
     from voxa.web_settings import SettingsApi
@@ -159,6 +161,8 @@ class WebServer:
             return self._json(200, self._state())
         if method == "GET" and url.path == "/api/casa" and self._service.app.house is not None:
             return self._json(200, self._service.app.house.status())
+        if method == "GET" and url.path == "/api/notas":
+            return self._json(200, {"notas": self._service.app.notes.snapshot()})
         if method == "GET" and url.path == "/api/tareas":
             return self._json(200, self._tasks())
         if method == "GET" and url.path == "/api/playlists":
@@ -219,6 +223,17 @@ class WebServer:
                 return await self._playlists(text)
             case "/api/playlists/poner":
                 return await self._play_playlist(str(data.get("uri") or "")[:100], str(data.get("nombre") or "")[:100])
+            case "/api/notas":
+                notes = app.notes
+                if text:
+                    to = str(data.get("para") or "").strip()[:40]
+                    notes.add(text, resolve(to, app.config.family.aliases) if to else None, None)
+                elif isinstance(data.get("borrar"), int):
+                    notes.remove(data["borrar"])
+                else:
+                    return 400, {"error": "¿qué nota?"}
+                service.display.publish()
+                return 200, {"notas": notes.snapshot()}
             case "/api/medicinas":
                 medicine = app.medicine
                 if medicine is None or not isinstance(data.get("tomada"), int):

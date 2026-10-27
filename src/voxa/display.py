@@ -80,6 +80,8 @@ class Display:
         """La lista del súper (``voxa.state.shopping``): la misma lista, se lee al tomar la foto."""
         self.recipe: Callable[[], dict | None] = lambda: None
         """La receta en curso (``voxa.state.recipe.RecipeSession.snapshot``)."""
+        self.notes: Callable[[], list[dict]] = lambda: []
+        """Las notas y recados (``voxa.state.notes.NoteBoard.snapshot``)."""
         self._last: dict | None = None
 
     # --- TurnObserver (voxa.voice) ----------------------------------------
@@ -128,6 +130,7 @@ class Display:
             "photo": self.photo,
             "phone": self._phone(),
             "language": home_language(),
+            "notes": self.notes(),
         }
 
     def _phone(self) -> str | None:

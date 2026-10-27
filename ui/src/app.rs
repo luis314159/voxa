@@ -11,7 +11,7 @@ use crate::backgrounds::Backgrounds;
 use crate::format;
 use crate::i18n::{self, t};
 use crate::link::Link;
-use crate::protocol::{Command, Diagnostics, Music, Phase, Recipe, State, Timer, Weather};
+use crate::protocol::{Command, Diagnostics, Music, Note, Phase, Recipe, State, Timer, Weather};
 use crate::theme;
 use crate::widgets::{self, Icon, RingMode};
 
@@ -220,6 +220,12 @@ impl eframe::App for VoxaApp {
             let card = Rect::from_min_max(pos2(left.left(), caption_bottom + f.px(8.0)), pos2(left.right(), free_bottom));
             if card.height() >= f.px(240.0) {
                 self.recipe_card(ui, &painter, &f, card, recipe);
+            }
+        } else if !state.notes.is_empty() {
+            // Las notas, abajo de la conversación (pegadas a la música si suena).
+            let room = Rect::from_min_max(pos2(left.left(), caption_bottom + f.px(24.0)), pos2(left.right(), free_bottom));
+            if room.height() >= f.px(130.0) {
+                notes_card(&painter, &f, room, &state.notes);
             }
         }
         let ring_left = self.ring(ui, &painter, &f, right, &state, connected);
@@ -866,6 +872,42 @@ impl VoxaApp {
 }
 
 /// La lista del súper: en dos columnas, las que quepan, y «y N más».
+/// Las notas, una por renglón: «Para Luis · Compra tortillas». Devuelve la altura que usó.
+fn notes_card(painter: &Painter, f: &Frame, area: Rect, notes: &[Note]) -> f32 {
+    let pad = f.px(32.0);
+    let row = f.px(50.0);
+    let header = f.px(56.0);
+    let rows_fit = (((area.height() - pad * 1.6 - header) / row).floor() as usize).max(1);
+    // Siempre se ve al menos una; «y N más» solo si queda renglón (si no, la cuenta va en el título).
+    let shown = if notes.len() > rows_fit { (rows_fit - 1).max(1) } else { notes.len() };
+    let more = notes.len() - shown;
+    let more_row = more > 0 && shown < rows_fit;
+    let rows = shown + usize::from(more_row);
+    let height = (pad * 1.6 + header + rows as f32 * row).min(area.height());
+    let card = Rect::from_min_size(area.min, vec2(area.width(), height));
+    painter.rect_filled(card, CornerRadius::same(f.px(28.0) as u8), theme::CARD);
+    let title = if more > 0 && !more_row { format!("{} · {}", t("Notas", "Notes"), notes.len()) } else { t("Notas", "Notes").to_owned() };
+    widgets::shadow_text(painter, card.left_top() + vec2(pad, pad * 0.8), Align2::LEFT_TOP, title, theme::regular(f.px(32.0)), theme::TEXT_DIM);
+    let font = theme::regular(f.px(36.0));
+    let width = card.width() - pad * 2.0;
+    for (n, note) in notes[..shown].iter().enumerate() {
+        let at = pos2(card.left() + pad, card.top() + pad * 0.8 + header + n as f32 * row);
+        let whom = match &note.to {
+            Some(person) if i18n::english() => format!("For {person}"),
+            Some(person) => format!("Para {person}"),
+            None => t("Para todos", "For everyone").to_owned(),
+        };
+        let shown_whom = widgets::shadow_text(painter, at, Align2::LEFT_TOP, format!("{whom} ·"), font.clone(), theme::CYAN);
+        let left = shown_whom.right() + f.px(12.0);
+        widgets::fitted_text(painter, pos2(left, at.y), Align2::LEFT_TOP, &format::capitalize(&note.text), font.clone(), theme::TEXT, card.left() + pad + width - left);
+    }
+    if more_row {
+        let at = pos2(card.left() + pad, card.top() + pad * 0.8 + header + shown as f32 * row);
+        widgets::shadow_text(painter, at, Align2::LEFT_TOP, and_more(more), font, theme::TEXT_DIM);
+    }
+    height
+}
+
 fn shopping_card(painter: &Painter, f: &Frame, area: Rect, items: &[String]) {
     let pad = f.px(32.0);
     let row = f.px(46.0);

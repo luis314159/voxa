@@ -142,3 +142,12 @@ async def test_phone_shows_todays_medicine_and_marks_it_taken(phone):
     assert status == 200 and json.loads(body)["medicinas"][0]["tomada"]
     status, _, _ = await http(server.port, "POST", "/api/medicinas", **as_json({"tomada": 0}))
     assert status == 400  # ya estaba anotada
+
+
+async def test_phone_leaves_and_deletes_notes(phone):
+    server, service, _ = phone
+    status, _, body = await http(server.port, "POST", "/api/notas", **as_json({"texto": "compra pan", "para": "ana"}))
+    assert status == 200 and json.loads(body)["notas"] == [{"id": 1, "text": "compra pan", "to": "Ana", "from": None}]
+    assert service.display.snapshot()["notes"][0]["to"] == "Ana"
+    status, _, body = await http(server.port, "POST", "/api/notas", **as_json({"borrar": 1}))
+    assert json.loads(body)["notas"] == []

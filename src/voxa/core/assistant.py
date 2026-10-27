@@ -51,6 +51,8 @@ class Assistant:
         """La gramática del otro idioma: los botones de la pantalla y a veces la IA mandan órdenes en
         español aunque la casa hable inglés; en una casa bilingüe, se prueba con cada frase."""
         self.bilingual = bilingual and other is not None
+        self.postscript: Callable[[], str | None] | None = None
+        """Lo que se agrega al final de una respuesta a alguien que VOXA reconoce (sus recados nuevos)."""
         self._skills = dict(skills)
         self._timers = timers
         self.fallback = fallback
@@ -79,6 +81,9 @@ class Assistant:
             said_in = matcher.language.code if self.bilingual and not button else home_language()
             with in_language(said_in):
                 response = _localized(await self.handle_intent(intent))
+                if self.postscript is not None and intent.domain != "notes" and not response.spoken:
+                    if extra := self.postscript():
+                        response = replace(response, speech=f"{response.speech} {extra}" if response.speech else extra)
             return self._remember(self._marked(response, said_in))
         said_in = (language or guess_language(text)) if self.bilingual else home_language()
         with in_language(said_in):

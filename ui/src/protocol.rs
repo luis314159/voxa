@@ -42,6 +42,17 @@ pub struct State {
     /// Idioma de la casa: «es» o «en» (vacío con un VOXA anterior: español).
     #[serde(default)]
     pub language: String,
+    /// Notas y recados («déjale una nota a papá»).
+    #[serde(default)]
+    pub notes: Vec<Note>,
+}
+
+#[derive(Debug, Clone, Deserialize, PartialEq)]
+pub struct Note {
+    pub text: String,
+    /// Para quién; sin nadie, es para todos.
+    pub to: Option<String>,
+    pub from: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize, PartialEq)]
@@ -328,6 +339,16 @@ mod tests {
             Some(Incoming::State(state)) => Some(state),
             _ => None,
         }
+    }
+
+    #[test]
+    fn parses_language_and_notes() {
+        let line = r#"{"type": "state", "language": "en",
+            "notes": [{"id": 1, "text": "compra pan", "to": "Luis", "from": "Ana"}, {"id": 2, "text": "hay pastel", "to": null, "from": null}]}"#;
+        let Incoming::State(state) = parse_line(line).unwrap() else { panic!() };
+        assert_eq!(state.language, "en");
+        assert_eq!(state.notes[0].to.as_deref(), Some("Luis"));
+        assert!(state.notes[1].to.is_none());
     }
 
     #[test]

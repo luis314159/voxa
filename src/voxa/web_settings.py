@@ -114,6 +114,7 @@ class SettingsApi:
                 "lista": self._enroll_ready(),
                 "whisper": config.voice.whisper_model,
                 "idioma": config.voice.language,
+                "apodos": dict(config.family.aliases),
                 "bilingue": config.voice.bilingual,
             },
             "casa": {**(app.house.status() if app.house else {}), "invitacion": self.invitation()},
