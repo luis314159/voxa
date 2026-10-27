@@ -30,6 +30,8 @@ SCOPES = (
     "user-library-modify",
 )
 LIBRARY_SCOPE = "user-library-read"
+# Spotify por persona: la cuenta de cada quien solo se lee (sus Me gusta y playlists) y se guarda en sus Me gusta.
+PERSON_SCOPES = ("playlist-read-private", "user-library-read", "user-library-modify")
 
 
 def new_verifier() -> str:
@@ -50,7 +52,12 @@ class SpotifyAuth:
         http: Http,
         *,
         clock: Callable[[], float] = time.time,
+        scopes: tuple[str, ...] = SCOPES,
+        person: str | None = None,
     ) -> None:
+        self.scopes = scopes
+        self.person = person
+        """De quién es la cuenta (Spotify por persona); ``None``: la de la casa."""
         self.client_id = client_id
         self.redirect_uri = redirect_uri
         self._token_path = token_path
@@ -65,7 +72,7 @@ class SpotifyAuth:
             "redirect_uri": self.redirect_uri,
             "code_challenge_method": "S256",
             "code_challenge": challenge_for(verifier),
-            "scope": " ".join(SCOPES),
+            "scope": " ".join(self.scopes),
             "state": state,
         }
         return f"{AUTHORIZE_URL}?{urllib.parse.urlencode(params)}"
@@ -118,6 +125,8 @@ class SpotifyAuth:
             # El refresh no siempre repite los permisos: se conservan los de la autorización.
             "scope": resp.data.get("scope") or (self._token or {}).get("scope", ""),
         }
+        if self.person:
+            token["persona"] = self.person
         self._save(token)
         return token
 

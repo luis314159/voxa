@@ -234,6 +234,11 @@
   <button id="spotify-conectar" class="principal" style="width:100%;margin-top:10px">Conectar con Spotify</button>
   <button id="spotify-abrir" style="width:100%;margin-top:10px">Abrir Spotifast en la cocina</button>
   <label class="campo"><span>¿De dónde sale la música?</span><select id="musica-fuente"><option value="auto">Spotify si está conectado; si no, YouTube</option><option value="spotify">Solo Spotify</option><option value="youtube">Solo YouTube (sin cuenta)</option></select></label>
+  <div id="spotify-familia" hidden>
+    <div class="detalle" style="margin-top:12px">La cuenta de cada quien</div>
+    <p class="ayuda">Con su propia cuenta, «pon mis me gusta», «pon mi playlist…» y «me gusta esta canción» usan la de quien habla (si VOXA reconoce su voz); la música sigue sonando en la cocina. Spotify deja conectar hasta 5 cuentas por app: agrega el correo de cada quien en tu app de Spotify, en «User Management».</p>
+    <ul id="spotify-personas"></ul>
+  </div>
   <form class="fila campo" id="form-spotify-codigo" hidden><input type="url" id="spotify-direccion" placeholder="http://127.0.0.1:8765/callback?code=…" autocomplete="off"><button class="principal">Listo</button></form>
   <p class="ayuda" id="spotify-respuesta"></p>
 </section>
@@ -592,6 +597,13 @@ const EN = {
   "sin datos todavía": "no data yet",
   "Lo que no entendió": "What it didn't understand",
   "¿Borrar las mediciones?": "Clear the measurements?",
+  // Spotify por persona
+  "La cuenta de cada quien": "Each person's account",
+  "Con su propia cuenta, «pon mis me gusta», «pon mi playlist…» y «me gusta esta canción» usan la de quien habla (si VOXA reconoce su voz); la música sigue sonando en la cocina. Spotify deja conectar hasta 5 cuentas por app: agrega el correo de cada quien en tu app de Spotify, en «User Management».": "With their own account, «play my likes», «play my playlist…» and «I like this song» use the account of whoever is talking (if VOXA recognizes their voice); the music still plays in the kitchen. Spotify allows up to 5 accounts per app: add each person's email in your Spotify app, under «User Management».",
+  "Conectar": "Connect",
+  "Quitar": "Remove",
+  "Conectada": "Connected",
+  "Sin conectar": "Not connected",
   // Notas
   "Notas": "Notes",
   "«Compra tortillas»": "«Buy tortillas»",
@@ -1169,6 +1181,7 @@ async function cargarAjustes() {
   }));
   $("priv-local").replaceChildren(...a.privacidad.local.map((t) => el("li", "", t)));
   $("priv-internet").replaceChildren(...a.privacidad.internet.map((t) => el("li", "", t)));
+  pintarCuentasSpotify(a.spotify.autorizado ? a.voz.personas : [], a.spotify.personas || []);
   const acc = a.accesibilidad;
   $("acc-velocidad").value = String(acc.velocidad);
   if (!$("acc-velocidad").value) $("acc-velocidad").value = "1";
@@ -1281,10 +1294,23 @@ $("form-spotify-id").onsubmit = async (ev) => {
   const id = $("spotify-id").value.trim();
   if (id && await guardar("spotify", { client_id: id }, "spotify-respuesta")) $("spotify-id").value = "";
 };
-$("spotify-conectar").onclick = async () => {
+function pintarCuentasSpotify(personas, conectadas) {
+  $("spotify-familia").hidden = !personas.length;
+  $("spotify-personas").replaceChildren(...personas.map((p) => {
+    const li = el("li"), izq = el("div"), lista = conectadas.some((c) => c.toLowerCase() === p.toLowerCase());
+    izq.append(el("div", "nombre", p), el("div", "detalle", lista ? tr("Conectada") : tr("Sin conectar")));
+    const boton = el("button", lista ? "" : "principal", lista ? tr("Quitar") : tr("Conectar"));
+    boton.onclick = lista
+      ? async () => { try { decir("spotify-respuesta", (await api("/api/spotify/quitar", { persona: p })).respuesta); cargarAjustes(); } catch (e) { decir("spotify-respuesta", e.message); } }
+      : () => conectarSpotify(p);
+    li.append(izq, boton);
+    return li;
+  }));
+}
+async function conectarSpotify(persona) {
   const ventana = window.open("about:blank", "_blank");
   try {
-    const r = await api("/api/spotify/autorizar", {});
+    const r = await api("/api/spotify/autorizar", persona ? { persona } : {});
     if (ventana) ventana.location = r.url; else location.href = r.url;
     $("form-spotify-codigo").hidden = false;
     decir("spotify-respuesta", tr("Después de aceptar, copia la dirección de la página que no abre y pégala aquí."));
@@ -1292,7 +1318,8 @@ $("spotify-conectar").onclick = async () => {
     if (ventana) ventana.close();
     decir("spotify-respuesta", e.message);
   }
-};
+}
+$("spotify-conectar").onclick = () => conectarSpotify(null);
 $("spotify-abrir").onclick = async () => {
   try { decir("spotify-respuesta", (await api("/api/spotify/abrir", {})).respuesta); }
   catch (e) { decir("spotify-respuesta", e.message); }

@@ -22,7 +22,7 @@ from voxa.services.pipewire import VolumeControl, WpctlVolume
 from voxa.services.simulated import SimulatedMusic, SimulatedVideoPlayer, SimulatedVideoSearch, SimulatedVolume
 from voxa.services.spotifast_cli import SpotifastCli
 from voxa.services.spotify_api import SpotifyWebApi
-from voxa.services.spotify_auth import SpotifyAuth
+from voxa.services.spotify_auth import PERSON_SCOPES, SpotifyAuth
 from voxa.services.video import MpvPlayer, VideoPlayer, VideoSearch, YtDlpSearch
 from voxa.services.weather import OpenMeteo
 from voxa.services.youtube_music import YouTubeMusic
@@ -212,9 +212,29 @@ def build_spotify(config: Config, clean: Callable[[], bool] | None = None) -> Mu
     web = SpotifyWebApi(auth, http, config.spotify.device_name)
     if clean is not None:
         web.clean = clean
+    web.person = person_accounts(config, http)
     cli = SpotifastCli(config.spotifast.command)
     mpris = PlayerctlBackend(config.spotifast.mpris_player)
     return LayeredMusicBackend(search_order=[web, cli], control_order=[mpris, cli, web])
+
+
+def person_accounts(config: Config, http: UrllibHttp) -> Callable[[], SpotifyAuth | None]:
+    """Spotify por persona: la cuenta de quien habla, si la conectó (Ajustes → Spotify)."""
+    accounts: dict[str, SpotifyAuth] = {}
+
+    def current() -> SpotifyAuth | None:
+        person = speaker()
+        if not person:
+            return None
+        path = config.spotify_person_token_path(person)
+        if not path.exists():
+            return None
+        if str(path) not in accounts:
+            accounts[str(path)] = SpotifyAuth(config.spotify.client_id, config.spotify.redirect_uri, path, http,
+                                              scopes=PERSON_SCOPES, person=person)
+        return accounts[str(path)]
+
+    return current
 
 
 def spotify_ready(config: Config) -> bool:

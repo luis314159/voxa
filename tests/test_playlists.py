@@ -142,10 +142,10 @@ async def test_like_saves_with_the_web_api_when_allowed(token_path):  # noqa: F8
     with_scope(token_path, "user-library-read user-library-modify")
     api, http_ = api_with({
         ("GET", "/me/player/currently-playing"): HttpResponse(200, {"item": {"id": "abc", "type": "track", "name": "x"}}),
-        ("PUT", "/me/tracks"): HttpResponse(200),
+        ("PUT", "/me/library"): HttpResponse(200),
     }, token_path)
     await api.like()
-    assert http_.calls("PUT", "/me/tracks")[0]["params"] == {"ids": "abc"}
+    assert http_.calls("PUT", "/me/library")[0]["params"] == {"uris": "spotify:track:abc"}  # API de 2026
 
 
 async def test_phone_plays_my_liked_songs(phone):

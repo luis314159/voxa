@@ -41,6 +41,8 @@ class _SpotifyPending:
     state: str
     until: float
     server: asyncio.base_events.Server | None = None
+    person: str | None = None
+    """Spotify por persona: de quién es la cuenta que se está conectando (``None``: la de la casa)."""
 
 
 def _from_package() -> bool:
@@ -91,6 +93,7 @@ class SettingsApi:
                 "redirect_spotifast": SPOTIFAST_REDIRECT,
                 "musica": config.music.provider,
                 "dispositivo": config.spotify.device_name,
+                "personas": config.spotify_people(),
             },
             "clima": {"lugar": config.weather.place, "lat": config.weather.latitude, "lon": config.weather.longitude},
             "ia": {
@@ -171,7 +174,9 @@ class SettingsApi:
                     return await self._secret(str(data.get("tipo", "")), str(data.get("valor") or "").strip(),
                                               str(data.get("persona") or "").strip()[:40] or None)
                 case "/api/spotify/autorizar":
-                    return await self._spotify_start()
+                    return await self._spotify_start(str(data.get("persona") or "").strip()[:40] or None)
+                case "/api/spotify/quitar":
+                    return self._spotify_forget(str(data.get("persona") or "").strip()[:40])
                 case "/api/spotify/codigo":
                     return await self._spotify_finish(str(data.get("direccion") or ""))
                 case "/api/spotify/abrir":
@@ -259,14 +264,33 @@ class SettingsApi:
         return 400, {"error": "¿qué llave es?"}
 
     # --- Spotify: el celular abre la autorización; la respuesta llega al 127.0.0.1 de esta PC ---
-    async def _spotify_start(self) -> tuple[int, Any]:
-        from voxa.services.spotify_auth import SpotifyAuth, new_verifier
+    def _spotify_auth(self, person: str | None):
+        from voxa.services.spotify_auth import PERSON_SCOPES, SpotifyAuth
+
+        config = self.config
+        if person is None:
+            return SpotifyAuth(config.spotify.client_id, config.spotify.redirect_uri, config.spotify_token_path, self._http)
+        return SpotifyAuth(config.spotify.client_id, config.spotify.redirect_uri, config.spotify_person_token_path(person),
+                           self._http, scopes=PERSON_SCOPES, person=person)
+
+    def _spotify_forget(self, person: str) -> tuple[int, Any]:
+        path = self.config.spotify_person_token_path(person) if person else None
+        if path is None or not path.exists():
+            return 400, {"error": "esa cuenta no estaba conectada"}
+        path.unlink()
+        return 200, {"respuesta": f"Listo: se quitó la cuenta de {person}."}
+
+    async def _spotify_start(self, person: str | None = None) -> tuple[int, Any]:
+        from voxa.services.spotify_auth import new_verifier
 
         config = self.config
         if not config.spotify.client_id:
             return 400, {"error": "primero guarda el Client ID de tu app de Spotify"}
+        if person is not None and not config.spotify_token_path.exists():
+            return 400, {"error": "primero conecta la cuenta de la casa («Conectar con Spotify»)"}
         await self._spotify_close()
-        pending = _SpotifyPending(new_verifier(), secrets.token_urlsafe(16), self._clock() + SPOTIFY_MINUTES * 60)
+        pending = _SpotifyPending(new_verifier(), secrets.token_urlsafe(16), self._clock() + SPOTIFY_MINUTES * 60,
+                                  person=person)
         redirect = urllib.parse.urlsplit(config.spotify.redirect_uri)
         try:
             # Si se autoriza desde el navegador de esta misma PC, la respuesta llega sola.
@@ -275,19 +299,21 @@ class SettingsApi:
         except OSError as exc:
             log.info("Sin escucha local para Spotify (%s): se pega la dirección desde el celular", exc)
         self._spotify = pending
-        auth = SpotifyAuth(config.spotify.client_id, config.spotify.redirect_uri, config.spotify_token_path, self._http)
+        auth = self._spotify_auth(person)
         return 200, {"url": auth.authorization_url(pending.verifier, pending.state), "redirect": config.spotify.redirect_uri}
 
     async def _spotify_finish(self, address: str) -> tuple[int, Any]:
         query = dict(urllib.parse.parse_qsl(urllib.parse.urlsplit(address.strip()).query))
+        person = self._spotify.person if self._spotify is not None else None
         error = await self._spotify_exchange(query)
         if error:
             return 400, {"error": error}
+        if person is not None:  # la cuenta de alguien: se usa en cuanto VOXA reconoce su voz, sin reiniciar
+            return 200, {"respuesta": f"Listo: ya está la cuenta de {person}.", "reinicio": False}
         return 200, await self._saved()
 
     async def _spotify_exchange(self, query: dict[str, str]) -> str | None:
         from voxa.services.music_backend import AuthRequired, BackendUnavailable
-        from voxa.services.spotify_auth import SpotifyAuth
 
         pending, config = self._spotify, self.config
         if pending is None or self._clock() > pending.until:
@@ -296,7 +322,7 @@ class SettingsApi:
             return f"Spotify no autorizó: {query['error']}"
         if "code" not in query or not secrets.compare_digest(query.get("state", ""), pending.state):
             return "esa dirección no es la de la respuesta de Spotify (empieza con " + config.spotify.redirect_uri + ")"
-        auth = SpotifyAuth(config.spotify.client_id, config.spotify.redirect_uri, config.spotify_token_path, self._http)
+        auth = self._spotify_auth(pending.person)
         try:
             await auth.exchange_code(query["code"], pending.verifier)
         except (AuthRequired, BackendUnavailable) as exc:
@@ -308,13 +334,14 @@ class SettingsApi:
         try:
             line = (await asyncio.wait_for(reader.readline(), 10)).decode("latin-1")
             target = line.split(" ")[1] if line.count(" ") >= 2 else "/"
+            person = self._spotify.person if self._spotify is not None else None
             error = await self._spotify_exchange(dict(urllib.parse.parse_qsl(urllib.parse.urlsplit(target).query)))
             message = "Listo: VOXA ya puede usar Spotify. Puedes cerrar esta pestaña." if error is None else error
             body = f"<!doctype html><meta charset='utf-8'><h2>{message}</h2>".encode()
             writer.write(b"HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nConnection: close\r\n"
                          + f"Content-Length: {len(body)}\r\n\r\n".encode() + body)
             await writer.drain()
-            if error is None:
+            if error is None and person is None:
                 await self._restart()
         except (asyncio.TimeoutError, ConnectionError, IndexError):
             pass

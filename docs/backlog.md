@@ -21,7 +21,6 @@ Lo que falta para que VOXA sea un producto excelente para familias, en orden de 
 ## Siguiente
 
 - **Agregar al calendario por voz** («agrega dentista el martes a las 5»). Hoy solo se lee el iCal; escribir requiere conectar la cuenta de Google con OAuth.
-- **Spotify por persona:** cada quien conecta su cuenta, y «pon mis me gusta» usa la de quien habla.
 - **Reconocer mejor a quien habla en órdenes muy cortas:**
   - sumar el audio de «Hey Voxa» al de la orden;
   - ajustar el prototipo poco a poco con las órdenes en que VOXA esté muy segura (voz con catarro, niños que crecen).

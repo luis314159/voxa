@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import logging
 import os
 import sys
@@ -239,6 +240,25 @@ class Config:
     @property
     def spotify_token_path(self) -> Path:
         return self.config_dir / "spotify_token.json"
+
+    def spotify_person_token_path(self, person: str) -> Path:
+        """Spotify por persona: la cuenta que conectó cada quien (solo para leer su música y sus Me gusta)."""
+        from voxa.core.people import slug
+
+        return self.config_dir / "spotify_personas" / f"{slug(person)}.json"
+
+    def spotify_people(self) -> list[str]:
+        """Quiénes conectaron su cuenta de Spotify (el nombre va dentro del token)."""
+        folder = self.config_dir / "spotify_personas"
+        if not folder.is_dir():
+            return []
+        names = []
+        for path in sorted(folder.glob("*.json")):
+            try:
+                names.append(str(json.loads(path.read_text(encoding="utf-8")).get("persona") or path.stem))
+            except (OSError, ValueError):
+                continue
+        return names
 
     @property
     def web_key_path(self) -> Path:

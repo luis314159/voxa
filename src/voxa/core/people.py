@@ -41,3 +41,12 @@ def resolve(name: str, aliases: dict[str, str]) -> str:
         if said == plain(person) or said in (plain(n) for n in nicknames.split(",") if n.strip()):
             return person
     return " ".join(w[:1].upper() + w[1:] for w in words)
+
+
+def slug(name: str) -> str:
+    """«María José» → «maria-jose»: para nombres de archivo."""
+    import re
+
+    from voxa.nlu.normalize import strip_accents
+
+    return re.sub(r"[^a-z0-9]+", "-", strip_accents(name.lower())).strip("-") or "familia"

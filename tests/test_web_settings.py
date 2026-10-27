@@ -170,3 +170,24 @@ async def test_settings_need_the_key_over_http(kitchen, tmp_path):
         assert status == 200 and json.loads(body)["lugares"]
     finally:
         await server.close()
+
+
+async def test_each_person_connects_their_spotify(kitchen, tmp_path):
+    """Spotify por persona: la cuenta de Ana se guarda aparte, con menos permisos, y sin reiniciar VOXA."""
+    api, service, config_file, restarts = kitchen
+    await api.post("/api/ajustes", {"seccion": "spotify", "valores": {"client_id": "abc123def456"}})
+    config = reloaded(config_file, tmp_path)
+    service.app.config = replace(config, spotify=replace(config.spotify, redirect_uri="http://127.0.0.1:0/callback"))
+    status, error = await api.post("/api/spotify/autorizar", {"persona": "Ana"})
+    assert status == 400 and "la cuenta de la casa" in error["error"]
+    (tmp_path / "spotify_token.json").write_text('{"access_token": "A", "refresh_token": "R", "expires_at": 1}')
+    status, start = await api.post("/api/spotify/autorizar", {"persona": "Ana"})
+    query = urllib.parse.parse_qs(urllib.parse.urlsplit(start["url"]).query)
+    assert query["scope"] == ["playlist-read-private user-library-read user-library-modify"]
+    before = len(restarts)
+    status, done = await api.post("/api/spotify/codigo",
+                                  {"direccion": f"http://127.0.0.1:0/callback?code=x&state={query['state'][0]}"})
+    assert status == 200 and done["respuesta"] == "Listo: ya está la cuenta de Ana." and len(restarts) == before
+    assert service.app.config.spotify_people() == ["Ana"]
+    assert (await api.post("/api/spotify/quitar", {"persona": "Ana"}))[0] == 200
+    assert service.app.config.spotify_people() == []

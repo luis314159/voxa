@@ -64,19 +64,25 @@ class SpotifyWebApi:
         self._own: tuple[float, list[Playlist]] | None = None
         self.clean: Callable[[], bool] = lambda: False
         """Modo niños: elegir canciones sin la marca «explicit»."""
+        self.person: Callable[[], SpotifyAuth | None] = lambda: None
+        """Spotify por persona: la cuenta de quien habla (si la conectó). Con ella se leen sus Me gusta y sus
+        playlists y se guarda en sus Me gusta; la música siempre suena con la cuenta de la casa."""
+        self._own_by_account: dict[int, tuple[float, list[Playlist]]] = {}
 
     def _clean(self, tracks: list[dict]) -> list[dict]:
         return [t for t in tracks if not t.get("explicit")] if self.clean() else tracks
 
-    async def _api(self, method: str, path: str, *, params=None, body=None, retry: bool = True) -> Any:
-        headers = {"Authorization": f"Bearer {await self._auth.access_token()}"}
+    async def _api(self, method: str, path: str, *, params=None, body=None, retry: bool = True,
+                   auth: SpotifyAuth | None = None) -> Any:
+        auth = auth or self._auth
+        headers = {"Authorization": f"Bearer {await auth.access_token()}"}
         try:
             resp = await self._http.request(method, f"{API}{path}", params=params, headers=headers, json_body=body)
         except HttpError as exc:
             raise BackendUnavailable(f"sin conexión con Spotify: {exc}") from exc
         if resp.status == 401 and retry:
-            await self._auth.refresh()
-            return await self._api(method, path, params=params, body=body, retry=False)
+            await auth.refresh()
+            return await self._api(method, path, params=params, body=body, retry=False, auth=auth)
         if resp.status == 401:
             raise AuthRequired("Spotify rechazó el token")
         if resp.status == 404:
@@ -119,6 +125,9 @@ class SpotifyWebApi:
     async def _choose(self, query: str, kind: str | None) -> tuple[dict, PlayResult]:
         if kind in ("playlist", None):
             if own := await self._own_playlist(query, _PLAYLIST_MATCH if kind else _OWN_FIRST):
+                person = self.person()
+                if person is not None and (uris := await self._playlist_uris(own.uri, person)):
+                    return {"uris": uris}, PlayResult(own.name, kind="playlist")
                 return {"context_uri": own.uri}, PlayResult(own.name, kind="playlist")
 
         if kind is None and " de " in query:
@@ -183,20 +192,47 @@ class SpotifyWebApi:
                         tracks, images[0].get("url") if images and images[0] else None)
 
     async def playlists(self) -> list[Playlist]:
-        """Las playlists de la cuenta (propias y seguidas), todas las páginas; 10 min en memoria."""
+        """Las playlists de la cuenta (propias y seguidas), todas las páginas; 10 min en memoria.
+
+        Si quien habla conectó su cuenta, las suyas.
+        """
+        person = self.person()
+        if person is not None:
+            return await self._playlists_of(person)
         if self._own is not None and self._clock() - self._own[0] < _PLAYLISTS_MAX_AGE:
             return self._own[1]
+        found = await self._read_playlists(None)
+        self._own = (self._clock(), found)
+        return found
+
+    async def _playlists_of(self, auth: SpotifyAuth) -> list[Playlist]:
+        cached = self._own_by_account.get(id(auth))
+        if cached is not None and self._clock() - cached[0] < _PLAYLISTS_MAX_AGE:
+            return cached[1]
+        found = await self._read_playlists(auth)
+        self._own_by_account[id(auth)] = (self._clock(), found)
+        return found
+
+    async def _read_playlists(self, auth: SpotifyAuth | None) -> list[Playlist]:
         found: list[Playlist] = []
         offset = 0
         while offset < _PLAYLISTS_LIMIT:
-            data = await self._api("GET", "/me/playlists", params={"limit": 50, "offset": offset}) or {}
+            data = await self._api("GET", "/me/playlists", params={"limit": 50, "offset": offset}, auth=auth) or {}
             items = [p for p in data.get("items", []) if p and p.get("uri")]
             found += [self._playlist(p) for p in items]
             if not data.get("next") or not items:
                 break
             offset += 50
-        self._own = (self._clock(), found)
         return found
+
+    async def _playlist_uris(self, uri: str, auth: SpotifyAuth) -> list[str]:
+        """Las canciones de una playlist de alguien de la familia (puede ser privada: la cuenta de la casa
+        no la ve), para ponerlas en la bocina de la casa. Desde 2026 la API las da en ``items``/``item``."""
+        playlist_id = uri.rsplit(":", 1)[-1]
+        data = await self._api("GET", f"/playlists/{playlist_id}/items", params={"limit": 100}, auth=auth) or {}
+        rows = data.get("items") or []
+        return [u for r in rows if isinstance(r, dict)
+                for u in [((r.get("item") if isinstance(r.get("item"), dict) else None) or {}).get("uri")] if u]
 
     async def search_playlists(self, query: str) -> list[Playlist]:
         return [self._playlist(p) for p in self._items(await self._search(query, "playlist", 10), "playlists")
@@ -258,22 +294,31 @@ class SpotifyWebApi:
         await self._api("PUT", "/me/player/shuffle", params={"state": "true" if on else "false"})
 
     async def like(self) -> None:
-        if not self._auth.granted(LIBRARY_SCOPE):
+        """A los Me gusta de quien habla (si conectó su cuenta) o a los de la casa."""
+        owner = self.person() or self._auth
+        if not owner.granted(LIBRARY_SCOPE):
             raise NotSupported("sin permiso de biblioteca: se guarda con Spotifast")
         data = await self._api("GET", "/me/player/currently-playing", params={"market": "from_token"})
         item = (data or {}).get("item") or {}
-        if not item.get("id") or item.get("type", "track") != "track":
+        uri = item.get("uri") or (f"spotify:track:{item['id']}" if item.get("id") else "")
+        if not uri or item.get("type", "track") != "track":
             raise NothingFound("la canción que suena")
-        await self._api("PUT", "/me/tracks", params={"ids": item["id"]})
+        # Desde febrero de 2026: PUT /me/library con URIs (PUT /me/tracks ya no existe).
+        await self._api("PUT", "/me/library", params={"uris": uri}, auth=owner)
 
     async def play_liked(self) -> PlayResult:
-        """«Pon mis me gusta»: las 100 más recientes, en aleatorio, en este cuarto."""
-        if self._auth.granted(LIBRARY_SCOPE) is False:
+        """«Pon mis me gusta»: las 100 más recientes, en aleatorio, en este cuarto.
+
+        Las de quien habla si conectó su cuenta; suenan con la cuenta de la casa.
+        """
+        reader = self.person() or self._auth
+        if reader.granted(LIBRARY_SCOPE) is False:
             raise NeedsPermission("falta el permiso de tus Me gusta")
         uris: list[str] = []
         try:
             for offset in range(0, LIKED_TRACKS, 50):
-                data = await self._api("GET", "/me/tracks", params={"limit": 50, "offset": offset, "market": "from_token"})
+                data = await self._api("GET", "/me/tracks", params={"limit": 50, "offset": offset, "market": "from_token"},
+                                       auth=reader)
                 items = (data or {}).get("items") or []
                 tracks = [i["track"] for i in items if i and (i.get("track") or {}).get("uri")]
                 uris += [t["uri"] for t in self._clean(tracks)]

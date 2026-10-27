@@ -27,7 +27,8 @@ class FakeHttp:
 
     async def request(self, method, url, *, params=None, headers=None, json_body=None, form=None, timeout=8.0):
         path = urllib.parse.urlparse(url).path.removeprefix("/v1")
-        self.requests.append({"method": method, "path": path, "params": params, "json": json_body, "form": form})
+        self.requests.append({"method": method, "path": path, "params": params, "json": json_body, "form": form,
+                              "token": (headers or {}).get("Authorization", "").removeprefix("Bearer ")})
         handler = self.routes.get((method, path))
         if handler is None:
             return HttpResponse(404, {"error": "sin ruta"})
@@ -225,3 +226,55 @@ async def test_other_errors_are_not_retried_with_other_playlists(token_path):
     with pytest.raises(BackendUnavailable):
         await api.play("soda stereo")
     assert len(http.calls("PUT", "/me/player/play")) == 1
+
+
+# --- Spotify por persona: se lee con la cuenta de quien habla, suena con la de la casa ---------------------
+
+def person_api(routes, token_path, tmp_path):
+    api, http = api_with({("GET", "/me/player/devices"): HttpResponse(200, DEVICES), **routes}, token_path)
+    person_path = tmp_path / "ana.json"
+    person_path.write_text(json.dumps({"access_token": "P", "refresh_token": "R2", "expires_at": 99999,
+                                       "scope": "playlist-read-private user-library-read user-library-modify"}))
+    ana = SpotifyAuth("client", "http://127.0.0.1:8765/callback", person_path, http, clock=Clock(), person="Ana")
+    api.person = lambda: ana
+    return api, http
+
+
+async def test_my_liked_songs_are_read_from_my_account(token_path, tmp_path):
+    liked = {"items": [{"track": {"uri": "spotify:track:mia"}}], "next": None}
+    api, http = person_api({("GET", "/me/tracks"): HttpResponse(200, liked),
+                            ("PUT", "/me/player/shuffle"): HttpResponse(204),
+                            ("PUT", "/me/player/play"): HttpResponse(204)}, token_path, tmp_path)
+    await api.play_liked()
+    assert http.calls("GET", "/me/tracks")[0]["token"] == "P"  # los Me gusta de Ana
+    play = http.calls("PUT", "/me/player/play")[0]
+    assert play["token"] == "A" and play["json"] == {"uris": ["spotify:track:mia"]}  # en la bocina de la casa
+
+
+async def test_like_saves_to_my_library(token_path, tmp_path):
+    playing = {"item": {"uri": "spotify:track:x", "type": "track"}}
+    api, http = person_api({("GET", "/me/player/currently-playing"): HttpResponse(200, playing),
+                            ("PUT", "/me/library"): HttpResponse(200)}, token_path, tmp_path)
+    await api.like()
+    saved = http.calls("PUT", "/me/library")[0]
+    assert saved["token"] == "P" and saved["params"] == {"uris": "spotify:track:x"}
+
+
+async def test_my_private_playlist_plays_by_its_songs(token_path, tmp_path):
+    mine = {"items": [{"name": "Para correr", "uri": "spotify:playlist:p1", "owner": {"display_name": "Ana"}}],
+            "next": None}
+    items = {"items": [{"item": {"uri": "spotify:track:a"}}, {"item": {"uri": "spotify:track:b"}}, {"item": None}]}
+    api, http = person_api({("GET", "/me/playlists"): HttpResponse(200, mine),
+                            ("GET", "/playlists/p1/items"): HttpResponse(200, items),
+                            ("PUT", "/me/player/play"): HttpResponse(204)}, token_path, tmp_path)
+    result = await api.play("para correr", "playlist")
+    assert result.title == "Para correr"
+    assert http.calls("GET", "/me/playlists")[0]["token"] == "P"
+    play = http.calls("PUT", "/me/player/play")[0]
+    assert play["token"] == "A" and play["json"] == {"uris": ["spotify:track:a", "spotify:track:b"]}
+
+
+async def test_without_my_account_it_uses_the_house_one(token_path):
+    api, http = api_with({("GET", "/me/playlists"): HttpResponse(200, {"items": [], "next": None})}, token_path)
+    await api.playlists()
+    assert http.calls("GET", "/me/playlists")[0]["token"] == "A"
