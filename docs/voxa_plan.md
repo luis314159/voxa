@@ -336,8 +336,16 @@ Cada fase termina con un **criterio de salida** verificable.
 
 **Salida:** instalar y dejar lista la cocina sin abrir la terminal (salvo el instalador).
 
+### Fase 8 — Toda la casa ✅
+- **Varios cuartos:** la cocina es la principal; cada cuarto es una VOXA completa (PC o Raspberry Pi, pantalla opcional) que se une con `voxa unir-casa` (el celular da el comando). Lista del súper y calendario compartidos (los contesta la principal); música por cuarto («VOXA Sala»).
+- **Avisos entre cuartos** por voz o desde el celular; una alarma sin atender se avisa en los demás cuartos.
+- **Música:** «pon mis me gusta», todas las playlists de la cuenta, «¿qué playlists tengo?», y ponerlas desde el celular.
+- **Calendario:** aviso en voz alta antes de cada evento.
+
+**Salida:** la familia usa VOXA en al menos dos cuartos durante una semana.
+
 ### Después de la 1.0 (ideas)
-Reconocer quién habla para tener playlists por persona; avisos del calendario antes de cada evento.
+Reconocer quién habla (ya hay verificador por persona) para tener playlists y calendarios por persona; satélites mínimos (solo micrófono) que mandan el audio a la principal.
 
 ## 12. Estructura del repositorio
 

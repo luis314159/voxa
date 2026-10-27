@@ -256,6 +256,28 @@ def check_ai(config: Config, tools: Tools) -> list[Finding]:
     return [Finding(group, "Respaldo con IA", OK, f"{chat.name} (pruébala: voxa ia-probar)")]
 
 
+async def check_house(config: Config) -> list[Finding]:
+    from voxa.house import COOKIE, place_name
+    from voxa.services.http import HttpError, UrllibHttp
+    from voxa.settings import read_secret
+
+    group = "Casa"
+    if not config.house.main:
+        return [Finding(group, "Cuartos", OK, f"esta es la principal ({place_name(config.house.room)})")]
+    key = read_secret(config.house_key_path)
+    if key is None:
+        return [Finding(group, "VOXA principal", FAIL, "falta la clave de la principal", "voxa unir-casa (el celular da el comando)")]
+    try:
+        response = await UrllibHttp().request("GET", f"{config.house.main}/api/casa", headers={"Cookie": f"{COOKIE}={key}"},
+                                              timeout=5)
+    except HttpError as exc:
+        return [Finding(group, "VOXA principal", FAIL, f"no contesta en {config.house.main}: {exc}",
+                        "¿está encendida la PC de la cocina y en la misma red?")]
+    if response.status != 200:
+        return [Finding(group, "VOXA principal", FAIL, "no aceptó la clave", "vuelve a unir este cuarto: voxa unir-casa")]
+    return [Finding(group, "VOXA principal", OK, f"{place_name(config.house.room)} unida a {config.house.main}")]
+
+
 def check_calendar(config: Config) -> list[Finding]:
     from voxa.settings import read_secret
 
@@ -324,6 +346,7 @@ async def run_checkup(path: Path, tools: Tools | None = None) -> list[Finding]:
         lambda: check_ai(config, tools),
         lambda: check_telegram(config),
         lambda: check_calendar(config),
+        lambda: check_house(config),
         lambda: check_services(config, tools),
     ]
     for step in steps:
