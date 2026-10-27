@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "voxa"
-version = "0.6.0"
+version = "0.7.0"
 description = "VOXA — asistente de voz familiar para Linux. Tu voz, tu hogar, más fácil."
 readme = "README.md"
 license = "AGPL-3.0-or-later"
