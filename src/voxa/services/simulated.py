@@ -61,6 +61,11 @@ class SimulatedMusic:
     async def search_playlists(self, query: str) -> list[Playlist]:
         return [Playlist(f"{query.title()} {n}", f"spotify:playlist:{n}", "Spotify", 50) for n in (1, 2)]
 
+    async def play_liked(self) -> PlayResult:
+        self.calls.append("liked")
+        self.current = NowPlaying("Me gusta", None, playing=True)
+        return PlayResult("tus Me gusta", kind="liked")
+
     async def play_uri(self, uri: str, title: str) -> PlayResult:
         self.calls.append(f"uri:{uri}")
         self.current = NowPlaying(title, None, playing=True)

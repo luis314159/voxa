@@ -25,7 +25,11 @@ SCOPES = (
     "user-modify-playback-state",
     "user-read-currently-playing",
     "playlist-read-private",
+    # Tus «Me gusta»: ponerlos («pon mis me gusta») y guardar canciones («me gusta esta canción»).
+    "user-library-read",
+    "user-library-modify",
 )
+LIBRARY_SCOPE = "user-library-read"
 
 
 def new_verifier() -> str:
@@ -80,7 +84,7 @@ class SpotifyAuth:
     async def access_token(self) -> str:
         token = self._token or self._load()
         if token is None:
-            raise AuthRequired("Spotify no está autorizado; ejecuta «voxa spotify-login»")
+            raise AuthRequired("Spotify no está autorizado: conéctalo en Ajustes → Spotify (o voxa spotify-login)")
         if token["expires_at"] - 60 <= self._clock():
             token = await self.refresh()
         return token["access_token"]
@@ -111,9 +115,20 @@ class SpotifyAuth:
             "access_token": resp.data["access_token"],
             "refresh_token": resp.data.get("refresh_token") or previous_refresh,
             "expires_at": self._clock() + int(resp.data.get("expires_in", 3600)),
+            # El refresh no siempre repite los permisos: se conservan los de la autorización.
+            "scope": resp.data.get("scope") or (self._token or {}).get("scope", ""),
         }
         self._save(token)
         return token
+
+    def granted(self, scope: str) -> bool | None:
+        """Si la autorización guardada incluye ese permiso (``None``: no se sabe, token viejo)."""
+        token = self._token or self._load()
+        if token is None:
+            return False
+        if "scope" not in token:
+            return None
+        return scope in str(token["scope"]).split()
 
     def _load(self) -> dict | None:
         try:

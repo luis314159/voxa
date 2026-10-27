@@ -43,7 +43,7 @@ async def test_internet_check_connects_without_sending():
 async def test_spotify_and_player_checks(tmp_path):
     token = tmp_path / "spotify_token.json"
     assert (await spotify_check("", token)()).text == "Falta conectar Spotify"
-    assert "spotify-login" in (await spotify_check("abc", token)()).detail
+    assert "Ajustes → Spotify" in (await spotify_check("abc", token)()).detail
     token.write_text("{}")
     assert await spotify_check("abc", token)() is None
 

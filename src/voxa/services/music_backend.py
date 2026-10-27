@@ -26,6 +26,10 @@ class AuthRequired(BackendUnavailable):
     pass
 
 
+class NeedsPermission(BackendUnavailable):
+    """La autorización de Spotify es de antes y no incluye este permiso: hay que volver a conectar."""
+
+
 class NothingFound(Exception):
     pass
 
@@ -41,6 +45,8 @@ class PlayResult:
             return f"El álbum {self.title}" + (f", de {self.artist}" if self.artist else "")
         if self.kind == "playlist":
             return f"La playlist {self.title}"
+        if self.kind == "liked":
+            return "Tus Me gusta, en aleatorio"
         if self.artist and self.kind == "track":
             return f"{self.title}, de {self.artist}"
         return self.title
@@ -84,10 +90,13 @@ class MusicBackend(Protocol):
     async def playlists(self) -> list[Playlist]: ...
     async def search_playlists(self, query: str) -> list[Playlist]: ...
     async def play_uri(self, uri: str, title: str) -> PlayResult: ...
+    async def play_liked(self) -> PlayResult: ...
 
 
 # Búsquedas y funciones de cuenta: primero la Web API. Transporte: primero MPRIS (local, sin red).
-SEARCH_METHODS = ("play", "like", "now_playing", "transfer", "shuffle", "playlists", "search_playlists", "play_uri")
+SEARCH_METHODS = (
+    "play", "like", "now_playing", "transfer", "shuffle", "playlists", "search_playlists", "play_uri", "play_liked",
+)
 CONTROL_METHODS = ("pause", "resume", "next", "previous", "seek")
 
 
@@ -114,6 +123,8 @@ class LayeredMusicBackend:
                 reasons.append(exc)
         if any(isinstance(r, AuthRequired) for r in reasons):
             raise AuthRequired(method)
+        if any(isinstance(r, NeedsPermission) for r in reasons):
+            raise NeedsPermission(method)
         raise BackendUnavailable(f"ninguna capa pudo hacer {method}")
 
     async def play(self, query: str, kind: str | None = None) -> PlayResult:
@@ -154,3 +165,6 @@ class LayeredMusicBackend:
 
     async def play_uri(self, uri: str, title: str) -> PlayResult:
         return await self._first("play_uri", uri, title)
+
+    async def play_liked(self) -> PlayResult:
+        return await self._first("play_liked")

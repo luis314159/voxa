@@ -4,7 +4,7 @@ import logging
 
 from voxa.core.phrases import capitalize, join_words
 from voxa.core.types import OK, Intent, Response
-from voxa.services.music_backend import AuthRequired, BackendUnavailable, MusicBackend, NothingFound
+from voxa.services.music_backend import AuthRequired, BackendUnavailable, MusicBackend, NeedsPermission, NothingFound
 from voxa.skills.mood import mood_search
 
 log = logging.getLogger(__name__)
@@ -24,6 +24,9 @@ class MusicSkill:
         except NothingFound as exc:
             what = "ese dispositivo" if intent.name == "music.transfer" else "eso"
             return Response(f"No encontré {what}: «{exc}».", sound="error")
+        except NeedsPermission:
+            return Response("Para tus Me gusta, vuelve a conectar Spotify desde el celular: Ajustes, Spotify, "
+                            "«Conectar con Spotify».", sound="error")
         except AuthRequired:
             return Response(_NO_SPOTIFY.speech + _REAUTHORIZE, sound="error")
         except BackendUnavailable as exc:
@@ -37,6 +40,9 @@ class MusicSkill:
                 query = intent.slots["query"].removeprefix("de ").strip()
                 kind = intent.slots.get("kind")
                 # «Pon algo tranquilo para cocinar», «pon salsa», «música de los 80»: una playlist.
+                if kind == "liked":
+                    result = await backend.play_liked()
+                    return Response(capitalize(result.describe()) + ".")
                 if kind == "mood":
                     query, kind = mood_search(f"para {query}", forced=True) or query, "playlist"
                 elif kind in (None, "artist") and (search := mood_search(query)) is not None:

@@ -132,7 +132,7 @@
 
 <section>
   <h2>Playlists</h2>
-  <div class="fila"><button id="mis-playlists" style="flex:1">Mis playlists</button></div>
+  <div class="fila"><button id="mis-playlists" style="flex:1">Mis playlists</button><button id="me-gusta" style="flex:1">♥ Mis Me gusta</button></div>
   <form class="fila campo" id="form-playlist"><input type="text" id="playlist-texto" placeholder="Buscar en Spotify…" autocomplete="off" enterkeyhint="search"><button>Buscar</button></form>
   <ul id="playlists"></ul>
   <p class="ayuda" id="playlist-respuesta"></p>
@@ -419,6 +419,11 @@ function mostrarPlaylists(lista) {
   }));
   if (!lista.length) decir("playlist-respuesta", "No encontré playlists.");
 }
+$("me-gusta").onclick = async () => {
+  decir("playlist-respuesta", "Poniendo…");
+  try { decir("playlist-respuesta", (await api("/api/playlists/poner", { uri: "me-gusta", nombre: "Me gusta" })).respuesta); actualizar(); }
+  catch (e) { decir("playlist-respuesta", e.message); }
+};
 $("mis-playlists").onclick = async () => {
   decir("playlist-respuesta", "Cargando…");
   try { mostrarPlaylists((await api("/api/playlists")).playlists); decir("playlist-respuesta", ""); }
@@ -544,7 +549,9 @@ async function cargarAjustes() {
   if (a.voz.grabando) decir("voz-respuesta", `Grabando a ${a.voz.grabando}…`);
 
   const sp = a.spotify;
-  $("spotify-estado").replaceChildren(marca(sp.autorizado, sp.autorizado ? "Conectado" : sp.client_id ? "Falta conectar" : "Falta el Client ID"));
+  $("spotify-estado").replaceChildren(marca(sp.autorizado && sp.me_gusta !== false,
+    !sp.autorizado ? (sp.client_id ? "Falta conectar" : "Falta el Client ID")
+      : sp.me_gusta === false ? "Conectado · vuelve a conectar para tus Me gusta" : "Conectado"));
   decir("spotify-redirect", sp.redirect);
   $("spotify-id").placeholder = sp.client_id ? `Client ID (guardado: ${sp.client_id})` : "Client ID";
 

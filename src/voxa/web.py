@@ -284,13 +284,17 @@ class WebServer:
     async def _play_playlist(self, uri: str, name: str) -> tuple[int, Any]:
         from voxa.services.music_backend import BackendUnavailable, NothingFound
 
+        from voxa.services.music_backend import NeedsPermission
+
         music = self._service.app.music
         if music is None or not uri:
             return 400, {"error": "falta la playlist"}
         try:
-            result = await music.play_uri(uri, name or "la playlist")
+            result = await (music.play_liked() if uri == "me-gusta" else music.play_uri(uri, name or "la playlist"))
+        except NeedsPermission:
+            return 400, {"error": "Para tus Me gusta, vuelve a tocar «Conectar con Spotify» en Ajustes."}
         except NothingFound:
-            return 400, {"error": "esa no es una playlist de Spotify"}
+            return 400, {"error": "no encontré esa playlist"}
         except BackendUnavailable as exc:
             log.info("Poner playlist desde el celular: %s", exc)
             return 502, {"error": "No pude ponerla: ¿está encendida la bocina de la cocina?"}

@@ -225,3 +225,4 @@
 # --- varios cuartos ---
 - {text: "avisa a todos que ya está la comida", intent: house.announce, slots: {query: ya está la comida}}
 - {text: "dile a la sala que se bajen a cenar", intent: house.announce, slots: {device: sala}}
+- {text: "pon mis me gusta", intent: music.play, slots: {kind: liked}}

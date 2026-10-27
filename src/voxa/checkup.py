@@ -185,9 +185,9 @@ def check_wake(config: Config, tools: Tools) -> list[Finding]:
 async def check_music(config: Config, tools: Tools) -> list[Finding]:
     group, out = "Música", []
     if not config.spotify.client_id:
-        out.append(Finding(group, "Spotify", FAIL, "Falta client_id en [spotify]", "docs/fase0_guia.md → crear la app de Spotify"))
+        out.append(Finding(group, "Spotify", FAIL, "Falta el Client ID de tu app de Spotify", "Celular → Ajustes → Spotify"))
     elif not config.spotify_token_path.exists():
-        out.append(Finding(group, "Spotify", FAIL, "Falta autorizar a VOXA", "voxa spotify-login"))
+        out.append(Finding(group, "Spotify", FAIL, "Falta autorizar a VOXA", "Celular → Ajustes → Spotify → Conectar (o voxa spotify-login)"))
     else:
         out.append(Finding(group, "Spotify", OK, "autorizado"))
     if not tools.linux:

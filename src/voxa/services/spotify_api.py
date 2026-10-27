@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import difflib
 import logging
+import random
 import time
 from typing import Any, Callable
 
@@ -18,12 +19,13 @@ from voxa.services.music_backend import (
     AuthRequired,
     BackendUnavailable,
     NotSupported,
+    NeedsPermission,
     NothingFound,
     NowPlaying,
     PlayResult,
     Playlist,
 )
-from voxa.services.spotify_auth import SpotifyAuth
+from voxa.services.spotify_auth import LIBRARY_SCOPE, SpotifyAuth
 
 log = logging.getLogger(__name__)
 
@@ -33,6 +35,7 @@ _PLAYLIST_MATCH = 0.6
 _OWN_FIRST = 0.85  # «pon cocina» con una playlist propia que se llama «Cocina»: va esa
 _PLAYLISTS_MAX_AGE = 10 * 60
 _PLAYLISTS_LIMIT = 500
+LIKED_TRACKS = 100  # las más recientes; en aleatorio
 
 
 def similarity(a: str, b: str) -> float:
@@ -250,7 +253,37 @@ class SpotifyWebApi:
         await self._api("PUT", "/me/player/shuffle", params={"state": "true" if on else "false"})
 
     async def like(self) -> None:
-        raise NotSupported("se guarda con Spotifast")
+        if not self._auth.granted(LIBRARY_SCOPE):
+            raise NotSupported("sin permiso de biblioteca: se guarda con Spotifast")
+        data = await self._api("GET", "/me/player/currently-playing", params={"market": "from_token"})
+        item = (data or {}).get("item") or {}
+        if not item.get("id") or item.get("type", "track") != "track":
+            raise NothingFound("la canción que suena")
+        await self._api("PUT", "/me/tracks", params={"ids": item["id"]})
+
+    async def play_liked(self) -> PlayResult:
+        """«Pon mis me gusta»: las 100 más recientes, en aleatorio, en este cuarto."""
+        if self._auth.granted(LIBRARY_SCOPE) is False:
+            raise NeedsPermission("falta el permiso de tus Me gusta")
+        uris: list[str] = []
+        try:
+            for offset in range(0, LIKED_TRACKS, 50):
+                data = await self._api("GET", "/me/tracks", params={"limit": 50, "offset": offset, "market": "from_token"})
+                items = (data or {}).get("items") or []
+                uris += [i["track"]["uri"] for i in items if i and (i.get("track") or {}).get("uri")]
+                if not (data or {}).get("next"):
+                    break
+        except BackendUnavailable as exc:
+            if "403" in str(exc):
+                raise NeedsPermission("falta el permiso de tus Me gusta") from exc
+            raise
+        if not uris:
+            raise NothingFound("tus Me gusta")
+        device_id = await self._home_device_id()
+        random.shuffle(uris)
+        await self._api("PUT", "/me/player/shuffle", params={"state": "true", "device_id": device_id})
+        await self._api("PUT", "/me/player/play", params={"device_id": device_id}, body={"uris": uris})
+        return PlayResult("tus Me gusta", kind="liked")
 
     async def now_playing(self) -> NowPlaying | None:
         data = await self._api("GET", "/me/player/currently-playing", params={"market": "from_token"})

@@ -98,3 +98,57 @@ async def test_phone_lists_searches_and_plays_playlists(phone):
     assert service.app.music.calls[-1] == "uri:spotify:playlist:cocina"
     status, _, _ = await http(server.port, "GET", "/api/playlists")
     assert status == 403  # sin la clave, nada
+
+
+def liked_page(params, *_):
+    start = params.get("offset", 0)
+    items = [{"track": {"uri": f"spotify:track:{n}"}} for n in range(start, start + 50)]
+    return HttpResponse(200, {"items": items, "next": "más" if start == 0 else None})
+
+
+def with_scope(path, scope):
+    data = json.loads(path.read_text())
+    data["scope"] = scope
+    path.write_text(json.dumps(data))
+
+
+async def test_my_liked_songs_play_shuffled(token_path):  # noqa: F811
+    with_scope(token_path, "playlist-read-private user-library-read user-library-modify")
+    api, http_ = api_with({
+        ("GET", "/me/tracks"): liked_page,
+        ("GET", "/me/player/devices"): HttpResponse(200, DEVICES),
+        ("PUT", "/me/player/shuffle"): HttpResponse(204),
+        ("PUT", "/me/player/play"): HttpResponse(204),
+    }, token_path)
+    result = await api.play_liked()
+    assert result.describe() == "Tus Me gusta, en aleatorio"
+    body = http_.calls("PUT", "/me/player/play")[0]["json"]
+    assert len(body["uris"]) == 100 and body["uris"] != sorted(body["uris"], key=lambda u: int(u.split(":")[-1]))
+
+
+async def test_old_authorizations_ask_to_reconnect(token_path):  # noqa: F811
+    from voxa.services.music_backend import NeedsPermission
+
+    with_scope(token_path, "playlist-read-private")
+    api, http_ = api_with({}, token_path)
+    with pytest.raises(NeedsPermission):
+        await api.play_liked()
+    skill = MusicSkill(LayeredMusicBackend([api], [api]))
+    said = (await skill.handle(load_matcher().match("pon mis me gusta"))).speech
+    assert "vuelve a conectar Spotify" in said
+
+
+async def test_like_saves_with_the_web_api_when_allowed(token_path):  # noqa: F811
+    with_scope(token_path, "user-library-read user-library-modify")
+    api, http_ = api_with({
+        ("GET", "/me/player/currently-playing"): HttpResponse(200, {"item": {"id": "abc", "type": "track", "name": "x"}}),
+        ("PUT", "/me/tracks"): HttpResponse(200),
+    }, token_path)
+    await api.like()
+    assert http_.calls("PUT", "/me/tracks")[0]["params"] == {"ids": "abc"}
+
+
+async def test_phone_plays_my_liked_songs(phone):
+    server, service = phone
+    status, _, body = await http(server.port, "POST", "/api/playlists/poner", **as_json({"uri": "me-gusta"}))
+    assert status == 200 and service.app.music.calls[-1] == "liked"

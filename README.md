@@ -97,7 +97,7 @@ ui/target/release/voxa-ui                    # --completa para pantalla completa
 python scripts/descargar_fondos.py           # ~77 fondos: México, pueblos y paisajes de todo el mundo
 ```
 
-**Desde el celular.** «Conecta mi celular» muestra un código QR: al escanearlo (en el wifi de la casa) el celular abre una página para ver y cancelar temporizadores, poner temporizadores rápidos, manejar la lista del súper y la música, ver las playlists de la cuenta o buscar otras en Spotify y ponerlas con un toque, escribirle órdenes a VOXA (sin que hable en la cocina, salvo que se pida) y subir fotos de la familia al fondo de pantalla, además de los **Ajustes** de arriba. El código lleva la clave de esa PC (`~/.config/voxa/web_clave`); sin ella, nadie más en la red puede usarlo. Se apaga con `enabled = false` en `[web]`.
+**Desde el celular.** «Conecta mi celular» muestra un código QR: al escanearlo (en el wifi de la casa) el celular abre una página para ver y cancelar temporizadores, poner temporizadores rápidos, manejar la lista del súper y la música, ver las playlists de la cuenta o buscar otras en Spotify y ponerlas con un toque (y «♥ Mis Me gusta»; por voz, «pon mis me gusta»), escribirle órdenes a VOXA (sin que hable en la cocina, salvo que se pida) y subir fotos de la familia al fondo de pantalla, además de los **Ajustes** de arriba. El código lleva la clave de esa PC (`~/.config/voxa/web_clave`); sin ella, nadie más en la red puede usarlo. Se apaga con `enabled = false` en `[web]`.
 
 **VOXA en varios cuartos.** La cocina es la VOXA principal, y la sala, el comedor o las recámaras pueden tener la suya: otra PC o una Raspberry Pi con micrófono y bocina (la pantalla es opcional).
 

@@ -77,6 +77,7 @@ class SettingsApi:
             "spotify": {
                 "client_id": f"{client_id[:4]}…{client_id[-4:]}" if len(client_id) > 8 else client_id,
                 "autorizado": config.spotify_token_path.exists(),
+                "me_gusta": self._library_granted(),
                 "redirect": config.spotify.redirect_uri,
                 "dispositivo": config.spotify.device_name,
             },
@@ -107,6 +108,16 @@ class SettingsApi:
                 "avisar_version": config.update.check,
             },
         }
+
+    def _library_granted(self) -> bool | None:
+        from voxa.services.http import UrllibHttp as _Http
+        from voxa.services.spotify_auth import LIBRARY_SCOPE, SpotifyAuth
+
+        config = self.config
+        if not config.spotify_token_path.exists():
+            return None
+        auth = SpotifyAuth(config.spotify.client_id, config.spotify.redirect_uri, config.spotify_token_path, _Http())
+        return auth.granted(LIBRARY_SCOPE)
 
     def _enroll_ready(self) -> bool:
         skill = self._service.app.assistant.skill("voice")

@@ -101,9 +101,9 @@ def internet_check(host: str = "api.spotify.com", port: int = 443, timeout: floa
 def spotify_check(client_id: str, token_path: Path) -> Check:
     async def check() -> Problem | None:
         if not client_id:
-            return Problem("spotify", "Falta conectar Spotify", "Pon el Client ID en config.toml y corre: voxa spotify-login")
+            return Problem("spotify", "Falta conectar Spotify", "Desde el celular: Ajustes → Spotify («conecta mi celular»)")
         if not token_path.exists():
-            return Problem("spotify", "Falta conectar Spotify", "Corre: voxa spotify-login")
+            return Problem("spotify", "Falta conectar Spotify", "Desde el celular: Ajustes → Spotify → Conectar")
         return None
 
     return check

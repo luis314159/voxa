@@ -443,6 +443,10 @@
 
 - intent: music.play
   patterns:
+    - pattern: "(pon|ponme|reproduce|toca|tocame|quiero escuchar|quiero oir|escuchemos) (mis|los|las) (me gusta|likes|favoritas|favoritos|canciones favoritas|canciones guardadas|canciones que me gustan)"
+      set: {kind: liked, query: me gusta}
+    - pattern: "(pon|ponme|reproduce|toca|tocame) [la] musica que me gusta"
+      set: {kind: liked, query: me gusta}
     - pattern: "(pon|ponme|reproduce|toca|tocame|quiero escuchar|quiero oir|escuchemos|pongan) (musica|canciones|rolas|algo) (de|del) {query}"
       set: {kind: artist}
     - pattern: "(pon|ponme|reproduce|toca|tocame|quiero escuchar|quiero oir) (la cancion|la rola|el tema|la de|esa de) {query}"
