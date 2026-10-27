@@ -2,7 +2,7 @@
 
 ## El código de VOXA: AGPL-3.0
 
-Copyright (C) 2026 Luis Angel Almazan Lopez
+Copyright (C) 2026 Luis Ángel Almazán López
 
 VOXA es software libre: se puede usar, copiar, estudiar, cambiar y compartir gratis, bajo la
 [GNU Affero General Public License](LICENSE), versión 3 o (a elección de quien lo use) cualquier
