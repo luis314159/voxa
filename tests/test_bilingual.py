@@ -125,3 +125,9 @@ async def test_a_timer_set_in_one_language_is_found_in_the_other():
     assert said.speech == "10 minutes left for arroz."
     assert app.timers.find("chicken") == []
     assert (await app.assistant.handle_text("cancel the rice timer")).speech == "Canceled the arroz timer."
+
+
+def test_slower_voice_reaches_both_languages():
+    tts = BilingualTts({"es": Voice("claude"), "en": Voice("lessac")}, "es")
+    tts.slower = lambda: True
+    assert tts._voices["en"].slower() and tts.slower()

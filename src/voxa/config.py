@@ -130,6 +130,16 @@ class MedicineConfig:
 
 
 @dataclass(frozen=True)
+class AccessibilityConfig:
+    slow_for: tuple[str, ...] = ()
+    """Con quién habla más despacio (como se llaman en «aprende mi voz»), si VOXA reconoce su voz."""
+    big_text: bool = False
+    """Letra más grande en la pantalla de la cocina."""
+    follow_up_seconds: int = 0
+    """Después de contestar, sigue escuchando estos segundos sin «Hey Voxa» (0: no)."""
+
+
+@dataclass(frozen=True)
 class FamilyConfig:
     aliases: dict[str, str] = field(default_factory=dict)
     """Cómo más le dicen a cada quien: {"Luis": "papá, pa"} (para «déjale una nota a papá»)."""
@@ -214,6 +224,7 @@ class Config:
     quiet: QuietConfig = field(default_factory=QuietConfig)
     medicine: MedicineConfig = field(default_factory=MedicineConfig)
     family: FamilyConfig = field(default_factory=FamilyConfig)
+    accessibility: AccessibilityConfig = field(default_factory=AccessibilityConfig)
     display: DisplayConfig = field(default_factory=DisplayConfig)
     video: VideoConfig = field(default_factory=VideoConfig)
     ai: AiConfig = field(default_factory=AiConfig)

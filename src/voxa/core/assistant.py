@@ -102,6 +102,10 @@ class Assistant:
         """En una casa bilingüe, la respuesta lleva su idioma (para la voz con que se dice)."""
         return replace(response, language=language) if self.bilingual else response
 
+    def understands(self, text: str) -> bool:
+        """Si es una orden que las reglas entienden (sin preguntar a la IA)."""
+        return any(m.match(text) is not None for m in self._matchers(None))
+
     def _matchers(self, language: str | None, *, everything: bool = False) -> list[Matcher]:
         if self._other is None or not (self.bilingual or everything):
             return [self._matcher]

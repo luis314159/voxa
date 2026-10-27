@@ -314,3 +314,55 @@ async def test_voice_turns_are_measured():
     summary = app.metrics.summary()
     assert summary["ordenes"] == 1 and summary["no_entendidas"] == 1
     assert app.metrics.days and next(iter(app.metrics.days.values()))["sin_orden"] == 1
+
+
+async def test_after_answering_it_keeps_listening_for_a_command_only():
+    """Accesibilidad: unos segundos sin «Hey Voxa»; la plática de alrededor se ignora."""
+    from dataclasses import replace as changed
+
+    from voxa.config import AccessibilityConfig
+
+    service, app = simulated_service()
+    app.config = changed(app.config, accessibility=AccessibilityConfig(follow_up_seconds=6))
+    session = FakeSession(Response("Son las 5."))
+    service.attach_voice(session, FakeMic())
+    heard, answered = [], []
+
+    async def transcribe(audio):
+        return heard.pop()
+
+    async def respond_to_text(text, audio):
+        answered.append(text)
+        return TurnResult(text, Response("Listo."), TurnTimings())
+
+    session.transcribe, session.respond_to_text = transcribe, respond_to_text
+    await service.talk()
+    assert service._follow_until > 0 and service.display.snapshot()["phase"] == "listening"
+    heard.append("y cómo te fue hoy en la escuela")  # plática: no es una orden
+    await service._maybe_follow_up(b"")
+    heard.append("súbele")
+    await service._maybe_follow_up(b"")
+    assert answered == ["súbele"]
+
+
+def test_accessibility_settings():
+    import pytest
+
+    from voxa.settings import SettingsError, validate
+
+    assert validate("accessibility", {"slow_for": ["Abuela Rosa"], "big_text": True, "follow_up_seconds": 6}) == {
+        "slow_for": ["Abuela Rosa"], "big_text": True, "follow_up_seconds": 6}
+    assert validate("voice", {"speech_rate": 1.2}) == {"speech_rate": 1.2}
+    with pytest.raises(SettingsError):
+        validate("voice", {"speech_rate": 3})
+    with pytest.raises(SettingsError):
+        validate("accessibility", {"follow_up_seconds": 60})
+
+
+def test_big_text_reaches_the_screen():
+    from dataclasses import replace as changed
+
+    from voxa.config import AccessibilityConfig
+
+    app = build_app(changed(Config(), accessibility=AccessibilityConfig(big_text=True)), simulated=True)
+    assert Service.create(app).display.snapshot()["big_text"] is True

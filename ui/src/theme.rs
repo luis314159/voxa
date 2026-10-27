@@ -1,6 +1,7 @@
 //! Colores y tipografía de la marca (assets/brand).
 
 use egui::{Color32, FontData, FontDefinitions, FontFamily, FontId};
+use std::cell::Cell;
 use std::sync::Arc;
 
 pub const BG: Color32 = Color32::from_rgb(0x0B, 0x10, 0x20);
@@ -37,12 +38,30 @@ pub fn fonts() -> FontDefinitions {
     fonts
 }
 
+/// Cuánto crece la letra grande (accesibilidad): los textos de lectura, no el reloj ni las cuentas.
+pub const BIG_TEXT: f32 = 1.2;
+
+thread_local! {
+    // (factor, tamaño desde el que ya no crece): lo pone cada cuadro según el estado.
+    static TEXT_SCALE: Cell<(f32, f32)> = const { Cell::new((1.0, f32::MAX)) };
+}
+
+/// Letra grande: los textos de hasta `limit` píxeles crecen `factor` (el reloj y los números grandes, no).
+pub fn set_text_scale(factor: f32, limit: f32) {
+    TEXT_SCALE.with(|scale| scale.set((factor, limit)));
+}
+
+fn scaled(size: f32) -> f32 {
+    let (factor, limit) = TEXT_SCALE.with(Cell::get);
+    if size <= limit { size * factor } else { size }
+}
+
 pub fn regular(size: f32) -> FontId {
-    FontId::proportional(size)
+    FontId::proportional(scaled(size))
 }
 
 pub fn strong(size: f32) -> FontId {
-    FontId::new(size, FontFamily::Name(STRONG.into()))
+    FontId::new(scaled(size), FontFamily::Name(STRONG.into()))
 }
 
 /// Degradado de la marca: cian → azul → morado, `t` en 0..1.
@@ -64,4 +83,18 @@ pub fn alpha(color: Color32, a: f32) -> Color32 {
 pub fn gray(color: Color32) -> Color32 {
     let l = (0.3 * color.r() as f32 + 0.59 * color.g() as f32 + 0.11 * color.b() as f32) as u8;
     Color32::from_rgba_unmultiplied(l, l, l, color.a())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn big_text_grows_reading_text_only() {
+        set_text_scale(BIG_TEXT, 64.0);
+        assert_eq!(regular(30.0).size, 36.0);
+        assert_eq!(strong(200.0).size, 200.0); // el reloj se queda igual
+        set_text_scale(1.0, f32::MAX);
+        assert_eq!(regular(30.0).size, 30.0);
+    }
 }

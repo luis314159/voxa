@@ -35,10 +35,11 @@ EDITABLE: dict[str, dict[str, Any]] = {
     "video": {"enabled": bool},
     "update": {"check": bool, "automatic": bool},
     "web": {"enabled": bool},
-    "voice": {"whisper_model": ("tiny", "base", "small"), "language": ("es", "en"), "bilingual": bool},
+    "voice": {"whisper_model": ("tiny", "base", "small"), "language": ("es", "en"), "bilingual": bool, "speech_rate": float},
     "routine": {"departure": "time", "departure_days": "days", "checklist": str, "morning_music": str},
     "house": {"room": str, "main": str},
     "family": {"aliases": "aliases"},
+    "accessibility": {"slow_for": "names", "big_text": bool, "follow_up_seconds": int},
     "medicine": {"enabled": bool, "ask_every_minutes": int, "tries": int, "notify_telegram": bool, "notify_house": bool},
     "quiet": {"enabled": bool, "start": "time", "end": "time", "level": float},
     "kids": {
@@ -121,6 +122,10 @@ def validate(section: str, values: dict[str, Any]) -> dict[str, Any]:
     if section == "weather":
         if not -90 <= clean.get("latitude", 0) <= 90 or not -180 <= clean.get("longitude", 0) <= 180:
             raise SettingsError("coordenadas fuera de rango")
+    if section == "voice" and not 0.7 <= clean.get("speech_rate", 1.0) <= 1.6:
+        raise SettingsError("la velocidad de la voz va de 0.7 a 1.6")
+    if section == "accessibility" and not 0 <= clean.get("follow_up_seconds", 0) <= 15:
+        raise SettingsError("se sigue escuchando de 0 a 15 segundos")
     if section == "medicine" and (not 1 <= clean.get("ask_every_minutes", 5) <= 60 or not 1 <= clean.get("tries", 3) <= 10):
         raise SettingsError("pregunta cada 1 a 60 minutos, de 1 a 10 veces")
     if section == "quiet" and not 0.05 <= clean.get("level", 0.35) <= 1:

@@ -155,6 +155,8 @@ impl eframe::App for VoxaApp {
             now: epoch_now(),
             time: self.started.elapsed().as_secs_f64(),
         };
+        // Letra grande: crecen los textos de lectura (hasta 64 px de diseño); el reloj y las cuentas ya son grandes.
+        theme::set_text_scale(if state.big_text { theme::BIG_TEXT } else { 1.0 }, f.px(64.0));
         if self.options.diagnostics && self.diagnostics.is_none() && connected {
             self.options.diagnostics = false;
             self.open_diagnostics();
@@ -988,7 +990,8 @@ fn weather_block(painter: &Painter, f: &Frame, area: Rect, weather: &Weather) {
     let width = area.width().max(f.px(200.0));
     widgets::fitted_text(painter, pos2(area.left(), y), Align2::LEFT_TOP, &detail, font.clone(), theme::TEXT_DIM, width);
     let range = format!("{} {}° · {} {}°", t("Máx", "High"), weather.high, t("Mín", "Low"), weather.low);
-    widgets::fitted_text(painter, pos2(area.left(), y + f.px(38.0)), Align2::LEFT_TOP, &range, font, theme::TEXT_DIM, width);
+    let line = font.size * 1.36; // crece con la letra grande
+    widgets::fitted_text(painter, pos2(area.left(), y + line), Align2::LEFT_TOP, &range, font, theme::TEXT_DIM, width);
 }
 
 /// La pantalla de diagnóstico: bloques de «etiqueta: valor» en dos columnas, problemas y registro.

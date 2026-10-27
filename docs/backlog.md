@@ -51,7 +51,3 @@ Lo que falta para que VOXA sea un producto excelente para familias, en orden de 
 - **Voz en inglés con licencia abierta:** cambiar Lessac (licencia de investigación) por LibriTTS-R o Kokoro después de escucharlas ([docs/licencias.md](licencias.md)).
 
 - **Más frases de familias reales** en el corpus de pruebas (`tests/data/utterances.yaml`), con acentos de distintas regiones.
-- **Accesibilidad:**
-  - habla más lenta para abuelos;
-  - letra grande en la pantalla;
-  - repetir sin «Hey Voxa» justo después de una respuesta.

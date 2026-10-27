@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, Awaitable, Callable
 
 from voxa.config import MODEL_DEFAULTS, Config, QuietConfig, config_path
 from voxa.core.assistant import Assistant
+from voxa.core.people import speaker
 from voxa.health import Check, internet_check, player_check, spotify_check
 from voxa.nlu.matcher import Matcher, load_matcher
 from voxa.services.ai import AiSetupError, build_chat, prices_for, read_key
@@ -56,7 +57,7 @@ from voxa.skills.weather import WeatherSkill
 from voxa.settings import read_secret
 from voxa.state.ai_usage import AiUsage
 from voxa.state.metrics import UsageMetrics
-from voxa.state.notes import NoteBoard
+from voxa.state.notes import NoteBoard, same_person
 from voxa.state.recipe import RecipeSession
 from voxa.state.shopping import ShoppingList
 from voxa.state.tasks import TaskList
@@ -181,10 +182,13 @@ def build_voice(config: Config, app: App, *, simulated: bool = False) -> VoiceSe
     from voxa.voice import VoiceSession
 
     voice = config.voice
+    tts = build_tts(config)
+    slow_for = config.accessibility.slow_for
+    tts.slower = lambda: any(same_person(speaker(), person) for person in slow_for) if slow_for else False
     session = VoiceSession(
         app.assistant,
         build_stt(config, app.matcher),
-        build_tts(config),
+        tts,
         SpeakerOutput(voice.output_device or None, voice.lead_in_ms),
         make_sounds(),
         NoDucking() if simulated or sys.platform != "linux" else PipeWireDucker(voice.duck_level),

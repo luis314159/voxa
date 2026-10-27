@@ -6,7 +6,7 @@ import hashlib
 import logging
 import threading
 from pathlib import Path
-from typing import Protocol
+from typing import Callable, Protocol
 
 import numpy as np
 
@@ -15,6 +15,8 @@ from voxa.audio.pronunciation import Lexicon, fix_phonemes
 
 log = logging.getLogger(__name__)
 
+SLOWER = 1.3
+"""Cuánto más despacio habla para quien lo necesita (``length_scale`` de Piper)."""
 _PHONEME_FIXES_VERSION = 1  # súbelo al cambiar fix_phonemes: invalida el audio en caché
 
 
@@ -36,6 +38,9 @@ class PiperTts:
         espeak_phonemize = self._voice.phonemize
         self._voice.phonemize = lambda text: [fix_phonemes(s) for s in espeak_phonemize(text)]
         self._config = SynthesisConfig(length_scale=length_scale)
+        self._slow_config = SynthesisConfig(length_scale=length_scale * SLOWER)
+        self.slower: Callable[[], bool] = lambda: False
+        """Accesibilidad: más despacio para quien lo necesita (los abuelos), si VOXA reconoce su voz."""
         self._lexicon = lexicon or Lexicon({})
         self._cache_dir = cache_dir
         self._cache_prefix = f"{model.stem}-{length_scale}-{_PHONEME_FIXES_VERSION}"
@@ -48,11 +53,12 @@ class PiperTts:
 
     def synthesize(self, text: str) -> Clip:
         text = self._lexicon.apply(text)
-        cached = self._cache_path(text)
+        slow = self.slower()
+        cached = self._cache_path(f"lento|{text}" if slow else text)
         if cached and cached.exists():
             return Clip.load(cached)
         with self._lock:
-            chunks = list(self._voice.synthesize(text, self._config))
+            chunks = list(self._voice.synthesize(text, self._slow_config if slow else self._config))
         if not chunks:
             raise ValueError(f"Piper no generó audio para {text!r}")
         clip = Clip(np.concatenate([c.audio_float_array for c in chunks]).astype(np.float32), chunks[0].sample_rate)
@@ -81,6 +87,15 @@ class BilingualTts:
     def __init__(self, voices: dict[str, TextToSpeech], home: str) -> None:
         self._voices = voices
         self._home = home
+
+    @property
+    def slower(self) -> Callable[[], bool]:
+        return getattr(self._voices[self._home], "slower", lambda: False)
+
+    @slower.setter
+    def slower(self, value: Callable[[], bool]) -> None:
+        for voice in self._voices.values():
+            voice.slower = value  # type: ignore[attr-defined]
 
     def synthesize(self, text: str) -> Clip:
         from voxa.i18n import language

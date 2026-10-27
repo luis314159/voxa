@@ -72,6 +72,7 @@ async def main() -> None:
     parser.add_argument("--receta", type=int, metavar="PASO", help="abre una receta en ese paso (0 = ingredientes)")
     parser.add_argument("--notas", action="store_true", help="deja unas notas («déjale una nota a papá»)")
     parser.add_argument("--ingles", action="store_true", help="la casa habla inglés")
+    parser.add_argument("--letra-grande", action="store_true", help="accesibilidad: letra más grande")
     parser.add_argument("--puerto", type=int, default=8766)
     args = parser.parse_args()
 
@@ -108,6 +109,7 @@ async def main() -> None:
     if args.problema:
         service.health.report(Problem("demo", args.problema, "Problema de prueba de la demo"))
     service.display.muted = args.silenciado
+    service.display.big_text = args.letra_grande
     service.display.photo = args.foto
     if args.celular:
         service.display.phone_url = "http://192.168.1.50:8770/?k=demo-clave-de-ejemplo-123"

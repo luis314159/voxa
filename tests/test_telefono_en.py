@@ -20,6 +20,8 @@ SIN_TRADUCIR = {
     "OpenAI",
     "Azure OpenAI",
     "Normal (base)",
+    "Normal",
+    "No",
     "developer.spotify.com/dashboard",
     "3 min",
     "5 min",

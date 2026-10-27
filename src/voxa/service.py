@@ -52,6 +52,13 @@ _VIDEO_OSD = {"listening": "🎙 Te escucho…", "thinking": "Un momento…"}
 WAKE_PHRASE = "Hey Voxa"
 
 
+def _follow_up_endpoint(seconds: float):
+    """Después de contestar: una frase de hasta 8 s que empiece en los segundos que quedan."""
+    from voxa.audio.endpoint import EndpointConfig
+
+    return EndpointConfig(end_silence_ms=640, max_ms=8000, no_speech_timeout_ms=int(seconds * 1000))
+
+
 def _alarm_endpoint():
     """Durante la alarma solo interesan frases cortas («para», «ya, gracias»)."""
     from voxa.audio.endpoint import EndpointConfig
@@ -75,6 +82,7 @@ class Service:
         display.shopping = app.shopping.items  # la pantalla ve la lista tal cual (se republica tras cada orden)
         display.recipe = app.recipe.snapshot
         display.notes = app.notes.snapshot
+        display.big_text = app.config.accessibility.big_text
         recipe = app.assistant.skill("recipe")
         if recipe is not None and hasattr(recipe, "on_wait"):
             recipe.on_wait = self._say_meanwhile
@@ -86,6 +94,8 @@ class Service:
             app.ai.on_setup_error = lambda detail: self.health.report(Problem("ia", "La IA no funciona", detail))
             app.ai.on_ok = lambda: self.health.clear("ia")
         self.session: VoiceSession | None = None
+        self._follow_until = 0.0
+        """Hasta cuándo se sigue escuchando sin «Hey Voxa» después de contestar (accesibilidad)."""
         self.mic: Microphone | None = None
         self.muted = False
         self.wake: WakeWordDetector | None = None
@@ -155,8 +165,28 @@ class Service:
                 return None
             result = await self.session.turn(self.mic, after_wake=after_wake)
         self._measure(result, after_wake)
+        self._keep_listening(result)
         await self._apply(result.response)
         return result
+
+    def _keep_listening(self, result: TurnResult) -> None:
+        """Accesibilidad: después de contestar, unos segundos más sin tener que decir «Hey Voxa»."""
+        seconds = self.app.config.accessibility.follow_up_seconds
+        if seconds > 0 and result.heard and result.response is not None:
+            self._follow_until = time.monotonic() + seconds
+            self.display.phase("listening")
+
+    async def _maybe_follow_up(self, audio) -> None:
+        """Lo que se dijo justo después de una respuesta: solo si es una orden (la plática se ignora)."""
+        text = await self.session.transcribe(audio)
+        if not text or not self.app.assistant.understands(text):
+            log.info("Después de contestar: «%s» (no es una orden)", text)
+            return
+        async with self._turn:
+            result = await self.session.respond_to_text(text, audio)
+        self._measure(result, after_wake=False)
+        self._keep_listening(result)
+        await self._apply(result.response)
 
     def _measure(self, result: TurnResult, after_wake: bool) -> None:
         metrics = self.app.metrics
@@ -441,6 +471,7 @@ class Service:
 
         recent: collections.deque = collections.deque(maxlen=2)
         alarm: UtteranceCollector | None = None
+        follow: UtteranceCollector | None = None
         while True:
             wake, mic = self.wake, self.mic
             if wake is None or mic is None or self.session is None or self.muted or not mic.is_open or self._turn.locked():
@@ -467,6 +498,21 @@ class Service:
                 mic.clear()  # lo que quedó (la voz de VOXA respondiendo) no debe volver a activarla
                 wake.reset()
                 continue
+            if self._follow_until and not self.app.timers.ringing:
+                # Después de contestar: si alguien habla en esos segundos, se oye la frase completa.
+                waiting = max(0.5, self._follow_until - time.monotonic())
+                follow = follow or UtteranceCollector(_follow_up_endpoint(waiting))
+                state = follow.feed(frame)
+                if state in (State.DONE, State.NO_SPEECH):
+                    self._follow_until = 0.0
+                    if state is State.DONE:
+                        await self._maybe_follow_up(follow.audio)
+                        mic.clear()
+                    if not self._follow_until:
+                        self.display.phase("idle")
+                    follow = None
+                continue
+            follow = None
             if self.app.timers.ringing:
                 alarm = alarm or UtteranceCollector(_alarm_endpoint())
                 state = alarm.feed(frame)

@@ -153,13 +153,24 @@ class VoiceSession:
             self.observer.exchange("", None)
             await self._play(self._sounds["error"])
             return TurnResult("", None, timings, person)
+        return await self._answer(text, person, timings)
 
+    async def respond_to_text(self, text: str, audio) -> TurnResult:
+        """Una orden ya reconocida (al seguir escuchando después de contestar): quién fue y la respuesta."""
+        self.observer.phase("thinking")
+        person = await asyncio.to_thread(self._who, audio)
+        try:
+            return await self._answer(text, person, TurnTimings())
+        finally:
+            self.observer.phase("idle")
+
+    async def _answer(self, text: str, person: str | None, timings: TurnTimings) -> TurnResult:
         start = time.perf_counter()
         with speaking(person):
             response = await self.assistant.handle_text(text, getattr(self._stt, "last_language", None))
-        timings.nlu_and_action = time.perf_counter() - start
-        self.observer.exchange(text, response)
-        timings.tts = await self.say(response)
+            timings.nlu_and_action = time.perf_counter() - start
+            self.observer.exchange(text, response)
+            timings.tts = await self.say(response)  # con quien habla: a los abuelos, más despacio
         log.info("«%s»%s → %s (%s)", text, f" ({person})" if person else "", response.speech or response.sound, timings)
         return TurnResult(text, response, timings, person)
 

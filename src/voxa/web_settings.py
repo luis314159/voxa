@@ -118,6 +118,10 @@ class SettingsApi:
                 "bilingue": config.voice.bilingual,
             },
             "casa": {**(app.house.status() if app.house else {}), "invitacion": self.invitation()},
+            "accesibilidad": {
+                "velocidad": config.voice.speech_rate, "lento_para": list(config.accessibility.slow_for),
+                "letra_grande": config.accessibility.big_text, "seguir": config.accessibility.follow_up_seconds,
+            },
             "medicinas": {"enabled": config.medicine.enabled, "cada": config.medicine.ask_every_minutes,
                           "veces": config.medicine.tries, "telegram": config.medicine.notify_telegram,
                           "casa": config.medicine.notify_house},

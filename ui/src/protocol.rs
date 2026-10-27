@@ -45,6 +45,9 @@ pub struct State {
     /// Notas y recados («déjale una nota a papá»).
     #[serde(default)]
     pub notes: Vec<Note>,
+    /// Accesibilidad: letra más grande para leer de lejos.
+    #[serde(default)]
+    pub big_text: bool,
 }
 
 #[derive(Debug, Clone, Deserialize, PartialEq)]
