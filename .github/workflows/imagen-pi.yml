@@ -1,0 +1,51 @@
+name: Imagen Raspberry Pi
+
+# La imagen de Raspberry Pi con VOXA ya instalada. La llama Release al publicar una versión; también
+# corre (sin publicar) cuando cambia el script, con el .deb del release más reciente, para probarla.
+on:
+  workflow_call:
+    inputs:
+      etiqueta:
+        required: true
+        type: string
+  push:
+    branches: [master]
+    paths: [scripts/imagen-pi.sh, .github/workflows/imagen-pi.yml]
+
+permissions:
+  contents: write
+
+jobs:
+  imagen:
+    runs-on: ubuntu-24.04-arm  # arm64 de verdad: se instala VOXA dentro sin emular
+    timeout-minutes: 150
+    env:
+      GH_TOKEN: ${{ github.token }}
+      ETIQUETA: ${{ inputs.etiqueta }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Herramientas y espacio en disco
+        run: |
+          sudo apt-get update && sudo apt-get install -y parted zerofree xz-utils librsvg2-bin
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL || true
+          df -h /
+      - name: El paquete .deb de arm64 (con su huella)
+        run: |
+          etiqueta="${ETIQUETA:-$(gh release view --repo "$GITHUB_REPOSITORY" --json tagName -q .tagName)}"
+          echo "ETIQUETA=$etiqueta" >> "$GITHUB_ENV"
+          mkdir -p deb && cd deb
+          gh release download "$etiqueta" --repo "$GITHUB_REPOSITORY" --pattern 'voxa_*_arm64.deb' --pattern SHA256SUMS
+          grep "_arm64.deb" SHA256SUMS | sha256sum -c -
+      - name: Armar la imagen
+        run: sudo bash scripts/imagen-pi.sh deb/voxa_*_arm64.deb dist
+      - name: Publicar en el release
+        if: inputs.etiqueta != ''
+        run: |
+          cd dist
+          gh release download "$ETIQUETA" --repo "$GITHUB_REPOSITORY" --pattern SHA256SUMS --clobber
+          sha256sum voxa-raspberrypi-*.img.xz >> SHA256SUMS
+          gh release upload "$ETIQUETA" --repo "$GITHUB_REPOSITORY" --clobber \
+            voxa-raspberrypi-*.img.xz os_list_voxa.json voxa-icono.png SHA256SUMS
+      - name: Prueba (sin publicar)
+        if: inputs.etiqueta == ''
+        run: ls -l dist && cat dist/os_list_voxa.json

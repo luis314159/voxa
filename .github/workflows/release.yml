@@ -118,3 +118,11 @@ jobs:
             cat "docs/novedades/${VERSION}.md" notas.md > notas-completas.md && mv notas-completas.md notas.md
           fi
           gh release create "${GITHUB_REF_NAME}" dist/* --title "VOXA ${VERSION}" --notes-file notas.md --generate-notes
+
+  imagen-pi:
+    # La imagen de Raspberry Pi va aparte (tarda): se agrega al release cuando ya está publicado.
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: publicar
+    uses: ./.github/workflows/imagen-pi.yml
+    with:
+      etiqueta: ${{ github.ref_name }}
