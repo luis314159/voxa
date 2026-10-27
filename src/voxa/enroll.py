@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Awaitable, Callable
 
 from voxa.core.types import Response
+from voxa.i18n import tr
 from voxa.nlu.normalize import strip_accents
 
 if TYPE_CHECKING:
@@ -135,39 +136,40 @@ class VoiceEnrollment:
         if person.strip():
             (folder / "nombre.txt").write_text(name, encoding="utf-8")
         stamp = time.strftime("%Y%m%d-%H%M%S")
-        await self._say(Response(
-            f"Vamos a grabar tu voz{', ' + name if person.strip() else ''}. Cada vez que escuches el sonido, "
+        template = (
+            "Vamos a grabar tu voz{name}. Cada vez que escuches el sonido, "
             "di «Hey Voxa» como me hablarías desde la cocina."
-        ))
+        )
+        await self._say(Response(tr(template, name=", " + name if person.strip() else "")))
         saved, quiet = 0, 0
         while saved < self.times:
-            self._show(f"Di «Hey Voxa» ({saved + 1} de {self.times})")
+            self._show(tr("Di «Hey Voxa» ({number} de {total})", number=saved + 1, total=self.times))
             await self._say(Response(sound="listening"))
             audio = await self._record(WAKE_SECONDS)
             if rms(audio) < QUIET_RMS:
                 quiet += 1
                 if quiet >= TRIES:
-                    return Response("No te escucho bien. Acércate al micrófono y vuelve a pedirme que aprenda tu voz.",
+                    return Response(tr("No te escucho bien. Acércate al micrófono y vuelve a pedirme que aprenda tu voz."),
                                     sound="error")
-                await self._say(Response("No te oí. Otra vez, un poco más fuerte."))
+                await self._say(Response(tr("No te oí. Otra vez, un poco más fuerte.")))
                 continue
             Clip.from_int16(audio, MIC_RATE).save(folder / f"si_{stamp}_{saved + 1:02d}.wav")
             saved += 1
-        self._show("Platica normal, sin decir «Voxa»")
-        await self._say(Response(TALK_PROMPT))
+        self._show(tr("Platica normal, sin decir «Voxa»"))
+        await self._say(Response(tr(TALK_PROMPT)))
         await self._say(Response(sound="listening"))
         talk = await self._record(self.talk_seconds)
         Clip.from_int16(talk, MIC_RATE).save(folder / f"no_{stamp}.wav")
-        self._show("Aprendiendo tu voz…")
-        await self._say(Response("Gracias. Dame unos segundos para aprenderla."))
+        self._show(tr("Aprendiendo tu voz…"))
+        await self._say(Response(tr("Gracias. Dame unos segundos para aprenderla.")))
         try:
             result = await self._train()
         except NotEnoughRecordings as exc:
             log.warning("Verificador: %s", exc)
-            return Response("Guardé tu voz, pero me faltan grabaciones para aprenderla. Repítelo otra vez.")
+            return Response(tr("Guardé tu voz, pero me faltan grabaciones para aprenderla. Repítelo otra vez."))
         log.info("Verificador: acepta %.0f%% de «Hey Voxa», descarta %.0f%% de la plática (%d personas)",
                  result.accepted * 100, result.rejected * 100, result.people)
         if result.accepted < 0.8:
-            return Response("Listo, aunque todavía te confundo a veces. Si no te hago caso, repítelo en un lugar "
-                            "más silencioso.")
-        return Response("Listo, ya reconozco tu voz.")
+            return Response(tr("Listo, aunque todavía te confundo a veces. Si no te hago caso, repítelo en un lugar "
+                               "más silencioso."))
+        return Response(tr("Listo, ya reconozco tu voz."))

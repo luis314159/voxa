@@ -42,8 +42,11 @@ class Assistant:
         timers: TimerManager | None = None,
         fallback: Fallback | None = None,
         video_active: Callable[[], bool] | None = None,
+        command_matcher: Matcher | None = None,
     ) -> None:
         self._matcher = matcher
+        self._commands = command_matcher
+        """Respaldo para las órdenes de la IA en español cuando la casa habla otro idioma."""
         self._skills = dict(skills)
         self._timers = timers
         self.fallback = fallback
@@ -69,6 +72,8 @@ class Assistant:
     async def try_command(self, text: str) -> Response | None:
         """Ejecuta ``text`` si es una orden que las reglas entienden (la IA traduce a estas); si no, ``None``."""
         intent = self._matcher.match(text)
+        if intent is None and self._commands is not None:
+            intent = self._commands.match(text)
         if intent is None:
             return None
         log.info("«%s» → %s %s (vía IA)", text, intent.name, intent.slots)

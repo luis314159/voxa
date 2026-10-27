@@ -5,6 +5,7 @@ import logging
 import re
 
 from voxa.core.types import OK, Intent, Response
+from voxa.i18n import tr
 from voxa.services.music_backend import BackendUnavailable, MusicBackend
 from voxa.services.video import VideoNotFound, VideoPlayer, VideoSearch, VideoUnavailable
 
@@ -16,7 +17,7 @@ _NOTHING_ON = Response("No hay ningún video puesto.")
 _TITLE_CUT = re.compile(r"\s[|\-–—·•]\s|:\s|[|(\[#【]")
 _NOT_WORDS = re.compile(r"[^\w\s¿?¡!.,'’&-]")
 _MAX_WORDS = 10
-_ARTICLE = re.compile(r"^(el|la|los|las|un|una|unos|unas)\s+", re.IGNORECASE)
+_ARTICLE = re.compile(r"^(el|la|los|las|un|una|unos|unas|the|an?)\s+", re.IGNORECASE)
 
 
 def speakable_title(title: str) -> str:
@@ -48,7 +49,7 @@ class VideoSkill:
         try:
             return await self._handle(intent)
         except VideoNotFound as exc:
-            return Response(f"No encontré un video de «{exc}».", sound="error")
+            return Response(tr("No encontré un video de «{what}».", what=exc), sound="error")
         except VideoUnavailable as exc:
             log.warning("Video no disponible para %s: %s", intent.name, exc)
             return _NO_VIDEO
@@ -58,13 +59,13 @@ class VideoSkill:
         if intent.name == "video.play":
             query = intent.slots["query"].strip()
             if intent.slots.get("kind") == "recipe":
-                query = f"receta de {_ARTICLE.sub('', query)}"  # «cómo se hace el pozole»
+                query = tr("receta de {dish}", dish=_ARTICLE.sub("", query))  # «cómo se hace el pozole»
             video = await self._search.search(query)
             if self._music is not None:  # la música no compite con la receta
                 with contextlib.suppress(BackendUnavailable):
                     await self._music.pause()
             await player.play(video)
-            return Response(f"Poniendo: {speakable_title(video.title)}.")
+            return Response(tr("Poniendo: {title}.", title=speakable_title(video.title)))
         if player.current is None:
             return OK if intent.name == "video.close" else _NOTHING_ON
         match intent.name:
@@ -79,7 +80,7 @@ class VideoSkill:
             case "media.seek_back":
                 await player.seek(-intent.slots["duration"])
             case "media.now_playing":
-                return Response(f"Es «{speakable_title(player.current.title)}».")
+                return Response(tr("Es «{title}».", title=speakable_title(player.current.title)))
             case "media.next" | "media.previous":
                 return Response("Con los videos no hay siguiente ni anterior; pide otro video.")
             case _:

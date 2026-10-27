@@ -94,3 +94,16 @@ async def test_skill_asks_the_service_to_record(tmp_path):
     skill.ready = lambda: True
     response = await skill.handle(intent)
     assert response == Response(action=ENROLL_ACTION, target="Ana")
+
+
+async def test_guided_recording_in_english(tmp_path):
+    from voxa.i18n import set_language
+
+    set_language("en")
+    kitchen = Kitchen([VOICE, SILENCE, VOICE, VOICE])
+    response = await enrollment(tmp_path, kitchen).run("Ana")
+    assert response.speech == "Done, I know your voice now."
+    assert kitchen.said[0].startswith("Let's record your voice, Ana.")
+    assert "I didn't hear you. Once more, a little louder." in kitchen.said
+    assert any(s.startswith("Now talk to me about anything") for s in kitchen.said)
+    assert kitchen.shown[:1] == ["Say «Hey Voxa» (1 of 3)"] and "Learning your voice…" in kitchen.shown

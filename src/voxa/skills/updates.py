@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from voxa.core.types import Intent, Response
+from voxa.i18n import tr
 from voxa.update import Updater
 
 
@@ -15,14 +16,15 @@ class UpdateSkill:
         if intent.name == "update.check":
             available = await updater.check()
             if available:
-                return Response(f"Sí: hay la versión {available}; tienes la {updater.current}. Di «actualízate» para instalarla.")
-            return Response(f"Estoy al día: tengo la versión {updater.current}.")
+                return Response(tr("Sí: hay la versión {new}; tienes la {current}. Di «actualízate» para instalarla.",
+                                   new=available, current=updater.current))
+            return Response(tr("Estoy al día: tengo la versión {current}.", current=updater.current))
         if intent.name == "update.install":
             if not updater.available and not await updater.check():
-                return Response(f"Ya tengo la versión más reciente, la {updater.current}.")
+                return Response(tr("Ya tengo la versión más reciente, la {current}.", current=updater.current))
             if updater.installing:
                 return Response("Ya me estoy actualizando.")
             if updater.install():
-                return Response(f"Me actualizo a la versión {updater.available}. En unos minutos vuelvo.")
+                return Response(tr("Me actualizo a la versión {new}. En unos minutos vuelvo.", new=updater.available))
             return Response("No pude empezar la actualización. En la terminal: voxa actualizar.", sound="error")
         return Response("Todavía no sé hacer eso.", sound="error")

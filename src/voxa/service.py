@@ -20,6 +20,7 @@ from voxa.core.assistant import STOPS_ALARM
 from voxa.core.types import Response
 from voxa.display import Display, DisplayServer
 from voxa.health import Health, Problem
+from voxa.i18n import tr
 from voxa.services.http import UrllibHttp
 from voxa.skills.enroll import ENROLL_ACTION
 from voxa.skills.timers import ring_phrase
@@ -142,7 +143,7 @@ class Service:
             if self.muted:
                 await self.set_muted(False, acknowledge=False)
             if not self.mic.is_open and not self._open_microphone():
-                await self.session.say(Response("No encuentro el micrófono.", sound="error"))
+                await self.session.say(Response(tr("No encuentro el micrófono."), sound="error"))
                 return None
             result = await self.session.turn(self.mic, after_wake=after_wake)
         await self._apply(result.response)
@@ -228,7 +229,7 @@ class Service:
             if self.muted:
                 await self.set_muted(False, acknowledge=False)
             if not mic.is_open and not self._open_microphone():
-                await session.say(Response("No encuentro el micrófono.", sound="error"))
+                await session.say(Response(tr("No encuentro el micrófono."), sound="error"))
                 return None
             self.enrolling = person or "familia"
             try:

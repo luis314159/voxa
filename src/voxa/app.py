@@ -268,7 +268,8 @@ def build_app(config: Config, *, simulated: bool = False, on_ring: Callable[[Tim
     set_language(config.voice.language)
     matcher = load_matcher(language=config.voice.language)
     video_active = (lambda: player.current is not None) if player is not None else None
-    assistant = Assistant(matcher, skills, timers, video_active=video_active)
+    commands = load_matcher() if config.voice.language != "es" else None  # por si la IA ordena en español
+    assistant = Assistant(matcher, skills, timers, video_active=video_active, command_matcher=commands)
     ai, ai_problem = build_ai(config, assistant)
     assistant.fallback = ai
     skills["system"].open_questions = ai is not None

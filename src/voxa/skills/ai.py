@@ -30,7 +30,12 @@ log = logging.getLogger(__name__)
 
 ENGLISH_HINT = (
     "\n\nLa familia habla inglés: contesta siempre en inglés. Las órdenes de la herramienta orden_voxa "
-    "van en español, como dice su descripción."
+    "también van en inglés y sencillas, por ejemplo «set a timer for 12 minutes for the pasta», «play some "
+    "jazz» o «add tomatoes and onions to the shopping list»."
+)
+RECIPE_ENGLISH_HINT = (
+    "\n\nLa familia habla inglés: escribe la receta (título, ingredientes y pasos) en inglés, con tazas, "
+    "cucharadas y onzas como en Estados Unidos y los grados del horno en Fahrenheit y centígrados."
 )
 
 SYSTEM_PROMPT = """\
@@ -280,7 +285,8 @@ class AiFallback:
     async def recipe(self, dish: str) -> Recipe | Response:
         """Arma la receta de un platillo (``recipe.start``); si no se pudo, lo que hay que decir."""
         question = {"role": "user", "content": f"{context_line(self._now(), self._context)}\nLa receta de: {dish}"}
-        answer = await self._ask(f"receta de {dish}", RECIPE_PROMPT, [question], (RECIPE_TOOL,), max_tokens=4096)
+        prompt = RECIPE_PROMPT + RECIPE_ENGLISH_HINT if english() else RECIPE_PROMPT
+        answer = await self._ask(f"receta de {dish}", prompt, [question], (RECIPE_TOOL,), max_tokens=4096)
         if isinstance(answer, Response):
             return answer
         recipe = self._recipe_in(answer)

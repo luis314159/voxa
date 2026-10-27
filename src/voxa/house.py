@@ -48,13 +48,44 @@ class Room:
         return now - self.seen < ONLINE_SECONDS
 
 
+# Los cuartos se llaman en español («Sala», «Cuarto de Ana»); en una casa que habla inglés se dicen así.
+_ROOMS_EN = {
+    "cocina": "kitchen", "sala": "living room", "comedor": "dining room", "recamara": "bedroom",
+    "recamara principal": "main bedroom", "cuarto": "room", "estudio": "study", "oficina": "office",
+    "bano": "bathroom", "cochera": "garage", "garaje": "garage", "patio": "patio", "jardin": "garden",
+    "terraza": "terrace", "sotano": "basement", "lavanderia": "laundry room", "cuarto de juegos": "playroom",
+    "cuarto de la tele": "TV room", "cuarto de lavado": "laundry room",
+}
+
+
+def english_room(room: str) -> str:
+    """«Sala» → «living room», «Recámara de Ana» → «Ana's bedroom»; los que no conoce, como están."""
+    words = room.split()
+    if len(words) > 1 and normalize(words[0]) in ("el", "la"):
+        words = words[1:]
+    key = normalize(" ".join(words))
+    if key in _ROOMS_EN:
+        return _ROOMS_EN[key]
+    plain = normalize(" ".join(words)).split()
+    for size in (2, 1):  # «cuarto de Ana», «recámara principal de Luis»
+        place = " ".join(plain[:size])
+        if place in _ROOMS_EN and len(plain) > size + 1 and plain[size] == "de":
+            owner = " ".join(words[size + 1:])
+            return f"{owner}'s {_ROOMS_EN[place]}"
+    return " ".join(words)
+
+
 def same_room(a: str, b: str) -> bool:
-    """«la sala», «Sala» y «sala» son el mismo cuarto."""
+    """«la sala», «Sala», «sala» y «the living room» son el mismo cuarto."""
     def clean(text: str) -> str:
         words = normalize(text).split()
         return " ".join(w for w in words if w not in ("el", "la", "los", "las", "voxa", "de"))
 
-    return clean(a) == clean(b)
+    def english(text: str) -> str:
+        words = normalize(english_room(text).replace("'", "")).split()
+        return " ".join(w for w in words if w not in ("the", "voxa"))
+
+    return clean(a) == clean(b) or english(a) == english(b)
 
 
 def parse_invitation(link: str) -> tuple[str, str]:
@@ -235,7 +266,18 @@ async def join(link: str, room: str, config, config_file: Path, http: Http) -> s
 
 
 def place_name(room: str) -> str:
-    """«Sala» → «la sala», «Comedor» → «el comedor», «Cuarto de Ana» → «el cuarto de Ana»."""
+    """«Sala» → «la sala», «Comedor» → «el comedor», «Cuarto de Ana» → «el cuarto de Ana».
+
+    En inglés: «the living room», «Ana's room».
+    """
+    from voxa.i18n import english
+
+    if english():
+        name = english_room(room)
+        if "'s " in name:
+            return name
+        first = name.split()[0]
+        return f"the {name}" if first.isupper() else f"the {name[:1].lower()}{name[1:]}"  # «the TV room»
     words = room.split()
     if len(words) > 1 and normalize(words[0]) in ("el", "la"):
         room = " ".join(words[1:])
@@ -248,6 +290,6 @@ def _spoken(text: str, source: str) -> str:
     from voxa.i18n import english
 
     if english():
-        return f"Message from the {source.lower()}: {text}"
+        return f"Message from {place_name(source)}: {text}"
     place = place_name(source)
     return f"Aviso {'del ' + place[3:] if place.startswith('el ') else 'de ' + place}: {text}"

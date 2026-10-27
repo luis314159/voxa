@@ -93,6 +93,41 @@ EN: dict[str, str] = {
     "No encontré {items} en la lista.": "I didn't find {items} on the list.",
     "Borré la lista del súper.": "I cleared the shopping list.",
     "La lista ya estaba vacía.": "The list was already empty.",
+    # --- kitchen conversions and recipes ----------------------------------------------------------------
+    "{degrees} grados Fahrenheit son {celsius} grados centígrados.": "{degrees} degrees Fahrenheit is {celsius} degrees Celsius.",
+    "{degrees} grados centígrados son {fahrenheit} grados Fahrenheit.": "{degrees} degrees Celsius is {fahrenheit} degrees Fahrenheit.",
+    "No hay ninguna receta abierta. Pídeme una, por ejemplo: «dame la receta de arroz rojo».":
+        "No recipe is open. Ask me for one, for example: «give me a recipe for pancakes».",
+    "¿De cuánto? Di, por ejemplo, «temporizador de 10 minutos».": "For how long? Say, for example, «a 10 minute timer».",
+    "Esta receta no trae lista de ingredientes.": "This recipe doesn't have an ingredient list.",
+    "Para {title} necesitas: {items}.": "For {title} you need: {items}.",
+    "Ese era el último paso. ¡Buen provecho! Di «termina la receta» para cerrarla.":
+        "That was the last step. Enjoy! Say «finish the recipe» to close it.",
+    "Todavía no empezamos {title}. Di «siguiente paso» para empezar.": "We haven't started {title} yet. Say «next step» to begin.",
+    "La receta tiene {total} pasos.": "The recipe has {total} steps.",
+    "Todo eso ya estaba en la lista.": "All of that was already on the list.",
+    "Esta receta no trae ingredientes.": "This recipe has no ingredients.",
+    " {count} ya estaba.": " {count} was already there.",
+    " {count} ya estaban.": " {count} were already there.",
+    "Agregué una cosa a la lista.{extra}": "Added one thing to the list.{extra}",
+    "Agregué {count} cosas a la lista.{extra}": "Added {count} things to the list.{extra}",
+    "Cerré la receta de {title}.": "I closed the {title} recipe.",
+    "Todavía no sé hacer eso con la receta.": "I can't do that with the recipe yet.",
+    "Déjame ver la receta de {dish}…": "Let me look up a recipe for {dish}…",
+    "Para recetas paso a paso hay que activar la IA en la configuración.":
+        "For step by step recipes, turn on the AI in Settings on your phone.",
+    "{ingredients} ingredientes y {steps} pasos": "{ingredients} ingredients and {steps} steps",
+    "{steps} pasos": "{steps} steps",
+    "{title}, para {servings} porciones: son {count}. Di «los ingredientes» para que te los lea, o «siguiente paso» para empezar.":
+        "{title}, for {servings} servings: {count}. Say «the ingredients» and I'll read them, or «next step» to start.",
+    "Paso {number} de {total}: {text}": "Step {number} of {total}: {text}",
+    " Si quieres, di «pon el tiempo» y cuento {duration}.": " If you want, say «start the timer» and I'll count {duration}.",
+    "el paso {number} de la receta": "recipe step {number}",
+    "Listo: {duration} para {label}.": "Done: {duration} for {label}.",
+    "receta de {dish}": "{dish} recipe",
+    "No encontré un video de «{what}».": "I couldn't find a video of «{what}».",
+    "Poniendo: {title}.": "Playing: {title}.",
+    "Es «{title}».": "It's «{title}».",
     # --- weather ----------------------------------------------------------------------------------------
     "Aún no sé dónde estamos. Agrega la ubicación en la configuración.":
         "I don't know where we are yet. Add your city in Settings on your phone.",
@@ -144,6 +179,21 @@ EN: dict[str, str] = {
         "I keep the shopping list, your to do list and your calendar. "
         "If you want me to stop listening, say «stop listening»."
     ),
+    "No encuentro el micrófono.": "I can't find the microphone.",
+    "Sí: hay la versión {new}; tienes la {current}. Di «actualízate» para instalarla.":
+        "Yes: version {new} is out; you have {current}. Say «update yourself» to install it.",
+    "Estoy al día: tengo la versión {current}.": "I'm up to date: I have version {current}.",
+    "Ya tengo la versión más reciente, la {current}.": "I already have the latest version, {current}.",
+    "Me actualizo a la versión {new}. En unos minutos vuelvo.": "Updating to version {new}. I'll be back in a few minutes.",
+    # --- AI -------------------------------------------------------------------------------------------------------
+    "Ya se usó el presupuesto de IA de este mes. Se puede subir en la configuración.":
+        "This month's AI budget is used up. You can raise it in Settings.",
+    "Ya respondí muchas preguntas hoy; mañana sigo. Mientras, pregúntame lo de siempre.":
+        "I've answered a lot of questions today; more tomorrow. Meanwhile, ask me the usual things.",
+    "No pude conectar con la IA. Inténtalo en un momento.": "I couldn't reach the AI. Try again in a moment.",
+    "No puedo usar la IA: hay que revisar su configuración.": "I can't use the AI: its settings need a look.",
+    "Prefiero no responder eso.": "I'd rather not answer that.",
+    "No supe qué responder. ¿Me lo dices de otra forma?": "I didn't know what to say. Can you put it another way?",
     # --- good morning / night -------------------------------------------------------------------------------
     "Buenos días": "Good morning",
     "Buenas tardes": "Good afternoon",
@@ -226,6 +276,28 @@ EN: dict[str, str] = {
     "No hay ningún video puesto.": "No video is playing.",
     "Con los videos no hay siguiente ni anterior; pide otro video.": "Videos have no next or previous; ask for another video.",
     "Todavía no sé hacer eso con los videos.": "I can't do that with videos yet.",
+    # --- «learn my voice» --------------------------------------------------------------------------------------------------
+    "Vamos a grabar tu voz{name}. Cada vez que escuches el sonido, di «Hey Voxa» como me hablarías desde la cocina.":
+        "Let's record your voice{name}. Each time you hear the sound, say «Hey Voxa» the way you'd talk to me in the kitchen.",
+    "Di «Hey Voxa» ({number} de {total})": "Say «Hey Voxa» ({number} of {total})",
+    "No te escucho bien. Acércate al micrófono y vuelve a pedirme que aprenda tu voz.":
+        "I can't hear you well. Come closer to the microphone and ask me to learn your voice again.",
+    "No te oí. Otra vez, un poco más fuerte.": "I didn't hear you. Once more, a little louder.",
+    "Platica normal, sin decir «Voxa»": "Talk normally, without saying «Voxa»",
+    (
+        "Ahora platícame lo que sea durante veinte segundos, sin decir mi nombre: "
+        "qué vas a cocinar, cómo estuvo tu día. Empieza después del sonido."
+    ): (
+        "Now talk to me about anything for twenty seconds, without saying my name: "
+        "what you're cooking, how your day went. Start after the sound."
+    ),
+    "Aprendiendo tu voz…": "Learning your voice…",
+    "Gracias. Dame unos segundos para aprenderla.": "Thanks. Give me a few seconds to learn it.",
+    "Guardé tu voz, pero me faltan grabaciones para aprenderla. Repítelo otra vez.":
+        "I saved your voice, but I need more recordings to learn it. Please do it once more.",
+    "Listo, aunque todavía te confundo a veces. Si no te hago caso, repítelo en un lugar más silencioso.":
+        "Done, though I still mix you up sometimes. If I don't answer you, do it again somewhere quieter.",
+    "Listo, ya reconozco tu voz.": "Done, I know your voice now.",
     # --- leaving in the morning ---------------------------------------------------------------------------------------------
     "un minuto": "one minute",
     "{count} minutos": "{count} minutes",

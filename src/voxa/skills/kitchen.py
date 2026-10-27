@@ -10,7 +10,9 @@ from __future__ import annotations
 import re
 
 from voxa.core.types import Intent, Response
+from voxa.i18n import english, tr
 from voxa.nlu.normalize import strip_accents
+from voxa.skills import kitchen_en
 from voxa.nlu.numbers import parse_number_at
 
 # Volumen en mililitros y peso en gramos de cada unidad (singular y plural).
@@ -152,6 +154,8 @@ class KitchenSkill:
         return self._convert(intent.slots["unit"], intent.slots.get("query", ""))
 
     def _convert(self, target: str, query: str) -> Response:
+        if english():
+            return self._convert_en(target, query)
         parsed = parse_amount(query)
         if parsed is None:
             return Response("No entendí la cantidad. Prueba con «¿cuántos gramos es una taza de harina?».", sound="error")
@@ -167,9 +171,30 @@ class KitchenSkill:
         verb = "son" if amount > 1 or _round(value) > 1 else "es"
         return Response(f"{source[:1].upper()}{source[1:]} {verb} {answer}.")
 
+    def _convert_en(self, target: str, query: str) -> Response:
+        parsed = kitchen_en.parse_amount(query)
+        if parsed is None:
+            return Response("I didn't get the amount. Try «how many grams is a cup of flour».", sound="error")
+        amount, unit, ingredient = parsed
+        key = kitchen_en.ingredient_key(ingredient)
+        result = convert(amount, unit, target, key)
+        if isinstance(result, str):
+            if ingredient:
+                return Response(f"I don't know how much a cup of {ingredient} weighs. Try flour, sugar, rice or butter.",
+                                sound="error")
+            return Response("Which ingredient? Try «how many grams is a cup of flour».", sound="error")
+        value, used = result
+        target = _canonical(target)
+        source = kitchen_en.say_quantity(amount, unit, _round(amount)) + (f" of {ingredient}" if ingredient else "")
+        answer = kitchen_en.say_quantity(value, target, _round(value))
+        about = "about " if used else ""  # depende del ingrediente: es aproximado
+        return Response(f"{source[:1].upper()}{source[1:]} is {about}{answer}.")
+
     def _temperature(self, degrees: int, source: str) -> Response:
         if source == "f":
             celsius = round((degrees - 32) * 5 / 9)
-            return Response(f"{degrees} grados Fahrenheit son {celsius} grados centígrados.")
+            return Response(tr("{degrees} grados Fahrenheit son {celsius} grados centígrados.", degrees=degrees,
+                               celsius=celsius))
         fahrenheit = round(degrees * 9 / 5 + 32)
-        return Response(f"{degrees} grados centígrados son {fahrenheit} grados Fahrenheit.")
+        return Response(tr("{degrees} grados centígrados son {fahrenheit} grados Fahrenheit.", degrees=degrees,
+                           fahrenheit=fahrenheit))

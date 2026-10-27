@@ -11,6 +11,7 @@ from typing import Awaitable, Callable
 
 from voxa.core.phrases import capitalize, format_duration, join_words
 from voxa.core.types import Intent, Response, Skill
+from voxa.i18n import tr
 from voxa.state.recipe import Recipe, RecipeSession
 from voxa.state.shopping import ShoppingList
 from voxa.state.timers import TimerManager
@@ -53,7 +54,8 @@ class RecipeSkill:
             case "recipe.ingredients":
                 if not recipe.ingredients:
                     return Response("Esta receta no trae lista de ingredientes.")
-                return Response(f"Para {recipe.title.lower()} necesitas: {join_words([i.text for i in recipe.ingredients])}.")
+                return Response(tr("Para {title} necesitas: {items}.", title=recipe.title.lower(),
+                                   items=join_words([i.text for i in recipe.ingredients])))
             case "recipe.next":
                 if self.session.current >= total - 1:
                     return Response("Ese era el último paso. ¡Buen provecho! Di «termina la receta» para cerrarla.")
@@ -64,24 +66,25 @@ class RecipeSkill:
                 return self._say_step(self.session.current - 1)
             case "recipe.repeat":
                 if self.session.current < 0:
-                    return Response(f"Todavía no empezamos {recipe.title.lower()}. Di «siguiente paso» para empezar.")
+                    return Response(tr("Todavía no empezamos {title}. Di «siguiente paso» para empezar.", title=recipe.title.lower()))
                 return self._say_step(self.session.current)
             case "recipe.goto":
                 number = int(intent.slots.get("number", 0))
                 if not 1 <= number <= total:
-                    return Response(f"La receta tiene {total} pasos.", sound="error")
+                    return Response(tr("La receta tiene {total} pasos.", total=total), sound="error")
                 return self._say_step(number - 1)
             case "recipe.to_list":
                 added, present = self._shopping.add([i.name for i in recipe.ingredients])
                 if not added:
                     return Response("Todo eso ya estaba en la lista." if present else "Esta receta no trae ingredientes.")
-                extra = f" {len(present)} ya {'estaba' if len(present) == 1 else 'estaban'}." if present else ""
-                return Response(f"Agregué {len(added)} {'cosa' if len(added) == 1 else 'cosas'} a la lista.{extra}")
+                extra = tr(" {count} ya estaba." if len(present) == 1 else " {count} ya estaban.", count=len(present))
+                template = "Agregué una cosa a la lista.{extra}" if len(added) == 1 else "Agregué {count} cosas a la lista.{extra}"
+                return Response(tr(template, count=len(added), extra=extra if present else ""))
             case "recipe.timer":
                 return self._timer()
             case "recipe.close":
                 self.session.close()
-                return Response(f"Cerré la receta de {recipe.title.lower()}.")
+                return Response(tr("Cerré la receta de {title}.", title=recipe.title.lower()))
         return Response("Todavía no sé hacer eso con la receta.", sound="error")
 
     async def _start(self, intent: Intent) -> Response:
@@ -91,7 +94,7 @@ class RecipeSkill:
                 return await self._video.handle(Intent("video.play", {"query": dish, "kind": "recipe"}, intent.text, intent.raw))
             return Response("Para recetas paso a paso hay que activar la IA en la configuración.", sound="error")
         if self.on_wait is not None:
-            await self.on_wait(f"Déjame ver la receta de {dish}…")
+            await self.on_wait(tr("Déjame ver la receta de {dish}…", dish=dish))
         result = await self.make(dish)
         if isinstance(result, Response):
             return result
@@ -101,27 +104,31 @@ class RecipeSkill:
         """Abre una receta (también la que manda la IA desde una pregunta libre) y la presenta."""
         self.session.start(recipe)
         steps = len(recipe.steps)
-        count = f"{len(recipe.ingredients)} ingredientes y {steps} pasos" if recipe.ingredients else f"{steps} pasos"
-        return Response(
-            f"{capitalize(recipe.title)}, para {recipe.servings} porciones: son {count}. "
-            "Di «los ingredientes» para que te los lea, o «siguiente paso» para empezar."
-        )
+        if recipe.ingredients:
+            count = tr("{ingredients} ingredientes y {steps} pasos", ingredients=len(recipe.ingredients), steps=steps)
+        else:
+            count = tr("{steps} pasos", steps=steps)
+        return Response(tr(
+            "{title}, para {servings} porciones: son {count}. "
+            "Di «los ingredientes» para que te los lea, o «siguiente paso» para empezar.",
+            title=capitalize(recipe.title), servings=recipe.servings, count=count,
+        ))
 
     def _say_step(self, index: int) -> Response:
         step = self.session.go(index)
         assert step is not None and self.session.recipe is not None
         total = len(self.session.recipe.steps)
-        text = f"Paso {index + 1} de {total}: {step.text}"
+        text = tr("Paso {number} de {total}: {text}", number=index + 1, total=total, text=step.text)
         if not text.endswith((".", "!", "?")):
             text += "."
         if step.minutes:
-            text += f" Si quieres, di «pon el tiempo» y cuento {format_duration(step.minutes * 60)}."
+            text += tr(" Si quieres, di «pon el tiempo» y cuento {duration}.", duration=format_duration(step.minutes * 60))
         return Response(text)
 
     def _timer(self) -> Response:
         step = self.session.step
         if step is None or not step.minutes:
             return NEEDS_DURATION
-        label = f"el paso {self.session.current + 1} de la receta"
+        label = tr("el paso {number} de la receta", number=self.session.current + 1)
         self._timers.add(step.minutes * 60, label)
-        return Response(f"Listo: {format_duration(step.minutes * 60)} para {label}.")
+        return Response(tr("Listo: {duration} para {label}.", duration=format_duration(step.minutes * 60), label=label))

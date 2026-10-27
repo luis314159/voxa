@@ -1,6 +1,5 @@
 # VOXA grammar in English (language = "en"). Same intents and slots as grammar.yaml.
 # Order matters: the first pattern that matches wins, so specific commands go before «play …».
-# Recipes and kitchen conversions are Spanish-only for now (see docs/backlog.md).
 
 - intent: timer.stop_alarm
   patterns:
@@ -58,6 +57,12 @@
     - pattern: "(cross off|remove|delete|check off) {query} from my (tasks|to do list|todo list)"
       set: {whose: mine}
 
+# Before the shopping list: «add the ingredients to the list» belongs to the recipe.
+- intent: recipe.to_list
+  patterns:
+    - "(add|put|send) [all] the (ingredients|recipe ingredients|ingredients of the recipe|ingredients for the recipe) (to|on) [the|my] (list|shopping list|grocery list)"
+    - "(add|put) the recipe (to|on) [the|my] (list|shopping list|grocery list)"
+
 - intent: shopping.clear
   patterns:
     - "(clear|empty|delete|erase) the (shopping list|grocery list|list)"
@@ -78,6 +83,118 @@
     - "(add|put) {query} (to|on) the (shopping list|grocery list|list)"
     - "we (need|are out of|ran out of) {query}"
     - "(we are|were) out of {query}"
+
+# Kitchen conversions («how many grams is a cup of flour»).
+- intent: kitchen.temperature
+  patterns:
+    - pattern: "[(convert|what is|whats)] {number} [degrees] fahrenheit (in|to|into) [degrees] (celsius|centigrade)"
+      set: {from: f}
+    - pattern: "how many degrees (celsius|centigrade) (is|are) {number} [degrees] fahrenheit"
+      set: {from: f}
+    - pattern: "[(convert|what is|whats)] {number} [degrees] [(celsius|centigrade)] (in|to|into) [degrees] fahrenheit"
+      set: {from: c}
+    - pattern: "how many degrees fahrenheit (is|are) {number} [degrees] [(celsius|centigrade)]"
+      set: {from: c}
+
+- intent: kitchen.convert
+  patterns:
+    - pattern: "how many (grams|gram) (is there in|are there in|is in|are in|is|are|in|makes|make|does|do) {query}"
+      set: {unit: gramos}
+    - pattern: "how much (does|do|is) {query} (weigh in|in) (grams|gram)"
+      set: {unit: gramos}
+    - pattern: "[(convert|what is|whats)] {query} (in|to|into) (grams|gram)"
+      set: {unit: gramos}
+    - pattern: "how many (kilos|kilograms|kilo) (is there in|are there in|is in|are in|is|are|in|makes|make|does|do) {query}"
+      set: {unit: kilos}
+    - pattern: "how much (does|do|is) {query} (weigh in|in) (kilos|kilograms|kilo)"
+      set: {unit: kilos}
+    - pattern: "[(convert|what is|whats)] {query} (in|to|into) (kilos|kilograms|kilo)"
+      set: {unit: kilos}
+    - pattern: "how many (cups|cup) (is there in|are there in|is in|are in|is|are|in|makes|make|does|do) {query}"
+      set: {unit: tazas}
+    - pattern: "how much (does|do|is) {query} (weigh in|in) (cups|cup)"
+      set: {unit: tazas}
+    - pattern: "[(convert|what is|whats)] {query} (in|to|into) (cups|cup)"
+      set: {unit: tazas}
+    - pattern: "how many (tablespoons|tablespoon|tbsp) (is there in|are there in|is in|are in|is|are|in|makes|make|does|do) {query}"
+      set: {unit: cucharadas}
+    - pattern: "how much (does|do|is) {query} (weigh in|in) (tablespoons|tablespoon|tbsp)"
+      set: {unit: cucharadas}
+    - pattern: "[(convert|what is|whats)] {query} (in|to|into) (tablespoons|tablespoon|tbsp)"
+      set: {unit: cucharadas}
+    - pattern: "how many (teaspoons|teaspoon|tsp) (is there in|are there in|is in|are in|is|are|in|makes|make|does|do) {query}"
+      set: {unit: cucharaditas}
+    - pattern: "how much (does|do|is) {query} (weigh in|in) (teaspoons|teaspoon|tsp)"
+      set: {unit: cucharaditas}
+    - pattern: "[(convert|what is|whats)] {query} (in|to|into) (teaspoons|teaspoon|tsp)"
+      set: {unit: cucharaditas}
+    - pattern: "how many (milliliters|millilitres|ml) (is there in|are there in|is in|are in|is|are|in|makes|make|does|do) {query}"
+      set: {unit: mililitros}
+    - pattern: "how much (does|do|is) {query} (weigh in|in) (milliliters|millilitres|ml)"
+      set: {unit: mililitros}
+    - pattern: "[(convert|what is|whats)] {query} (in|to|into) (milliliters|millilitres|ml)"
+      set: {unit: mililitros}
+    - pattern: "how many (liters|litres) (is there in|are there in|is in|are in|is|are|in|makes|make|does|do) {query}"
+      set: {unit: litros}
+    - pattern: "how much (does|do|is) {query} (weigh in|in) (liters|litres)"
+      set: {unit: litros}
+    - pattern: "[(convert|what is|whats)] {query} (in|to|into) (liters|litres)"
+      set: {unit: litros}
+    - pattern: "how many (ounces|ounce|oz) (is there in|are there in|is in|are in|is|are|in|makes|make|does|do) {query}"
+      set: {unit: onzas}
+    - pattern: "how much (does|do|is) {query} (weigh in|in) (ounces|ounce|oz)"
+      set: {unit: onzas}
+    - pattern: "[(convert|what is|whats)] {query} (in|to|into) (ounces|ounce|oz)"
+      set: {unit: onzas}
+    - pattern: "how many (pounds|pound|lbs) (is there in|are there in|is in|are in|is|are|in|makes|make|does|do) {query}"
+      set: {unit: libras}
+    - pattern: "how much (does|do|is) {query} (weigh in|in) (pounds|pound|lbs)"
+      set: {unit: libras}
+    - pattern: "[(convert|what is|whats)] {query} (in|to|into) (pounds|pound|lbs)"
+      set: {unit: libras}
+
+# Step by step recipes (with the AI; without it, «recipe for…» plays a video of the recipe).
+- intent: recipe.timer
+  patterns:
+    - "(start|set|put on|begin) [the|a] (timer|time) (for this step|for the step|for this)"
+    - "(start the timer|start the clock|time it|time this step|time this)"
+
+- intent: recipe.next
+  patterns:
+    - "[ok|okay|done|alright|all right|ready] (next step|the next step|whats next|what is next|what next|what do i do next|what do i do now|what now|and then what)"
+    - "(lets start|lets begin|start the recipe|begin the recipe|first step|the first step|go to the first step)"
+
+- intent: recipe.previous
+  patterns:
+    - "(previous step|the previous step|last step|go back a step|go back one step|back one step|the step before)"
+
+- intent: recipe.repeat
+  patterns:
+    - "(repeat|read|say|tell me) [the|this|that] step [again]"
+    - "(what step am i on|what step are we on|which step is it|what step is it)"
+
+- intent: recipe.goto
+  patterns:
+    - "(go|skip|jump|move|go back) to step [number] {number}"
+    - "step [number] {number}"
+
+- intent: recipe.ingredients
+  patterns:
+    - "(what|which) ingredients (do i need|do we need|does it need|does it have|are there|are they)"
+    - "(read|tell me|give me|repeat|list) the ingredients [again]"
+    - "(the ingredients|ingredients|what are the ingredients)"
+
+- intent: recipe.close
+  patterns:
+    - "(finish|close|end|stop|cancel|exit|quit) [the|this] recipe"
+    - "(im done cooking|we are done cooking|were done cooking|done cooking|we are done with the recipe|were done with the recipe)"
+
+- intent: recipe.start
+  patterns:
+    - "(give me|tell me|show me|find|find me|i want|i need|read me|get me|look up) [a|the|your] recipe (for|of) {query}"
+    - "recipe for {query}"
+    - "how (do i|do you|to|can i|should i) (make|cook|prepare|bake) {query}"
+    - "(i want to|lets|help me|teach me to|teach me how to|i am going to|im going to|we are going to|were going to) (make|cook|prepare|bake) {query}"
 
 - intent: timer.set
   patterns:
