@@ -318,5 +318,29 @@ def _https(url: str) -> str:
     return "https://" + url[len("webcal://"):] if url.lower().startswith("webcal://") else url
 
 
+def personal_calendars(config) -> dict[str, str]:
+    """El calendario de cada persona ({nombre: dirección iCal}), en ``calendarios.json`` (600)."""
+    import json
+
+    try:
+        data = json.loads(config.calendars_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    return {str(k): str(v) for k, v in data.items() if isinstance(v, str) and v} if isinstance(data, dict) else {}
+
+
+def save_personal_calendar(config, person: str, url: str | None) -> None:
+    import json
+
+    from voxa.settings import write_private
+
+    calendars = personal_calendars(config)
+    if url:
+        calendars[person] = url
+    else:
+        calendars.pop(person, None)
+    write_private(config.calendars_path, json.dumps(calendars, ensure_ascii=False))
+
+
 def valid_url(url: str) -> bool:
     return bool(re.fullmatch(r"(?i)(https|webcal)://[^\s/]+\.[^\s/]+/\S+", url.strip()))

@@ -373,7 +373,7 @@ class Service:
 
         skill = self.app.assistant.skill("calendar")
         minutes = self.app.config.calendar.remind_minutes
-        if getattr(skill, "calendar", None) is None or minutes <= 0:
+        if skill is None or not getattr(skill, "has_any", lambda: False)() or minutes <= 0:
             return
         told: set[tuple[str, str]] = set()
         while True:

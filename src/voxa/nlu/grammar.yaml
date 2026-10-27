@@ -396,12 +396,15 @@
 # El calendario de la familia (de solo lectura).
 - intent: calendar.tomorrow
   patterns:
+    - "(que tiene|que hay para|que le toca a) {person} [para] manana"
     - "(que tengo|que hay|tengo algo|que tenemos|tenemos algo) [para] manana"
     - "(que hay en|que dice|que tiene) [mi|el|la|nuestro|nuestra] (calendario|agenda) [de|para] manana"
     - "[cual es] [mi|la] agenda [de|para] manana"
 
 - intent: calendar.today
   patterns:
+    - "(que tiene|que hay para|que le toca a) {person} [para] hoy"
+    - "que hay en el calendario de {person} [para] hoy"
     - "(que tengo|que hay|tengo algo|que tenemos|tenemos algo) [para] hoy"
     - "(que hay en|que dice|que tiene) [mi|el|la|nuestro|nuestra] (calendario|agenda) [de hoy|para hoy|hoy]"
     - "[cual es] [mi|la] agenda [de|para] hoy"

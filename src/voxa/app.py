@@ -12,7 +12,7 @@ from voxa.core.assistant import Assistant
 from voxa.health import Check, internet_check, player_check, spotify_check
 from voxa.nlu.matcher import Matcher, load_matcher
 from voxa.services.ai import AiSetupError, build_chat, prices_for, read_key
-from voxa.services.calendar import Calendar
+from voxa.services.calendar import Calendar, personal_calendars
 from voxa.services.http import UrllibHttp
 from voxa.services.mpris import PlayerctlBackend
 from voxa.services.music_backend import LayeredMusicBackend, MusicBackend, MusicRouter, NowPlaying
@@ -202,10 +202,14 @@ def build_app(config: Config, *, simulated: bool = False, on_ring: Callable[[Tim
     music: MusicBackend = SimulatedMusic() if simulated else build_music(config)
     now_playing = music.now_playing if simulated else music.display_now_playing
     volume: VolumeControl = SimulatedVolume() if simulated else WpctlVolume()
-    calendar = None
+    calendar, personal = None, {}
     if config.calendar.enabled:
-        calendar = Calendar(lambda: read_secret(config.calendar_url_path), UrllibHttp(), config.calendar_cache_path)
-    agenda = CalendarSkill(calendar)
+        if read_secret(config.calendar_url_path):
+            calendar = Calendar(lambda: read_secret(config.calendar_url_path), UrllibHttp(), config.calendar_cache_path)
+        for i, (person, url) in enumerate(sorted(personal_calendars(config).items())):
+            cache = config.calendar_cache_path.with_name(f"calendario-{i}.ics")
+            personal[person] = Calendar(lambda url=url: url, UrllibHttp(), cache)
+    agenda = CalendarSkill(calendar, personal=personal)
     weather = None
     if config.weather.latitude is not None and config.weather.longitude is not None:
         weather = OpenMeteo(UrllibHttp(), config.weather.latitude, config.weather.longitude)
@@ -223,7 +227,7 @@ def build_app(config: Config, *, simulated: bool = False, on_ring: Callable[[Tim
         "system": SystemSkill(),
         "kitchen": KitchenSkill(),
         "routine": RoutineSkill(timers, weather, music, config.routine.morning_music,
-                                agenda=agenda.today_for_morning if agenda.calendar else None,
+                                agenda=agenda.today_for_morning if agenda.has_any() else None,
                                 pending=tasks_skill.morning),
         "tasks": tasks_skill,
         "calendar": agenda,

@@ -19,6 +19,7 @@ from typing import TYPE_CHECKING, Any, Awaitable, Callable
 
 import voxa
 from voxa.services.http import Http, UrllibHttp
+from voxa.services.calendar import personal_calendars, save_personal_calendar
 from voxa.services.spotifast_setup import REDIRECT as SPOTIFAST_REDIRECT
 from voxa.settings import SettingsError, read_secret, restart_soon, save_secret, save_settings, settings_path
 
@@ -72,7 +73,7 @@ class SettingsApi:
 
     # --- lo que ve el celular ---------------------------------------------------------
     def summary(self) -> dict[str, Any]:
-        from voxa.enroll import people
+        from voxa.audio.speaker import family_names
         from voxa.telegram import Chats, read_token
 
         app, config = self._service.app, self.config
@@ -104,9 +105,10 @@ class SettingsApi:
                           Chats(config.telegram_chats_path, config.telegram_code_path).all().items()],
             },
             "calendario": {"enabled": config.calendar.enabled, "url": read_secret(config.calendar_url_path) is not None,
-                           "avisar": config.calendar.remind_minutes},
+                           "avisar": config.calendar.remind_minutes,
+                           "personas": sorted(personal_calendars(config))},
             "voz": {
-                "personas": people(config.wake_recordings_dir),
+                "personas": family_names(config.wake_recordings_dir),
                 "verificador": config.verifier_path.exists(),
                 "grabando": self._service.enrolling,
                 "lista": self._enroll_ready(),
@@ -145,7 +147,8 @@ class SettingsApi:
                 case "/api/clima/buscar":
                     return await self._find_city(str(data.get("texto") or ""))
                 case "/api/secreto":
-                    return await self._secret(str(data.get("tipo", "")), str(data.get("valor") or "").strip())
+                    return await self._secret(str(data.get("tipo", "")), str(data.get("valor") or "").strip(),
+                                              str(data.get("persona") or "").strip()[:40] or None)
                 case "/api/spotify/autorizar":
                     return await self._spotify_start()
                 case "/api/spotify/codigo":
@@ -199,7 +202,7 @@ class SettingsApi:
             return 502, {"error": str(exc)}
         return 200, {"lugares": [{"nombre": p.label, "lat": p.latitude, "lon": p.longitude} for p in places]}
 
-    async def _secret(self, kind: str, value: str) -> tuple[int, Any]:
+    async def _secret(self, kind: str, value: str, person: str | None = None) -> tuple[int, Any]:
         config = self.config
         if not value:
             return 400, {"error": "falta el valor"}
@@ -226,7 +229,10 @@ class SettingsApi:
                 count = await Calendar(lambda: value, self._http, config.calendar_cache_path).check()
             except CalendarUnavailable as exc:
                 return 400, {"error": f"no pude leer el calendario: {exc}"}
-            save_secret(config.calendar_url_path, value)
+            if person:
+                save_personal_calendar(config, person, value)
+            else:
+                save_secret(config.calendar_url_path, value)
             save_settings(settings_path(self._config_file), "calendar", {"enabled": True})
             return 200, await self._saved({"eventos": count})
         return 400, {"error": "¿qué llave es?"}

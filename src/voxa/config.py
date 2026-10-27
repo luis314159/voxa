@@ -194,6 +194,11 @@ class Config:
         return self.config_dir / "calendario_url"
 
     @property
+    def calendars_path(self) -> Path:
+        """El calendario de cada persona ({nombre: dirección iCal}, 600)."""
+        return self.config_dir / "calendarios.json"
+
+    @property
     def calendar_cache_path(self) -> Path:
         return _xdg("XDG_CACHE_HOME", ".cache") / "calendario.ics"
 

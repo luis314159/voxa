@@ -6,6 +6,7 @@ import logging
 from datetime import datetime, timedelta
 from typing import Callable
 
+from voxa.core.people import speaker
 from voxa.core.phrases import capitalize, clock_words, join_words, weekday_name
 from voxa.core.types import Intent, Response
 from voxa.services.calendar import Calendar, CalendarUnavailable, Event
@@ -40,63 +41,93 @@ def count_phrase(events: list[Event]) -> str:
 
 
 class CalendarSkill:
-    def __init__(self, calendar: Calendar | None, now: Callable[[], datetime] | None = None) -> None:
+    """El calendario de la familia y, si los hay, el de cada persona (se juntan según quién pregunta)."""
+
+    def __init__(
+        self,
+        calendar: Calendar | None,
+        now: Callable[[], datetime] | None = None,
+        personal: dict[str, Calendar] | None = None,
+    ) -> None:
         self.calendar = calendar
+        self.personal = personal or {}
         self._now = now or (lambda: datetime.now().astimezone())
 
+    def has_any(self) -> bool:
+        return self.calendar is not None or bool(self.personal)
+
+    def _sources(self, person: str | None) -> list[tuple[str | None, Calendar]]:
+        sources: list[tuple[str | None, Calendar]] = [(None, self.calendar)] if self.calendar else []
+        if person:
+            sources += [(name, cal) for name, cal in self.personal.items() if name.lower() == person.lower()]
+        return sources
+
+    async def _events(self, start: datetime, end: datetime, person: str | None) -> list[Event]:
+        events: list[Event] = []
+        for _, calendar in self._sources(person):
+            events += await calendar.events(start, end)
+        return sorted(events, key=lambda e: (not e.all_day, e.start))
+
     async def handle(self, intent: Intent) -> Response:
-        if self.calendar is None:
+        person = (intent.slots.get("person") or "").strip().title() or speaker()
+        if not self._sources(person):
             return Response(NOT_SET)
         try:
             match intent.name:
                 case "calendar.today":
-                    return Response(await self.today())
+                    return Response(await self.today(person=person, named=bool(intent.slots.get("person"))))
                 case "calendar.tomorrow":
-                    return Response(await self._day(1))
+                    return Response(await self._day(1, person))
                 case "calendar.next":
-                    return Response(await self._next())
+                    return Response(await self._next(person))
         except CalendarUnavailable as exc:
             log.warning("Calendario: %s", exc)
             return Response("No pude leer el calendario. Revisa la dirección en Ajustes.", sound="error")
         return Response("Todavía no sé hacer eso con el calendario.", sound="error")
 
-    async def today(self, *, morning: bool = False) -> str:
+    async def today(self, *, morning: bool = False, person: str | None = None, named: bool = False) -> str:
         """Lo que queda de hoy (``morning``: para «buenos días», vacío si no hay nada)."""
         now = self._now()
-        events = await self.calendar.events(now, _start_of(now) + timedelta(days=1))
+        events = await self._events(now, _start_of(now) + timedelta(days=1), person)
         if not events:
-            return "" if morning else "Hoy ya no tienes nada en el calendario."
-        lead = "En el calendario de hoy hay" if morning else "Hoy tienes"
+            if morning:
+                return ""
+            return f"Hoy {person} ya no tiene nada en el calendario." if named else "Hoy ya no tienes nada en el calendario."
+        lead = "En el calendario de hoy hay" if morning else f"Hoy {person} tiene" if named else "Hoy tienes"
         return f"{lead} {count_phrase(events)}: {say_events(events, now.tzinfo)}."
 
     async def coming_up(self, minutes: int, told: set[tuple[str, str]]) -> list[str]:
         """Los avisos de los eventos que empiezan en los próximos ``minutes`` (cada uno una sola vez)."""
         now = self._now()
         said = []
-        # El final se incluye: el evento de las 9:00 se avisa a las 8:50 con «10 minutos».
-        for event in await self.calendar.events(now, now + timedelta(minutes=minutes, seconds=30)):
-            key = (event.title, event.start.isoformat())
-            if event.all_day or event.start < now or key in told:
-                continue
-            told.add(key)
-            left = round((event.start - now).total_seconds() / 60)
-            said.append(f"En {left} minutos: {event.title}." if left > 1 else f"Ya casi empieza: {event.title}.")
+        sources = [(None, self.calendar)] if self.calendar else []
+        sources += list(self.personal.items())
+        for person, calendar in sources:
+            # El final se incluye: el evento de las 9:00 se avisa a las 8:50 con «10 minutos».
+            for event in await calendar.events(now, now + timedelta(minutes=minutes, seconds=30)):
+                key = (event.title, event.start.isoformat())
+                if event.all_day or event.start < now or key in told:
+                    continue
+                told.add(key)
+                left = round((event.start - now).total_seconds() / 60)
+                text = f"en {left} minutos: {event.title}." if left > 1 else f"ya casi empieza: {event.title}."
+                said.append(f"{person}, {text}" if person else capitalize(text))
         return said
 
     async def today_for_morning(self) -> str:
-        return await self.today(morning=True)
+        return await self.today(morning=True, person=speaker())
 
-    async def _day(self, offset: int) -> str:
+    async def _day(self, offset: int, person: str | None = None) -> str:
         day = _start_of(self._now()) + timedelta(days=offset)
-        events = await self.calendar.events(day, day + timedelta(days=1))
+        events = await self._events(day, day + timedelta(days=1), person)
         name = "Mañana" if offset == 1 else capitalize(f"el {weekday_name(day.weekday())}")
         if not events:
             return f"{name} no tienes nada en el calendario."
         return f"{name} tienes {count_phrase(events)}: {say_events(events, day.tzinfo)}."
 
-    async def _next(self) -> str:
+    async def _next(self, person: str | None = None) -> str:
         now = self._now()
-        events = [e for e in await self.calendar.events(now, now + timedelta(days=14)) if not e.all_day and e.start >= now]
+        events = [e for e in await self._events(now, now + timedelta(days=14), person) if not e.all_day and e.start >= now]
         if not events:
             return "No tienes nada en el calendario en las próximas dos semanas."
         event = events[0]

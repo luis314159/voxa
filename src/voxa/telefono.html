@@ -219,7 +219,8 @@
   <h2>Calendario</h2>
   <p class="estado" id="cal-estado"></p>
   <p class="ayuda">Para «¿qué tengo hoy?» y lo de hoy en «buenos días». En Google Calendar (desde una computadora): Configuración → tu calendario → «Dirección secreta en formato iCal». Pégala aquí; VOXA solo lo lee.</p>
-  <form class="fila" id="form-cal"><input type="password" id="cal-url" placeholder="https://calendar.google.com/…/basic.ics" autocomplete="off"><button>Guardar</button></form>
+  <label class="campo"><span>¿De quién es este calendario?</span><select id="cal-persona"><option value="">De la familia</option></select></label>
+  <form class="fila campo" id="form-cal"><input type="password" id="cal-url" placeholder="https://calendar.google.com/…/basic.ics" autocomplete="off"><button>Guardar</button></form>
   <label class="campo"><span>Avisar antes de cada evento</span><select id="cal-avisar"><option value="0">No avisar</option><option value="5">5 minutos antes</option><option value="10">10 minutos antes</option><option value="15">15 minutos antes</option><option value="30">30 minutos antes</option></select></label>
   <p class="ayuda" id="cal-respuesta"></p>
 </section>
@@ -618,6 +619,9 @@ async function cargarAjustes() {
   $("cal-estado").replaceChildren(marca(cal.enabled && cal.url, !cal.url ? "Sin calendario" : cal.enabled ? "Conectado" : "Apagado"));
 
   $("cal-avisar").value = String(cal.avisar);
+  const quien = $("cal-persona"), elegido = quien.value;
+  quien.replaceChildren(new Option("De la familia", ""), ...a.voz.personas.map((p) => new Option(p + (cal.personas.includes(p) ? " ✓" : ""), p)));
+  quien.value = elegido;
   const tg = a.telegram;
   $("tg-estado").replaceChildren(marca(tg.enabled && tg.token && tg.chats.length > 0,
     !tg.token ? "Sin bot" : !tg.enabled ? "Apagado" : tg.chats.length ? `${tg.chats.length} chat(s) vinculados` : "Falta vincular un chat"));
@@ -677,11 +681,11 @@ async function guardar(seccion, valores, salida) {
   }
 }
 
-async function secreto(tipo, valor, salida) {
+async function secreto(tipo, valor, salida, persona) {
   if (!valor) return false;
   decir(salida, "Revisando…");
   try {
-    const r = await api("/api/secreto", { tipo, valor });
+    const r = await api("/api/secreto", { tipo, valor, persona: persona || "" });
     decir(salida, r.respuesta + (r.bot ? ` Bot: @${r.bot}.` : "") + (r.eventos != null ? ` Trae ${r.eventos} eventos.` : ""));
     despues(r);
     return true;
@@ -770,7 +774,7 @@ $("form-clima").onsubmit = async (ev) => {
 
 $("form-cal").onsubmit = async (ev) => {
   ev.preventDefault();
-  if (await secreto("calendario", $("cal-url").value.trim(), "cal-respuesta")) $("cal-url").value = "";
+  if (await secreto("calendario", $("cal-url").value.trim(), "cal-respuesta", $("cal-persona").value)) $("cal-url").value = "";
 };
 $("form-tg").onsubmit = async (ev) => {
   ev.preventDefault();

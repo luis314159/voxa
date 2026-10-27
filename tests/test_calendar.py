@@ -178,3 +178,52 @@ async def test_heads_up_before_each_event_only_once(agenda):
     assert await skill.coming_up(10, told) == []  # ya se dijo
     skill._now = lambda: NOW.replace(hour=8, minute=59, second=30)
     assert await skill.coming_up(10, set()) == ["Ya casi empieza: Dentista."]
+
+
+ANA_ICS = """BEGIN:VCALENDAR
+BEGIN:VEVENT
+UID:natacion
+DTSTART;TZID=America/Mexico_City:20261026T160000
+DTEND;TZID=America/Mexico_City:20261026T170000
+SUMMARY:Natación
+END:VEVENT
+END:VCALENDAR
+"""
+
+
+async def test_each_person_hears_family_plus_their_own(tmp_path):
+    from voxa.core.people import speaking
+
+    family = Calendar(lambda: "https://x.example/f.ics", FakeHttp(HttpResponse(200, ICS)), tmp_path / "f.ics", home=HOME)
+    ana = Calendar(lambda: "https://x.example/a.ics", FakeHttp(HttpResponse(200, ANA_ICS)), tmp_path / "a.ics", home=HOME)
+    skill = CalendarSkill(family, now=lambda: NOW, personal={"Ana": ana})
+    with speaking("Ana"):
+        mine = await ask(skill, "qué tengo hoy")
+    assert mine.startswith("Hoy tienes 6 cosas") and "Natación" in mine
+    assert "Natación" not in await ask(skill, "qué tengo hoy")  # sin saber quién habla: solo la familia
+    assert "Natación" in await ask(skill, "qué tiene Ana hoy")
+    told = set()
+    skill._now = lambda: NOW.replace(hour=15, minute=50)
+    assert await skill.coming_up(10, told) == ["Ana, en 10 minutos: Natación."]
+
+
+async def test_only_a_personal_calendar_still_works(tmp_path):
+    from voxa.core.people import speaking
+
+    ana = Calendar(lambda: "https://x.example/a.ics", FakeHttp(HttpResponse(200, ANA_ICS)), tmp_path / "a.ics", home=HOME)
+    skill = CalendarSkill(None, now=lambda: NOW, personal={"Ana": ana})
+    assert skill.has_any()
+    assert (await ask(skill, "qué tengo hoy")) == NOT_SET  # no se sabe quién es
+    with speaking("Ana"):
+        assert "Natación" in await ask(skill, "qué tengo hoy")
+
+
+def test_personal_calendars_are_saved_privately(tmp_path):
+    from voxa.config import Config
+    from voxa.services.calendar import personal_calendars, save_personal_calendar
+
+    config = Config(config_dir=tmp_path)
+    save_personal_calendar(config, "Ana", "https://x.example/a.ics")
+    assert personal_calendars(config) == {"Ana": "https://x.example/a.ics"}
+    save_personal_calendar(config, "Ana", None)
+    assert personal_calendars(config) == {}
