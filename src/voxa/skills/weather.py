@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 
 from voxa.core.types import Intent, Response
+from voxa.i18n import tr
 from voxa.services.weather import OpenMeteo, WeatherUnavailable
 
 log = logging.getLogger(__name__)
@@ -24,12 +25,13 @@ class WeatherSkill:
         rain = weather.rain_probability
         if intent.name == "weather.rain":
             if rain >= 60:
-                return Response(f"Sí, probablemente. Hay {rain} % de probabilidad de lluvia.")
+                return Response(tr("Sí, probablemente. Hay {rain} % de probabilidad de lluvia.", rain=rain))
             if rain >= 30:
-                return Response(f"Tal vez. Hay {rain} % de probabilidad de lluvia.")
-            return Response(f"No parece. La probabilidad de lluvia es de {rain} %.")
+                return Response(tr("Tal vez. Hay {rain} % de probabilidad de lluvia.", rain=rain))
+            return Response(tr("No parece. La probabilidad de lluvia es de {rain} %.", rain=rain))
         return Response(
-            f"Ahora hay {round(weather.temperature)} grados y está {weather.description}. "
-            f"Hoy, máxima de {round(weather.high)} y mínima de {round(weather.low)}."
-            + (f" Probabilidad de lluvia: {rain} %." if rain >= 30 else "")
+            tr("Ahora hay {now} grados y está {sky}. Hoy, máxima de {high} y mínima de {low}.",
+               now=round(weather.temperature), sky=tr(weather.description), high=round(weather.high),
+               low=round(weather.low))
+            + (tr(" Probabilidad de lluvia: {rain} %.", rain=rain) if rain >= 30 else "")
         )

@@ -5,11 +5,12 @@ from __future__ import annotations
 from voxa.core.people import speaker
 from voxa.core.phrases import capitalize, join_words
 from voxa.core.types import Intent, Response
+from voxa.i18n import tr
 from voxa.state.tasks import TaskList
 
 
 def _count(n: int) -> str:
-    return "un pendiente" if n == 1 else f"{n} pendientes"
+    return tr("un pendiente") if n == 1 else tr("{count} pendientes", count=n)
 
 
 class TasksSkill:
@@ -26,16 +27,19 @@ class TasksSkill:
                 task = self.tasks.add(intent.slots.get("query", ""), person)
                 if task is None:
                     return Response("Eso ya estaba en los pendientes.")
-                whose = f"los pendientes de {person}" if named else "tus pendientes" if person else "los pendientes de la casa"
-                return Response(f"Anotado en {whose}: {task.text}.")
+                whose = (tr("los pendientes de {person}", person=person) if named else tr("tus pendientes") if person
+                         else tr("los pendientes de la casa"))
+                return Response(tr("Anotado en {whose}: {task}.", whose=whose, task=task.text))
             case "tasks.list":
                 return Response(self._list(person, named is not None))
             case "tasks.done":
                 done = self.tasks.done(intent.slots.get("query", ""), person)
                 if done is None:
-                    return Response(f"No encontré «{intent.slots.get('query', '')}» en los pendientes.", sound="error")
+                    return Response(tr("No encontré «{task}» en los pendientes.", task=intent.slots.get("query", "")),
+                                    sound="error")
                 left = len(self.tasks.of(done.person))
-                return Response(f"Listo, taché {done.text}." + (f" Quedan {_count(left)}." if left else " ¡Ya no hay pendientes!"))
+                rest = tr(" Quedan {count}.", count=_count(left)) if left else tr(" ¡Ya no hay pendientes!")
+                return Response(tr("Listo, taché {task}.", task=done.text) + rest)
         return Response("Todavía no sé hacer eso con los pendientes.", sound="error")
 
     def _list(self, person: str | None, named: bool) -> str:
@@ -43,11 +47,13 @@ class TasksSkill:
         house = [t.text for t in self.tasks.of(None)]
         parts = []
         if person:
-            who = f"{person} tiene" if named else "Tienes"
-            parts.append(f"{who} {_count(len(own))}: {join_words(own)}." if own else
-                         f"{'No tienes' if not named else person + ' no tiene'} pendientes.")
+            if own:
+                who = tr("{person} tiene", person=person) if named else tr("Tienes")
+                parts.append(tr("{who} {count}: {items}.", who=who, count=_count(len(own)), items=join_words(own)))
+            else:
+                parts.append(tr("{person} no tiene pendientes.", person=person) if named else tr("No tienes pendientes."))
         if house and not named:
-            parts.append(capitalize(f"de la casa: {join_words(house)}."))
+            parts.append(capitalize(tr("de la casa: {items}.", items=join_words(house))))
         if not parts:
             return "No hay pendientes."
         return " ".join(parts)
@@ -55,4 +61,6 @@ class TasksSkill:
     def morning(self, person: str | None) -> str:
         """Para «buenos días»: cuántos pendientes tiene quien saludó (vacío si ninguno)."""
         own = self.tasks.of(person) if person else []
-        return f"Tienes {_count(len(own))}: {join_words([t.text for t in own])}." if own else ""
+        if not own:
+            return ""
+        return tr("{who} {count}: {items}.", who=tr("Tienes"), count=_count(len(own)), items=join_words([t.text for t in own]))

@@ -59,6 +59,8 @@ class WeatherConfig:
 
 @dataclass(frozen=True)
 class VoiceConfig:
+    language: str = "es"
+    """Idioma de la casa: «es» o «en» (gramática, voz, reconocimiento y respuestas)."""
     stt: str = "hibrido"
     vosk_model: str = "~/.local/share/voxa/models/vosk-model-small-es-0.42"
     whisper_model: str = "base"
@@ -297,7 +299,28 @@ def read_config(path: Path) -> tuple[Config, list[str]]:
             config, warnings = _apply(config, tomllib.load(fh), path)
     overlay = settings_path(path)
     config, more = _apply(config, load_settings(overlay), overlay)
-    return config, warnings + more
+    return _language_defaults(config), warnings + more
+
+
+# Los modelos que se usan si no se eligieron otros, según el idioma de la casa.
+MODEL_DEFAULTS = {
+    "es": ("~/.local/share/voxa/models/vosk-model-small-es-0.42", "~/.local/share/voxa/models/piper/es_MX-claude-high.onnx"),
+    "en": ("~/.local/share/voxa/models/vosk-model-small-en-us-0.15", "~/.local/share/voxa/models/piper/en_US-lessac-medium.onnx"),
+}
+
+
+def _language_defaults(config: Config) -> Config:
+    """En inglés, los modelos por defecto son los de inglés (si no se eligieron otros a mano)."""
+    voice = config.voice
+    if voice.language not in MODEL_DEFAULTS or voice.language == "es":
+        return config
+    vosk_es, piper_es = MODEL_DEFAULTS["es"]
+    vosk, piper = MODEL_DEFAULTS[voice.language]
+    return replace(config, voice=replace(
+        voice,
+        vosk_model=vosk if voice.vosk_model == vosk_es else voice.vosk_model,
+        piper_voice=piper if voice.piper_voice == piper_es else voice.piper_voice,
+    ))
 
 
 def _apply(config: Config, data: dict, path: Path) -> tuple[Config, list[str]]:

@@ -9,6 +9,7 @@ from typing import Awaitable, Callable
 from voxa.core.people import speaker
 from voxa.core.phrases import clock_words, join_words, time_phrase
 from voxa.core.types import Intent, Response
+from voxa.i18n import tr
 from voxa.departure import Departure
 from voxa.services.calendar import CalendarUnavailable
 from voxa.services.music_backend import BackendUnavailable, MusicBackend, NothingFound
@@ -49,19 +50,21 @@ class RoutineSkill:
 
     async def _good_morning(self) -> str:
         now = self._now()
-        greeting = "Buenos días" if now.hour < 12 else "Buenas tardes" if now.hour < 20 else "Buenas noches"
+        greeting = tr("Buenos días") if now.hour < 12 else tr("Buenas tardes") if now.hour < 20 else tr("Buenas noches")
         person = speaker()
-        parts = [f"¡{greeting}, {person}!" if person else f"¡{greeting}!", time_phrase(now)]
+        parts = [tr("¡{greeting}, {person}!", greeting=greeting, person=person) if person
+                 else tr("¡{greeting}!", greeting=greeting), time_phrase(now)]
         if self._weather is not None:
             try:
                 w = await self._weather.today()
-                rain = f" y {w.rain_probability} % de probabilidad de lluvia" if w.rain_probability >= 30 else ""
-                parts.append(f"Hay {round(w.temperature)} grados; hoy, máxima de {round(w.high)}{rain}.")
+                rain = tr(" y {rain} % de probabilidad de lluvia", rain=w.rain_probability) if w.rain_probability >= 30 else ""
+                parts.append(tr("Hay {now} grados; hoy, máxima de {high}{rain}.", now=round(w.temperature),
+                                high=round(w.high), rain=rain))
             except WeatherUnavailable as exc:
                 log.info("Sin clima para «buenos días»: %s", exc)
         today = self._reminders(lambda at: at.date() == now.date())
         if today:
-            parts.append(f"Hoy tienes: {join_words(today)}.")
+            parts.append(tr("Hoy tienes: {items}.", items=join_words(today)))
         if self._agenda is not None:
             try:
                 if agenda := await self._agenda():
@@ -83,7 +86,7 @@ class RoutineSkill:
         now = self._now()
         coming = self._reminders(lambda at: (at - now).total_seconds() < 18 * 3600)
         if coming:
-            return f"Buenas noches. Te aviso: {join_words(coming)}."
+            return tr("Buenas noches. Te aviso: {items}.", items=join_words(coming))
         return "Buenas noches."
 
     def _reminders(self, keep: Callable[[datetime], bool]) -> list[str]:
@@ -93,5 +96,6 @@ class RoutineSkill:
                 continue
             at = datetime.fromtimestamp(timer.ends_at)
             if keep(at):
-                said.append(f"{timer.label or 'la alarma'} a {clock_words(at.hour, at.minute, on_the_hour='')}")
+                said.append(tr("{what} a {hour}", what=timer.label or tr("la alarma"),
+                               hour=clock_words(at.hour, at.minute, on_the_hour="")))
         return said

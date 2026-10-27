@@ -70,16 +70,17 @@ class VoskStt:
 class WhisperStt:
     name = "whisper"
 
-    def __init__(self, model: str = "base", threads: int = 0) -> None:
+    def __init__(self, model: str = "base", threads: int = 0, language: str = "es") -> None:
         from faster_whisper import WhisperModel
 
+        self.language = language
         self._model = WhisperModel(model, device="cpu", compute_type="int8", cpu_threads=threads)
 
     def transcribe(self, samples: np.ndarray) -> str:
         audio = samples.astype(np.float32) / 32768.0
         # Sin initial_prompt: con frases cortas Whisper tiende a «repetir» el prompt.
         segments, _ = self._model.transcribe(
-            audio, language="es", beam_size=2, condition_on_previous_text=False, vad_filter=False
+            audio, language=self.language, beam_size=2, condition_on_previous_text=False, vad_filter=False
         )
         return " ".join(s.text.strip() for s in segments).strip()
 

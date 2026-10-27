@@ -21,11 +21,17 @@ from typing import AsyncIterable, AsyncIterator, Awaitable, Callable
 from voxa.core.phrases import clock_words, date_phrase
 from voxa.core.speech import SpeechChunker
 from voxa.core.types import Response
+from voxa.i18n import english
 from voxa.services.ai import COMMAND, AiAnswer, AiError, AiSetupError, ChatModel, Tool, cost_usd
 from voxa.state.ai_usage import AiUsage
 from voxa.state.recipe import Recipe
 
 log = logging.getLogger(__name__)
+
+ENGLISH_HINT = (
+    "\n\nLa familia habla inglés: contesta siempre en inglés. Las órdenes de la herramienta orden_voxa "
+    "van en español, como dice su descripción."
+)
 
 SYSTEM_PROMPT = """\
 Eres VOXA, el asistente de voz de la cocina de una familia. Hablas español de México, con calidez y \
@@ -212,6 +218,9 @@ class AiFallback:
         question = {"role": "user", "content": f"{self._context_line()}\n{text}"}
         tools: tuple[Tool, ...] = (COMMAND, RECIPE_TOOL) if self.start_recipe else (COMMAND,)
         system = SYSTEM_PROMPT + RECIPE_HINT if self.start_recipe else SYSTEM_PROMPT
+        if english():
+            # La familia habla inglés: la respuesta, en inglés; las órdenes para VOXA siguen en español.
+            system += ENGLISH_HINT
         spoken = ""
         if self.speak is None:
             answer = await self._ask(text, system, [*self._history, question], tools)

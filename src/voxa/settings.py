@@ -35,7 +35,7 @@ EDITABLE: dict[str, dict[str, Any]] = {
     "video": {"enabled": bool},
     "update": {"check": bool, "automatic": bool},
     "web": {"enabled": bool},
-    "voice": {"whisper_model": ("tiny", "base", "small")},
+    "voice": {"whisper_model": ("tiny", "base", "small"), "language": ("es", "en")},
     "routine": {"departure": "time", "departure_days": "days", "checklist": str, "morning_music": str},
     "house": {"room": str, "main": str},
 }

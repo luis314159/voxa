@@ -32,6 +32,7 @@ from voxa.skills.recipe import RecipeSkill
 from voxa.skills.routine import RoutineSkill
 from voxa.departure import Departure
 from voxa.house import SHARED_DOMAINS, House
+from voxa.i18n import set_language
 from voxa.skills.calendar import CalendarSkill
 from voxa.skills.house import HouseSkill, RemoteSkill
 from voxa.skills.enroll import EnrollSkill
@@ -103,12 +104,13 @@ def build_stt(config: Config, matcher: Matcher) -> SpeechToText:
     if voice.stt == "vosk":
         return VoskStt(_existing(voice.vosk_model, "el modelo de Vosk", vosk_hint))
     if voice.stt == "whisper":
-        return WhisperStt(voice.whisper_model)
+        return WhisperStt(voice.whisper_model, language=voice.language)
     if voice.stt == "hibrido":
         fast = VoskStt(_existing(voice.vosk_model, "el modelo de Vosk", vosk_hint))
         closed = VoskStt(Path(voice.vosk_model).expanduser(), matcher.vocabulary, model=fast.model)
         return HybridStt(
-            fast, WhisperStt(voice.whisper_model), matcher.needs_accurate_stt, matcher.understands, closed=closed
+            fast, WhisperStt(voice.whisper_model, language=voice.language), matcher.needs_accurate_stt,
+            matcher.understands, closed=closed
         )
     raise SetupError(f"Motor de STT desconocido: {voice.stt!r} (usa vosk, whisper o hibrido).")
 
@@ -263,7 +265,8 @@ def build_app(config: Config, *, simulated: bool = False, on_ring: Callable[[Tim
         if spotify_ready(config):
             checks.append(player_check(PlayerctlBackend(config.spotifast.mpris_player).now_playing,
                                        config.spotifast.mpris_player))
-    matcher = load_matcher()
+    set_language(config.voice.language)
+    matcher = load_matcher(language=config.voice.language)
     video_active = (lambda: player.current is not None) if player is not None else None
     assistant = Assistant(matcher, skills, timers, video_active=video_active)
     ai, ai_problem = build_ai(config, assistant)

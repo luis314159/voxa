@@ -6,6 +6,7 @@ import logging
 
 from voxa.core.phrases import join_words
 from voxa.core.types import Intent, Response
+from voxa.i18n import tr
 from voxa.house import House, HouseError, place_name
 
 log = logging.getLogger(__name__)
@@ -22,7 +23,7 @@ class HouseSkill:
         target = (intent.slots.get("device") or "").strip() or None
         if not message:
             return Response("¿Qué aviso?", sound="error")
-        text = f"¡A {message}!" if intent.slots.get("call") else _sentence(message)  # «llama a todos a comer»
+        text = tr("¡A {what}!", what=message) if intent.slots.get("call") else _sentence(message)  # «llama a todos a comer»
         try:
             heard = await self.house.announce(text, target=target)
         except HouseError as exc:
@@ -30,9 +31,9 @@ class HouseSkill:
             return Response("No pude avisar: no contesta la VOXA principal.", sound="error")
         if not heard:
             if target:
-                return Response(f"No encontré {place_name(target)} conectada.", sound="error")
+                return Response(tr("No encontré {place} conectada.", place=place_name(target)), sound="error")
             return Response("No hay otros cuartos con VOXA conectados.", sound="error")
-        return Response(f"Listo, avisé en {join_words([place_name(r) for r in heard])}.")
+        return Response(tr("Listo, avisé en {places}.", places=join_words([place_name(r) for r in heard])))
 
 
 class RemoteSkill:

@@ -245,5 +245,9 @@ def place_name(room: str) -> str:
 
 
 def _spoken(text: str, source: str) -> str:
+    from voxa.i18n import english
+
+    if english():
+        return f"Message from the {source.lower()}: {text}"
     place = place_name(source)
     return f"Aviso {'del ' + place[3:] if place.startswith('el ') else 'de ' + place}: {text}"

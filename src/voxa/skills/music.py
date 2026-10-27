@@ -4,6 +4,7 @@ import logging
 
 from voxa.core.phrases import capitalize, join_words
 from voxa.core.types import OK, Intent, Response
+from voxa.i18n import english, tr
 from voxa.services.music_backend import AuthRequired, BackendUnavailable, MusicBackend, NeedsPermission, NothingFound
 from voxa.skills.mood import mood_search
 
@@ -22,8 +23,9 @@ class MusicSkill:
         try:
             return await self._handle(intent)
         except NothingFound as exc:
-            what = "ese dispositivo" if intent.name == "music.transfer" else "eso"
-            return Response(f"No encontré {what}: «{exc}».", sound="error")
+            if intent.name == "music.transfer":
+                return Response(tr("No encontré ese dispositivo: «{what}».", what=exc), sound="error")
+            return Response(tr("No encontré eso: «{what}».", what=exc), sound="error")
         except NeedsPermission:
             return Response("Para tus Me gusta, vuelve a conectar Spotify desde el celular: Ajustes, Spotify, "
                             "«Conectar con Spotify».", sound="error")
@@ -43,9 +45,11 @@ class MusicSkill:
                 if kind == "liked":
                     result = await backend.play_liked()
                     return Response(capitalize(result.describe()) + ".")
-                if kind == "mood":
+                if kind == "mood" and english():  # «play some music for cooking»
+                    query, kind = f"{query} music", "playlist"
+                elif kind == "mood":
                     query, kind = mood_search(f"para {query}", forced=True) or query, "playlist"
-                elif kind in (None, "artist") and (search := mood_search(query)) is not None:
+                elif kind in (None, "artist") and not english() and (search := mood_search(query)) is not None:
                     query, kind = search, "playlist"
                 result = await backend.play(query, kind)
                 return Response(capitalize(result.describe()) + ".")
@@ -71,17 +75,20 @@ class MusicSkill:
                 current = await backend.now_playing()
                 if current is None:
                     return Response("No está sonando nada.")
-                return Response(f"{current.title}, de {current.artist}." if current.artist else f"{current.title}.")
+                if current.artist:
+                    return Response(tr("{title}, de {artist}.", title=current.title, artist=current.artist))
+                return Response(f"{current.title}.")
             case "music.playlists":
                 names = [p.name for p in await backend.playlists()]
                 if not names:
                     return Response("No encontré playlists en tu cuenta de Spotify.")
-                said = join_words(names[:MAX_SAID] + ([f"{len(names) - MAX_SAID} más"] if len(names) > MAX_SAID else []))
-                count = "una playlist" if len(names) == 1 else f"{len(names)} playlists"
-                return Response(f"Tienes {count}: {said}. Dime «pon mi playlist» y su nombre; en el celular están todas.")
+                said = join_words(names[:MAX_SAID] + ([tr("{count} más", count=len(names) - MAX_SAID)] if len(names) > MAX_SAID else []))
+                count = tr("una playlist") if len(names) == 1 else tr("{count} playlists", count=len(names))
+                return Response(tr("Tienes {count}: {items}. Dime «pon mi playlist» y su nombre; en el celular están todas.",
+                                   count=count, items=said))
             case "music.transfer":
                 name = await backend.transfer(intent.slots["device"])
-                return Response(f"Pasando la música a {name}.")
+                return Response(tr("Pasando la música a {device}.", device=name))
             case _:
                 return Response("Todavía no sé hacer eso con la música.", sound="error")
         return OK

@@ -4,11 +4,12 @@ import re
 
 from voxa.core.phrases import join_words
 from voxa.core.types import Intent, Response
+from voxa.i18n import tr
 from voxa.nlu.normalize import strip_accents
 from voxa.state.shopping import ShoppingList
 
 # «leche, huevos y tortillas» → tres cosas; «pan dulce» es una.
-_SPLIT = re.compile(r"\s*,\s*|\s+y\s+|\s+e\s+")
+_SPLIT = re.compile(r"\s*,\s*|\s+y\s+|\s+e\s+|\s+and\s+")
 _TRAILING = re.compile(r"\s+(a|en|de)\s+la\s+lista.*$")
 
 
@@ -38,21 +39,26 @@ class ShoppingSkill:
             case "shopping.add":
                 added, present = self.shopping.add(split_items(with_commas(intent.slots["query"], intent.raw)))
                 if not added and present:
-                    return Response(f"{join_words(present).capitalize()} ya {'estaba' if len(present) == 1 else 'estaban'} en la lista.")
+                    items = join_words(present).capitalize()
+                    if len(present) == 1:
+                        return Response(tr("{items} ya estaba en la lista.", items=items))
+                    return Response(tr("{items} ya estaban en la lista.", items=items))
                 if not added:
                     return Response("¿Qué agrego a la lista?", sound="error")
-                return Response(f"Agregué {join_words(added)} a la lista.")
+                return Response(tr("Agregué {items} a la lista.", items=join_words(added)))
             case "shopping.remove":
                 items = split_items(with_commas(intent.slots["query"], intent.raw))
                 removed = [r for r in (self.shopping.remove(i) for i in items) if r]
                 if not removed:
-                    return Response(f"No encontré {intent.slots['query']} en la lista.")
-                return Response(f"Quité {join_words(removed)} de la lista.")
+                    return Response(tr("No encontré {items} en la lista.", items=intent.slots["query"]))
+                return Response(tr("Quité {items} de la lista.", items=join_words(removed)))
             case "shopping.list":
                 items = self.shopping.items
                 if not items:
                     return Response("La lista del súper está vacía.")
-                return Response(f"En la lista hay {len(items)} {'cosa' if len(items) == 1 else 'cosas'}: {join_words(items)}.")
+                if len(items) == 1:
+                    return Response(tr("En la lista hay una cosa: {items}.", items=join_words(items)))
+                return Response(tr("En la lista hay {count} cosas: {items}.", count=len(items), items=join_words(items)))
             case "shopping.clear":
                 count = self.shopping.clear()
                 return Response("Borré la lista del súper." if count else "La lista ya estaba vacía.")

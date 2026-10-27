@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 
 from voxa.core.phrases import clock_words, join_words
+from voxa.i18n import tr
 
 WARNINGS = (15, 5)
 _TIME = re.compile(r"^([01]?\d|2[0-3]):([0-5]\d)$")
@@ -22,7 +23,7 @@ def parse_time(text: str) -> tuple[int, int] | None:
 
 
 def _minutes(n: int) -> str:
-    return "un minuto" if n == 1 else f"{n} minutos"
+    return tr("un minuto") if n == 1 else tr("{count} minutos", count=n)
 
 
 @dataclass(frozen=True)
@@ -42,7 +43,7 @@ class Departure:
         return now.replace(hour=self.at[0], minute=self.at[1], second=0, microsecond=0)
 
     def _reminder(self) -> str:
-        return f" No olviden: {join_words(self.checklist)}." if self.checklist else ""
+        return tr(" No olviden: {items}.", items=join_words(self.checklist)) if self.checklist else ""
 
     def how_long(self, now: datetime) -> str:
         if self.at is None:
@@ -50,13 +51,13 @@ class Departure:
         hour = clock_words(self.at[0], self.at[1], on_the_hour="")
         leave = self.today(now)
         if leave is None:
-            return f"Hoy no hay salida programada; los días de escuela es a {hour}."
+            return tr("Hoy no hay salida programada; los días de escuela es a {hour}.", hour=hour)
         left = round((leave - now).total_seconds() / 60)
         if left < 0:
-            return f"La salida era a {hour}."
+            return tr("La salida era a {hour}.", hour=hour)
         if left == 0:
-            return "¡Ya es hora de salir!" + self._reminder()
-        return f"Faltan {_minutes(left)} para salir (a {hour})." + self._reminder()
+            return tr("¡Ya es hora de salir!") + self._reminder()
+        return tr("Faltan {minutes} para salir (a {hour}).", minutes=_minutes(left), hour=hour) + self._reminder()
 
     def morning(self, now: datetime) -> str:
         """Para «buenos días»: la salida de hoy, si todavía no pasa."""
@@ -64,7 +65,8 @@ class Departure:
         if leave is None or leave <= now:
             return ""
         left = round((leave - now).total_seconds() / 60)
-        return f"Salen a {clock_words(self.at[0], self.at[1], on_the_hour='')}: faltan {_minutes(left)}."
+        return tr("Salen a {hour}: faltan {minutes}.", hour=clock_words(self.at[0], self.at[1], on_the_hour=""),
+                  minutes=_minutes(left))
 
     def due(self, now: datetime, told: set[str]) -> list[str]:
         """Los avisos que tocan ahora (cada uno una vez al día)."""
@@ -78,6 +80,6 @@ class Departure:
             if key in told or not moment <= now < moment + timedelta(minutes=2):
                 continue
             told.add(key)
-            text = "¡Hora de salir!" if minutes == 0 else f"Faltan {_minutes(minutes)} para salir."
+            text = tr("¡Hora de salir!") if minutes == 0 else tr("Faltan {minutes} para salir.", minutes=_minutes(minutes))
             said.append(text + self._reminder())
         return said

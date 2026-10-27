@@ -66,7 +66,46 @@ def restore_original(value: str, raw: str) -> str:
     return value
 
 
-def normalize(text: str) -> str:
+# --- inglés ------------------------------------------------------------------------------------
+_WAKE_EN = re.compile(r"^(?:(?:hey|hi|ok|okay)\s+)?(?:voxa|boxa|voksa|vox a|box a)\b\s*")
+_LEADING_EN = ("um", "uh", "so", "well", "okay", "ok", "hey", "alright", "please", "can you", "could you",
+               "would you", "will you", "i want you to")
+_CONTRACTIONS = [
+    (re.compile(r"\bwhat's\b"), "what is"), (re.compile(r"\bhow's\b"), "how is"), (re.compile(r"\bit's\b"), "it is"),
+    (re.compile(r"\bi'm\b"), "i am"), (re.compile(r"\blet's\b"), "let us"), (re.compile(r"\bdon't\b"), "do not"),
+    (re.compile(r"\bdoesn't\b"), "does not"), (re.compile(r"\bo'clock\b"), "oclock"), (re.compile(r"\bwhat're\b"), "what are"),
+]
+
+
+def normalize_en(text: str) -> str:
+    text = strip_accents(text.lower()).replace("\u2019", "'")
+    for pattern, replacement in _CONTRACTIONS:
+        text = pattern.sub(replacement, text)
+    text = text.replace("'", "")
+    text = _DECIMAL.sub(r"\1.\2", text)
+    text = _NON_WORD.sub(" ", text)
+    text = re.sub(r"(?<!\d)\.|\.(?!\d)", " ", text)
+    text = _SPACES.sub(" ", text).strip()
+    text = _WAKE_EN.sub("", text)
+    text = re.sub(r"\bplease\b", " ", text)
+    # «five more minutes» → «five minutes more» (como dice la gramática)
+    text = re.sub(r"\b(\S+) more (minutes?|seconds?|hours?)\b", r"\1 \2 more", text)
+    text = _SPACES.sub(" ", text).strip()
+    changed = True
+    while changed:
+        changed = False
+        for filler in _LEADING_EN:
+            if text == filler:
+                return ""
+            if text.startswith(filler + " "):
+                text = text[len(filler) + 1 :]
+                changed = True
+    return text
+
+
+def normalize(text: str, language: str = "es") -> str:
+    if language == "en":
+        return normalize_en(text)
     text = strip_accents(text.lower())
     text = _DECIMAL.sub(r"\1.\2", text)
     text = _NON_WORD.sub(" ", text)

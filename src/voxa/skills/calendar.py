@@ -9,6 +9,7 @@ from typing import Callable
 from voxa.core.people import speaker
 from voxa.core.phrases import capitalize, clock_words, join_words, weekday_name
 from voxa.core.types import Intent, Response
+from voxa.i18n import tr
 from voxa.services.calendar import Calendar, CalendarUnavailable, Event
 
 log = logging.getLogger(__name__)
@@ -28,16 +29,16 @@ def say_events(events: list[Event], home) -> str:
     parts = []
     for event in timed[:MAX_SAID]:
         at = event.start.astimezone(home)
-        parts.append(f"a {clock_words(at.hour, at.minute, on_the_hour='')}, {event.title}")
+        parts.append(tr("a {hour}, {title}", hour=clock_words(at.hour, at.minute, on_the_hour=""), title=event.title))
     if len(timed) > MAX_SAID:
-        parts.append(f"y {len(timed) - MAX_SAID} más")
+        parts.append(tr("y {count} más", count=len(timed) - MAX_SAID))
     if all_day:
-        parts.append(f"todo el día: {join_words(all_day)}")
+        parts.append(tr("todo el día: {items}", items=join_words(all_day)))
     return "; ".join(parts)
 
 
 def count_phrase(events: list[Event]) -> str:
-    return "una cosa" if len(events) == 1 else f"{len(events)} cosas"
+    return tr("una cosa") if len(events) == 1 else tr("{count} cosas", count=len(events))
 
 
 class CalendarSkill:
@@ -92,9 +93,11 @@ class CalendarSkill:
         if not events:
             if morning:
                 return ""
-            return f"Hoy {person} ya no tiene nada en el calendario." if named else "Hoy ya no tienes nada en el calendario."
-        lead = "En el calendario de hoy hay" if morning else f"Hoy {person} tiene" if named else "Hoy tienes"
-        return f"{lead} {count_phrase(events)}: {say_events(events, now.tzinfo)}."
+            if named:
+                return tr("Hoy {person} ya no tiene nada en el calendario.", person=person)
+            return "Hoy ya no tienes nada en el calendario."
+        lead = tr("En el calendario de hoy hay") if morning else tr("Hoy {person} tiene", person=person) if named else tr("Hoy tienes")
+        return tr("{lead} {count}: {events}.", lead=lead, count=count_phrase(events), events=say_events(events, now.tzinfo))
 
     async def coming_up(self, minutes: int, told: set[tuple[str, str]]) -> list[str]:
         """Los avisos de los eventos que empiezan en los próximos ``minutes`` (cada uno una sola vez)."""
@@ -110,7 +113,8 @@ class CalendarSkill:
                     continue
                 told.add(key)
                 left = round((event.start - now).total_seconds() / 60)
-                text = f"en {left} minutos: {event.title}." if left > 1 else f"ya casi empieza: {event.title}."
+                text = (tr("en {minutes} minutos: {title}.", minutes=left, title=event.title) if left > 1
+                        else tr("ya casi empieza: {title}.", title=event.title))
                 said.append(f"{person}, {text}" if person else capitalize(text))
         return said
 
@@ -120,10 +124,11 @@ class CalendarSkill:
     async def _day(self, offset: int, person: str | None = None) -> str:
         day = _start_of(self._now()) + timedelta(days=offset)
         events = await self._events(day, day + timedelta(days=1), person)
-        name = "Mañana" if offset == 1 else capitalize(f"el {weekday_name(day.weekday())}")
+        name = tr("Mañana") if offset == 1 else capitalize(tr("el {day}", day=weekday_name(day.weekday())))
         if not events:
-            return f"{name} no tienes nada en el calendario."
-        return f"{name} tienes {count_phrase(events)}: {say_events(events, day.tzinfo)}."
+            return tr("{when} no tienes nada en el calendario.", when=name)
+        return tr("{when} tienes {count}: {events}.", when=name, count=count_phrase(events),
+                  events=say_events(events, day.tzinfo))
 
     async def _next(self, person: str | None = None) -> str:
         now = self._now()
@@ -133,5 +138,7 @@ class CalendarSkill:
         event = events[0]
         at = event.start.astimezone(now.tzinfo)
         days = (_start_of(at) - _start_of(now)).days
-        when = "hoy" if days == 0 else "mañana" if days == 1 else f"el {weekday_name(at.weekday())} {at.day}"
-        return f"Lo siguiente es {event.title}, {when} a {clock_words(at.hour, at.minute, on_the_hour='')}."
+        when = tr("hoy") if days == 0 else tr("mañana") if days == 1 else tr(
+            "el {day} {number}", day=weekday_name(at.weekday()), number=at.day)
+        return tr("Lo siguiente es {title}, {when} a {hour}.", title=event.title, when=when,
+                  hour=clock_words(at.hour, at.minute, on_the_hour=""))

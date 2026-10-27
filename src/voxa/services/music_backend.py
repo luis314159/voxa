@@ -41,14 +41,18 @@ class PlayResult:
     kind: str | None = None
 
     def describe(self) -> str:
+        from voxa.i18n import tr
+
         if self.kind == "album":
-            return f"El álbum {self.title}" + (f", de {self.artist}" if self.artist else "")
+            if self.artist:
+                return tr("El álbum {title}, de {artist}", title=self.title, artist=self.artist)
+            return tr("El álbum {title}", title=self.title)
         if self.kind == "playlist":
-            return f"La playlist {self.title}"
+            return tr("La playlist {title}", title=self.title)
         if self.kind == "liked":
-            return "Tus Me gusta, en aleatorio"
+            return tr("Tus Me gusta, en aleatorio")
         if self.artist and self.kind == "track":
-            return f"{self.title}, de {self.artist}"
+            return tr("{title}, de {artist}", title=self.title, artist=self.artist)
         return self.title
 
 

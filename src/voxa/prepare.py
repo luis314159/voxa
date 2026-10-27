@@ -35,10 +35,23 @@ from voxa.config import Config
 
 log = logging.getLogger(__name__)
 
-PIPER = "https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/es/es_MX/claude/high"
 WAKE = "https://github.com/dscripka/openWakeWord/releases/download/v0.5.1"
-VOSK_URL = "https://alphacephei.com/vosk/models/vosk-model-small-es-0.42.zip"
-VOSK_SHA256 = "09b239888f633ef2f0b4e09736e3d9936acfd810bc65d53fad45261762c6511f"
+# Por idioma: la voz de Piper (url base, .onnx, .onnx.json) y el modelo de Vosk (url, huella).
+PIPER_VOICES = {
+    "es": ("https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/es/es_MX/claude/high",
+           "3ef40a71ea63852cd8ab7e6fa7d2ecdcfa67a0b47c9c48e3f10e02ee02083ea0",
+           "1afc81f703c0e4cb3b4d7c0dca096b8b54a98806807f0170cf5eb5557723c12d"),
+    "en": ("https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/en/en_US/lessac/medium",
+           "5efe09e69902187827af646e1a6e9d269dee769f9877d17b16b1b46eeaaf019f",
+           "efe19c417bed055f2d69908248c6ba650fa135bc868b0e6abb3da181dab690a0"),
+}
+VOSK_MODELS = {
+    "es": ("https://alphacephei.com/vosk/models/vosk-model-small-es-0.42.zip",
+           "09b239888f633ef2f0b4e09736e3d9936acfd810bc65d53fad45261762c6511f"),
+    "en": ("https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip",
+           "30f26242c4eb449f948e42cb302dd7a686cb29a3423a8367f99ff41780942498"),
+}
+VOSK_URL, VOSK_SHA256 = VOSK_MODELS["es"]
 SPOTIFAST_RELEASE = "https://api.github.com/repos/crmne/spotifast/releases/latest"
 SPOTIFAST_GLIBC = (2, 39)
 
@@ -72,11 +85,10 @@ def app_dir() -> Path | None:
 def model_downloads(config: Config) -> list[Download]:
     piper = Path(config.voice.piper_voice).expanduser()
     wake = Path(config.wake.feature_dir).expanduser()
+    base, onnx_sha, json_sha = PIPER_VOICES.get(config.voice.language, PIPER_VOICES["es"])
     return [
-        Download("la voz de VOXA", f"{PIPER}/es_MX-claude-high.onnx",
-                 "3ef40a71ea63852cd8ab7e6fa7d2ecdcfa67a0b47c9c48e3f10e02ee02083ea0", piper),
-        Download("la voz de VOXA (ajustes)", f"{PIPER}/es_MX-claude-high.onnx.json",
-                 "1afc81f703c0e4cb3b4d7c0dca096b8b54a98806807f0170cf5eb5557723c12d", piper.with_name(piper.name + ".json")),
+        Download("la voz de VOXA", f"{base}/{piper.name}", onnx_sha, piper),
+        Download("la voz de VOXA (ajustes)", f"{base}/{piper.name}.json", json_sha, piper.with_name(piper.name + ".json")),
         Download("«Hey Voxa» (1 de 2)", f"{WAKE}/melspectrogram.onnx",
                  "ba2b0e0f8b7b875369a2c89cb13360ff53bac436f2895cced9f479fa65eb176f", wake / "melspectrogram.onnx"),
         Download("«Hey Voxa» (2 de 2)", f"{WAKE}/embedding_model.onnx",
@@ -126,9 +138,10 @@ def fetch(url: str, target: Path, expected: str, progress: Progress, label: str)
 def prepare_models(config: Config, progress: Progress, *, whisper: bool = True) -> None:
     vosk = Path(config.voice.vosk_model).expanduser()
     if not vosk.is_dir():
+        url, digest = (VOSK_URL, VOSK_SHA256) if config.voice.language == "es" else VOSK_MODELS[config.voice.language]
         with tempfile.TemporaryDirectory() as tmp:
             archive = Path(tmp) / "vosk.zip"
-            fetch(VOSK_URL, archive, VOSK_SHA256, progress, "el reconocimiento de voz")
+            fetch(url, archive, digest, progress, "el reconocimiento de voz")
             progress("Instalando el reconocimiento de voz…")
             vosk.parent.mkdir(parents=True, exist_ok=True)
             with zipfile.ZipFile(archive) as zf:

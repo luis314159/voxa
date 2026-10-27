@@ -15,7 +15,7 @@ from voxa.nlu.normalize import strip_accents
 
 log = logging.getLogger(__name__)
 
-_ARTICLES = ("el ", "la ", "los ", "las ", "al ", "del ", "de ", "a ", "para ", "mi ", "mis ")
+_ARTICLES = ("el ", "la ", "los ", "las ", "al ", "del ", "de ", "a ", "para ", "mi ", "mis ", "the ", "my ")
 # Un temporizador que venció mientras VOXA estaba apagado suena al arrancar,
 # salvo que haya pasado demasiado tiempo para que importe.
 _MAX_OVERDUE_ON_LOAD = 3600

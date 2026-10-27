@@ -113,6 +113,7 @@ class SettingsApi:
                 "grabando": self._service.enrolling,
                 "lista": self._enroll_ready(),
                 "whisper": config.voice.whisper_model,
+                "idioma": config.voice.language,
             },
             "casa": {**(app.house.status() if app.house else {}), "invitacion": self.invitation()},
             "rutina": {"salida": config.routine.departure, "dias": list(config.routine.departure_days),

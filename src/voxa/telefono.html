@@ -289,6 +289,7 @@
   <div class="interruptor"><span>Videos de YouTube</span><input type="checkbox" data-ajuste="video.enabled"></div>
   <div class="interruptor"><span>Avisar si hay versión nueva</span><input type="checkbox" data-ajuste="update.check"></div>
   <div class="interruptor"><span>Actualizarse sola de madrugada</span><input type="checkbox" data-ajuste="update.automatic"></div>
+  <label class="campo"><span>Idioma de VOXA / VOXA's language</span><select id="idioma"><option value="es">Español</option><option value="en">English</option></select></label>
   <label class="campo"><span>Reconocimiento de voz (más preciso = más lento)</span><select id="whisper"><option value="tiny">Rápido (tiny)</option><option value="base">Normal (base)</option><option value="small">Preciso (small)</option></select></label>
   <p class="ayuda" id="version"></p>
 </section>
@@ -655,6 +656,7 @@ async function cargarAjustes() {
   const valores = { "video.enabled": a.funciones.video, "update.check": a.funciones.avisar_version, "update.automatic": a.funciones.actualizar_solo };
   document.querySelectorAll("[data-ajuste]").forEach((c) => { c.checked = Boolean(valores[c.dataset.ajuste]); });
   $("whisper").value = a.voz.whisper;
+  $("idioma").value = a.voz.idioma;
   $("rutina-salida").value = a.rutina.salida;
   $("rutina-llevar").value = a.rutina.llevar;
   $("rutina-musica").value = a.rutina.musica;
@@ -836,6 +838,7 @@ $("rutina-guardar").onclick = () => guardar("routine", {
   checklist: $("rutina-llevar").value.trim(),
   morning_music: $("rutina-musica").value.trim(),
 }, "rutina-respuesta");
+$("idioma").onchange = () => guardar("voice", { language: $("idioma").value });
 $("whisper").onchange = () => guardar("voice", { whisper_model: $("whisper").value });
 if (location.hash === "#ajustes") mostrarVista("ajustes");
 

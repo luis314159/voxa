@@ -13,12 +13,17 @@ Lo que falta para que VOXA sea un producto excelente para familias, en orden de 
    - qué tan seguido se activa «Hey Voxa» por error y qué tan seguido no oye;
    - qué tan seguido entiende la orden;
    - si reconoce bien a cada persona.
-2. **Inglés** (en curso), para familias bilingües. Por partes:
-   1. Idioma de la casa (`language = "es" | "en"`), con su propia gramática, números y horas.
-   2. Voz de Piper en inglés y modelo de Vosk en inglés, con sus huellas; Whisper con el idioma fijo.
-   3. Respuestas en un catálogo por idioma, empezando por temporizadores, música, volumen, lista del súper, hora y clima.
-   4. Lo demás (recetas, calendario, pendientes, casa) a medida que se traduzca.
-   5. Después, las dos lenguas a la vez: Whisper detecta el idioma de cada frase y VOXA contesta en ese idioma.
+2. **Terminar inglés.** Ya funcionan:
+   - el idioma de la casa;
+   - la gramática, la voz y el reconocimiento en inglés;
+   - las respuestas de lo de todos los días.
+
+   Falta:
+   - recetas y conversiones de cocina;
+   - los textos de la pantalla (Rust) y de la página del celular;
+   - la grabación guiada de «aprende mi voz»;
+   - que «avisa a todos» use el nombre del cuarto en inglés;
+   - las dos lenguas a la vez: Whisper detecta el idioma de cada frase y VOXA contesta en ese idioma.
 3. **Confirmar los comandos de Spotifast en la PC real.** VOXA usa `play-search`, `now-playing --raw` y `like`, pero la documentación pública solo muestra `spotifast [LINK]`. Si no existen, la capa de Spotifast se salta sola; hay que revisarlo con `voxa -v texto`.
 
 ## Siguiente

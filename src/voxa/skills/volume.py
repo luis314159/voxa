@@ -3,12 +3,13 @@ from __future__ import annotations
 import logging
 
 from voxa.core.types import OK, Intent, Response
+from voxa.i18n import tr
 from voxa.services.pipewire import VolumeControl, VolumeUnavailable
 
 log = logging.getLogger(__name__)
 
-_SMALL = ("poco", "poquito")
-_BIG = ("mucho", "bastante")
+_SMALL = ("poco", "poquito", "bit", "little")
+_BIG = ("mucho", "bastante", "lot")
 
 
 class VolumeSkill:
@@ -37,7 +38,7 @@ class VolumeSkill:
                 percent = max(0, min(100, intent.slots["number"]))
                 await self._control.set(percent)
                 await self._control.mute(False)
-                return Response(f"Volumen al {percent}.")
+                return Response(tr("Volumen al {percent}.", percent=percent))
             case "volume.up" | "volume.down":
                 state = await self._control.get()
                 delta = self._step_for(intent.text) * (1 if intent.name == "volume.up" else -1)

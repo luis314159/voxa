@@ -4,6 +4,7 @@ from typing import Callable
 
 from voxa.core.phrases import join_words
 from voxa.core.types import OK, Intent, Response
+from voxa.i18n import tr
 
 HELP = (
     "Puedo poner música de Spotify, por ejemplo «pon Soda Stereo» o «pon algo tranquilo para cocinar»; "
@@ -43,12 +44,13 @@ class SystemSkill:
             case "system.help":
                 return Response(HELP + HELP_AI if self.open_questions else HELP)
             case "system.status":
-                problems = [_SPOKEN_PROBLEMS.get(p.id, p.text.lower()) for p in self.problems()]
+                problems = [tr(_SPOKEN_PROBLEMS.get(p.id, p.text.lower())) for p in self.problems()]
                 if problems:
-                    return Response(f"Aquí estoy, pero {join_words(problems)}.")
+                    return Response(tr("Aquí estoy, pero {problems}.", problems=join_words(problems)))
                 return Response("Aquí estoy.")
             case "system.mute_mic":
                 return Response("Micrófono apagado. Toca la pantalla para reactivarme.", action="mic.mute")
             case "system.ack":
-                return Response("¡De nada!") if "gracias" in intent.text else OK
+                thanks = "gracias" in intent.text or "thank" in intent.text
+                return Response("¡De nada!") if thanks else OK
         return OK

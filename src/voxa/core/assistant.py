@@ -7,6 +7,7 @@ from dataclasses import replace
 from typing import Awaitable, Callable, Mapping
 
 from voxa.core.types import OK, Intent, Response, Skill
+from voxa.i18n import localize
 from voxa.nlu.matcher import Matcher
 from voxa.state.timers import TimerManager
 
@@ -25,6 +26,12 @@ STOPS_ALARM = frozenset(
 )
 
 Fallback = Callable[[str], Awaitable[Response | None]]
+
+
+def _localized(response: Response) -> Response:
+    """Las frases fijas en el idioma de la casa (las que llevan datos ya vienen traducidas: ``tr``)."""
+    speech = localize(response.speech)
+    return response if speech == response.speech else replace(response, speech=speech)
 
 
 class Assistant:
@@ -55,9 +62,9 @@ class Assistant:
         intent = self._matcher.match(text)
         if intent is None:
             response = await self.fallback(text) if self.fallback else None
-            return self._remember(response or NOT_UNDERSTOOD)
+            return self._remember(_localized(response or NOT_UNDERSTOOD))
         log.info("«%s» → %s %s", text, intent.name, intent.slots)
-        return self._remember(await self.handle_intent(intent))
+        return self._remember(_localized(await self.handle_intent(intent)))
 
     async def try_command(self, text: str) -> Response | None:
         """Ejecuta ``text`` si es una orden que las reglas entienden (la IA traduce a estas); si no, ``None``."""

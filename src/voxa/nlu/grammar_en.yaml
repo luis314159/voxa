@@ -1,0 +1,339 @@
+# VOXA grammar in English (language = "en"). Same intents and slots as grammar.yaml.
+# Order matters: the first pattern that matches wins, so specific commands go before «play …».
+# Recipes and kitchen conversions are Spanish-only for now (see docs/backlog.md).
+
+- intent: timer.stop_alarm
+  patterns:
+    - "(stop|turn off|silence|dismiss|cancel) [the] (alarm|alarms|timer|ringing)"
+    - "(stop it|turn it off|shut it off|stop that)"
+
+- intent: timer.cancel_all
+  patterns:
+    - "(cancel|delete|remove|clear) all [the|my] (timers|alarms)"
+
+- intent: timer.remind
+  patterns:
+    - "(wake me up|wake me) {days} at {time}"
+    - "(set|create|make) [an|a] alarm [for] {days} at {time} [(for|to) {name}]"
+    - "(set|create|make) [an|a] alarm (for|at) {time} {days} [(for|to) {name}]"
+    - "remind me {days} at {time} to {name}"
+    - "remind me to {name} {days} at {time}"
+    - "remind me to {name} at {time} {days}"
+    - pattern: "(wake me up|wake me) tomorrow at {time}"
+      set: {day: manana}
+    - "(wake me up|wake me) at {time}"
+    - pattern: "(set|create|make) [an|a] alarm (for tomorrow|tomorrow) at {time} [(for|to) {name}]"
+      set: {day: manana}
+    - "(set|create|make) [an|a] alarm (for|at) {time} [(for|to) {name}]"
+    - pattern: "remind me tomorrow at {time} to {name}"
+      set: {day: manana}
+    - pattern: "remind me to {name} tomorrow at {time}"
+      set: {day: manana}
+    - "remind me at {time} to {name}"
+    - "remind me to {name} at {time}"
+    # For someone else: «remind Ana to take her medicine at 9 pm» (after «remind me…»).
+    - "(remind|tell) {person} to {name} (at|on) {time}"
+    - "(remind|tell) {person} (at|on) {time} to {name}"
+
+- intent: tasks.add
+  patterns:
+    - pattern: "(add|put|write) {query} (to|on) my (tasks|to do list|todo list|to dos|todos|list of things to do)"
+      set: {whose: mine}
+    - "(add|put|write) {query} (to|on) {person}s (tasks|to do list|todo list)"
+    - "(add|put|write) {query} (to|on) the (tasks|to do list|todo list|house tasks)"
+
+- intent: tasks.list
+  patterns:
+    - pattern: "what (tasks|to dos|todos) do i have [today]"
+      set: {whose: mine}
+    - pattern: "(what is|whats) on my (to do list|todo list|task list)"
+      set: {whose: mine}
+    - "what (tasks|to dos|todos) does {person} have"
+    - "what (tasks|to dos|todos) (are there|do we have)"
+
+- intent: tasks.done
+  patterns:
+    - pattern: "i (did|finished|have done|already did) {query}"
+      set: {whose: mine}
+    - pattern: "(cross off|remove|delete|check off) {query} from my (tasks|to do list|todo list)"
+      set: {whose: mine}
+
+- intent: shopping.clear
+  patterns:
+    - "(clear|empty|delete|erase) the (shopping list|grocery list|list)"
+
+- intent: shopping.list
+  patterns:
+    - "(what is|whats) on the (shopping list|grocery list|list)"
+    - "(read|tell me) the (shopping list|grocery list|list)"
+    - "what do (we|i) need [to buy]"
+
+- intent: shopping.remove
+  patterns:
+    - "(remove|take|delete|cross off) {query} (from|off) the (shopping list|grocery list|list)"
+    - "(i|we) (bought|got) {query}"
+
+- intent: shopping.add
+  patterns:
+    - "(add|put) {query} (to|on) the (shopping list|grocery list|list)"
+    - "we (need|are out of|ran out of) {query}"
+    - "(we are|were) out of {query}"
+
+- intent: timer.set
+  patterns:
+    - "(set|start|create|put) [a|an|the] (timer|countdown) (for|of) {duration} [(for the|for) {name}]"
+    - "(set|start|create) [a|an] {duration} timer [(for the|for) {name}]"
+    - "{duration} timer [(for the|for) {name}]"
+    - "(timer|countdown) (for|of) {duration} [(for the|for) {name}]"
+    - "(remind me|tell me|let me know) in {duration} [(to|about) {name}]"
+
+- intent: timer.adjust
+  patterns:
+    - pattern: "(add|give it|put) [another] {duration} [more] [(to the|to|on the) {name} [timer]]"
+      set: {sign: 1}
+    - pattern: "(take|remove) {duration} (off|from) [the] {name} [timer]"
+      set: {sign: -1}
+    - pattern: "{duration} more"
+      set: {sign: 1}
+    - pattern: "(snooze|snooze it) [for] {duration}"
+      set: {sign: 1}
+
+- intent: timer.pause
+  patterns:
+    - "pause [the] {name} timer"
+    - "pause the timer [for {name}]"
+
+- intent: timer.resume
+  patterns:
+    - "(resume|continue|unpause) [the] {name} timer"
+    - "(resume|continue|unpause) the timer [for {name}]"
+
+- intent: routine.departure
+  patterns:
+    - "how (long|much time|many minutes) (until|till|before) (we leave|we go|school|we have to leave)"
+    - "(what time|when) do we (leave|have to leave|go)"
+
+- intent: timer.query
+  patterns:
+    - "how (long|much time) (is left|left|remains) [(on|for) [the] {name} [timer]]"
+    - "how much longer [(for|on) [the] {name}]"
+    - "(what|which) (timers|alarms|reminders) (are there|do i have|are set)"
+
+- intent: timer.cancel
+  patterns:
+    - "(cancel|stop|delete|remove) [the|my] {name} (timer|alarm|reminder)"
+    - "(cancel|stop|delete|remove) the (timer|alarm|reminder) [(for the|for) {name}]"
+
+- intent: system.mute_mic
+  patterns:
+    - "(stop listening|mute the microphone|turn off the microphone|privacy mode|go to sleep)"
+
+- intent: media.pause
+  patterns:
+    - "(pause|stop) [the] [music|song|video]"
+    - "(pause it|stop the music|hold on)"
+
+- intent: media.resume
+  patterns:
+    - "(resume|continue|unpause|keep playing) [the] [music|song|video]"
+    - "(play again|go on)"
+
+- intent: media.seek_forward
+  patterns:
+    - "(skip|fast forward|go forward|forward) {duration}"
+
+- intent: media.seek_back
+  patterns:
+    - "(go back|rewind|back) {duration}"
+
+- intent: media.next
+  patterns:
+    - "(next|skip) [song|track|one]"
+    - "(play|put on) the next (song|track|one)"
+
+- intent: media.previous
+  patterns:
+    - "(previous|last|go back to the previous) (song|track|one)"
+    - "(play|put on) the (previous|last) (song|track|one) [again]"
+
+- intent: media.now_playing
+  patterns:
+    - "(what|which) (song|track) is (this|playing)"
+    - "(whats|what is) playing"
+    - "who (sings|is singing) [this|this song]"
+
+- intent: music.like
+  patterns:
+    - "(i like|i love|like|save|add) this (song|track) [to my likes|to my favorites]"
+
+- intent: music.shuffle
+  patterns:
+    - "(shuffle|shuffle it|turn on shuffle|play shuffled)"
+
+- intent: volume.set
+  patterns:
+    - "[set|turn|put] [the] volume (to|at) {number}"
+    - "volume {number}"
+
+- intent: volume.mute
+  patterns:
+    - "(mute|silence) [the] [volume|sound|music|speaker]"
+
+- intent: volume.unmute
+  patterns:
+    - "(unmute|turn the sound back on|sound on)"
+
+- intent: volume.up
+  patterns:
+    - "(turn it up|turn up the volume|turn the volume up|volume up|louder|raise the volume|increase the volume|i cant hear)"
+    - "(turn it up|louder) [a bit|a little|a lot]"
+
+- intent: volume.down
+  patterns:
+    - "(turn it down|turn down the volume|turn the volume down|volume down|quieter|lower the volume|too loud)"
+    - "(turn it down|quieter) [a bit|a little|a lot]"
+
+- intent: music.playlists
+  patterns:
+    - "(what|which) playlists do i have"
+    - "(read|tell me|list) my playlists"
+
+- intent: music.transfer
+  patterns:
+    - "(move|send|play|switch) [the] (music|song|spotify) (to|in|on) [the] {device}"
+
+- intent: display.phone
+  patterns:
+    - "(connect|link|pair) my (phone|cell phone|mobile)"
+    - "(show|open) [the] (settings|code)"
+    - "set up voxa"
+
+- intent: display.phone_close
+  patterns:
+    - "(close|hide) the code"
+
+- intent: display.photo
+  patterns:
+    - "(photo mode|just the photo|only the photo|show only the background)"
+
+- intent: display.info
+  patterns:
+    - "(show the info|show the information|exit photo mode|leave photo mode)"
+
+- intent: video.close
+  patterns:
+    - "(close|stop|quit|turn off) [the] (video|youtube)"
+
+- intent: video.play
+  patterns:
+    - "(play|put on|show me|search for|find) [a|the] (video|videos) (of|about|on|for|with|on how to) {query}"
+    - "(play|search|search for) on youtube {query}"
+
+- intent: clock.time
+  patterns:
+    - "(what time is it|whats the time|what is the time|tell me the time|time)"
+
+- intent: clock.date
+  patterns:
+    - "(what day is it|what is the date|whats the date|what is todays date|whats todays date|what day is today)"
+
+- intent: weather.rain
+  patterns:
+    - "(is it going to rain|will it rain) [today]"
+    - "do i need an umbrella [today]"
+
+- intent: weather.current
+  patterns:
+    - "(whats|what is|how is) the weather [like] [today]"
+    - "(how hot|how cold) is it [outside]"
+    - "(what is the temperature|whats the temperature|weather)"
+
+- intent: calendar.tomorrow
+  patterns:
+    - "what do (i|we) have tomorrow"
+    - "(what is|whats) on (my|the) calendar tomorrow"
+    - "what does {person} have tomorrow"
+
+- intent: calendar.today
+  patterns:
+    - "what do (i|we) have [on] today"
+    - "(what is|whats) on (my|the) calendar [today]"
+    - "what does {person} have today"
+    - "my (agenda|schedule) [for today]"
+
+- intent: calendar.next
+  patterns:
+    - "(whats|what is) my next (appointment|event|meeting)"
+    - "when is my next (appointment|event|meeting)"
+
+- intent: routine.good_morning
+  patterns:
+    - "(good morning|good afternoon|morning everyone|good morning everyone)"
+
+- intent: routine.good_night
+  patterns:
+    - "(good night|im going to bed|i am going to bed|going to sleep)"
+
+- intent: system.help
+  patterns:
+    - "(what can you do|help|help me|how do i use you|what can i ask you|what do you know)"
+
+- intent: update.check
+  patterns:
+    - "(are there|is there) (any|an) (update|updates|new version)"
+    - "(what version are you|are you up to date)"
+
+- intent: update.install
+  patterns:
+    - "(update yourself|install the update|update voxa)"
+
+- intent: system.status
+  patterns:
+    - "(are you there|can you hear me|are you ok|how are you|hello|hi|hello voxa)"
+
+- intent: system.repeat
+  patterns:
+    - "(repeat|say that again|repeat that|what did you say|come again)"
+
+- intent: system.cancel
+  patterns:
+    - "(cancel|never mind|nevermind|forget it|nothing)"
+
+- intent: system.ack
+  patterns:
+    - "(ok|okay|thanks|thank you|thanks a lot|great|perfect|got it|alright|all right)"
+
+- intent: house.announce
+  patterns:
+    - "(tell|announce to) everyone [that] {query}"
+    - "announce [that] {query}"
+    - "(tell|let) [the] {device} know [that] {query}"
+    - "tell [the] {device} that {query}"
+    - pattern: "call everyone (for|to) {query}"
+      set: {call: "si"}
+
+- intent: voice.enroll
+  patterns:
+    - "(learn|learn to recognize|remember) my voice"
+    - "(learn|learn to recognize) {name}s voice"
+    - "i am {name} learn my voice"
+
+- intent: timer.unclear
+  patterns:
+    - "(set|create|start|make) [a|an|the] (timer|alarm|reminder) {query}"
+
+- intent: music.play
+  patterns:
+    - pattern: "(play|put on) (my likes|my liked songs|my favorites|my favorite songs|songs i like|my saved songs)"
+      set: {kind: liked, query: me gusta}
+    - pattern: "(play|put on) [some] (music|songs) (for|to) {query}"
+      set: {kind: mood}
+    - pattern: "(play|put on) [some] (music|songs) (by|from) {query}"
+      set: {kind: artist}
+    - pattern: "(play|put on) the (song|track) {query}"
+      set: {kind: track}
+    - pattern: "(play|put on) the album {query}"
+      set: {kind: album}
+    - pattern: "(play|put on) [my|the] playlist {query}"
+      set: {kind: playlist}
+    - pattern: "(play|put on|i want to hear|lets listen to) {query}"
