@@ -80,14 +80,20 @@ def _duration(value: str) -> float | None:
         return None
 
 
-def pick(lines: str) -> Video | None:
-    """Primer resultado que se pueda ver completo; si ninguno dura «bien», el primero que no sea en vivo."""
+def parse_results(lines: str) -> list[Video]:
+    """Las líneas de ``yt-dlp --print`` (id, título, duración, canal, en vivo), sin transmisiones en vivo."""
     videos = []
     for line in lines.splitlines():
         parts = line.split("\t")
         if len(parts) < 5 or not _VIDEO_ID.fullmatch(parts[0]) or parts[4] in ("is_live", "is_upcoming"):
             continue
         videos.append(Video(parts[0], parts[1], _duration(parts[2]), parts[3] if parts[3] != "NA" else None))
+    return videos
+
+
+def pick(lines: str) -> Video | None:
+    """Primer resultado que se pueda ver completo; si ninguno dura «bien», el primero que no sea en vivo."""
+    videos = parse_results(lines)
     low, high = _GOOD_LENGTH
     good = [v for v in videos if v.duration is not None and low <= v.duration <= high]
     return (good or videos or [None])[0]
@@ -145,7 +151,6 @@ class MpvPlayer:
         self._proc: asyncio.subprocess.Process | None = None
         self._watch: asyncio.Task | None = None
         self._current: Video | None = None
-        self._ids = itertools.count(1)
 
     @property
     def current(self) -> Video | None:
@@ -198,20 +203,7 @@ class MpvPlayer:
     async def _command_ipc(self, *command: object) -> None:
         if self._proc is None:
             return
-        request = {"command": list(command), "request_id": next(self._ids)}
-        try:
-            reader, writer = await asyncio.wait_for(asyncio.open_unix_connection(str(self._socket)), 2.0)
-        except (OSError, asyncio.TimeoutError) as exc:
-            log.warning("No pude hablar con mpv: %s", exc)
-            return
-        try:
-            writer.write(json.dumps(request).encode() + b"\n")
-            await writer.drain()
-            # Llegan también eventos; se espera la respuesta a esta orden (o se rinde pronto).
-            with contextlib.suppress(asyncio.TimeoutError, ValueError):
-                await asyncio.wait_for(_reply(reader, request["request_id"]), 2.0)
-        finally:
-            writer.close()
+        await mpv_command(self._socket, *command)
 
     async def pause(self) -> None:
         await self._command_ipc("set_property", "pause", True)
@@ -237,6 +229,28 @@ class MpvPlayer:
             await proc.wait()
         with contextlib.suppress(FileNotFoundError):
             self._socket.unlink()
+
+
+_REQUEST_IDS = itertools.count(1)
+
+
+async def mpv_command(socket: Path, *command: object) -> dict | None:
+    """Una orden por el IPC de mpv; la respuesta (o ``None`` si mpv no contesta)."""
+    request = {"command": list(command), "request_id": next(_REQUEST_IDS)}
+    try:
+        reader, writer = await asyncio.wait_for(asyncio.open_unix_connection(str(socket)), 2.0)
+    except (OSError, asyncio.TimeoutError, AttributeError) as exc:  # AttributeError: sin sockets Unix (Windows)
+        log.warning("No pude hablar con mpv: %s", exc)
+        return None
+    try:
+        writer.write(json.dumps(request).encode() + b"\n")
+        await writer.drain()
+        # Llegan también eventos; se espera la respuesta a esta orden (o se rinde pronto).
+        with contextlib.suppress(asyncio.TimeoutError, ValueError):
+            return await asyncio.wait_for(_reply(reader, request["request_id"]), 2.0)
+        return None
+    finally:
+        writer.close()
 
 
 async def _reply(reader: asyncio.StreamReader, request_id: int) -> dict | None:

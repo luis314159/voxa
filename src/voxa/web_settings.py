@@ -19,6 +19,7 @@ from typing import TYPE_CHECKING, Any, Awaitable, Callable
 
 import voxa
 from voxa.services.http import Http, UrllibHttp
+from voxa.services.spotifast_setup import REDIRECT as SPOTIFAST_REDIRECT
 from voxa.settings import SettingsError, read_secret, restart_soon, save_secret, save_settings, settings_path
 
 if TYPE_CHECKING:
@@ -79,6 +80,8 @@ class SettingsApi:
                 "autorizado": config.spotify_token_path.exists(),
                 "me_gusta": self._library_granted(),
                 "redirect": config.spotify.redirect_uri,
+                "redirect_spotifast": SPOTIFAST_REDIRECT,
+                "musica": config.music.provider,
                 "dispositivo": config.spotify.device_name,
             },
             "clima": {"lugar": config.weather.place, "lat": config.weather.latitude, "lon": config.weather.longitude},
@@ -140,6 +143,8 @@ class SettingsApi:
                     return await self._spotify_start()
                 case "/api/spotify/codigo":
                     return await self._spotify_finish(str(data.get("direccion") or ""))
+                case "/api/spotify/abrir":
+                    return await self._open_spotifast()
                 case "/api/telegram/codigo":
                     return await self._telegram_code()
                 case "/api/telegram/quitar":
@@ -286,6 +291,16 @@ class SettingsApi:
         pending, self._spotify = self._spotify, None
         if pending is not None and pending.server is not None:
             pending.server.close()
+
+    async def _open_spotifast(self) -> tuple[int, Any]:
+        """Abre Spotifast en la pantalla de la cocina (una vez, para «Sign in with Spotify»)."""
+        command = list(self.config.spotifast.command)
+        try:
+            await asyncio.create_subprocess_exec(*command, stdout=asyncio.subprocess.DEVNULL,
+                                                 stderr=asyncio.subprocess.DEVNULL, start_new_session=True)
+        except (FileNotFoundError, OSError):
+            return 400, {"error": "Spotifast no está instalado en esta PC (voxa revisar dice cómo)."}
+        return 200, {"respuesta": "Listo: Spotifast se abrió en la pantalla de la cocina."}
 
     # --- Telegram, voz, IA ---------------------------------------------------------------
     async def _telegram_code(self) -> tuple[int, Any]:

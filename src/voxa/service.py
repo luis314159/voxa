@@ -269,9 +269,10 @@ class Service:
             await self.session.say(Response(text))
 
     def needs_setup(self) -> bool:
-        """Falta lo básico (Spotify conectado y la ciudad del clima): se configura desde el celular."""
+        """Falta lo básico (la ciudad del clima; Spotify si se eligió): se configura desde el celular."""
         config = self.app.config
-        return not config.spotify_token_path.exists() or config.weather.latitude is None
+        spotify_missing = config.music.provider == "spotify" and not config.spotify_token_path.exists()
+        return spotify_missing or config.weather.latitude is None
 
     async def set_photo(self, on: bool) -> None:
         """«Modo foto»: solo la imagen de fondo; la información vuelve sola al hablar o con una alarma."""
@@ -485,6 +486,13 @@ class Service:
                 log.warning("No pude abrir el canal de la pantalla en el puerto %d: %s", port, exc)
                 server = None
         config = self.app.config
+        if config.spotify.client_id:
+            from voxa.services import spotifast_setup
+
+            try:  # el mismo Client ID y el nombre de este cuarto, también en Spotifast
+                spotifast_setup.configure(config.spotify.client_id, config.spotify.device_name)
+            except OSError as exc:
+                log.warning("No pude configurar Spotifast: %s", exc)
         if config.web.enabled:
             key = load_or_create_key(config.web_key_path)
             web = WebServer(self, key, config.backgrounds_dir, port=config.web.port,

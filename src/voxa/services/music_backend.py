@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import Protocol, Sequence
+from typing import Awaitable, Callable, Protocol, Sequence
 
 log = logging.getLogger(__name__)
 
@@ -98,6 +98,114 @@ SEARCH_METHODS = (
     "play", "like", "now_playing", "transfer", "shuffle", "playlists", "search_playlists", "play_uri", "play_liked",
 )
 CONTROL_METHODS = ("pause", "resume", "next", "previous", "seek")
+
+
+class MusicRouter:
+    """Spotify (si está configurado) y YouTube de respaldo: los controles van a la que está sonando.
+
+    «Pon Soda Stereo» prueba Spotify y, si no está listo (sin Client ID, sin Premium, Spotifast
+    cerrado), YouTube. Lo que es de una cuenta (Me gusta, playlists, pasar la música) es de Spotify.
+    """
+
+    name = "musica"
+
+    def __init__(
+        self,
+        spotify: MusicBackend | None,
+        youtube: MusicBackend | None,
+        spotify_now_playing: Callable[[], Awaitable[NowPlaying | None]] | None = None,
+    ) -> None:
+        self._spotify = spotify
+        self._youtube = youtube
+        self._backends = [b for b in (spotify, youtube) if b is not None]
+        self.active: MusicBackend | None = self._backends[0] if self._backends else None
+        self._spotify_now_playing = spotify_now_playing
+
+    async def _switch_to(self, backend: MusicBackend) -> None:
+        old, self.active = self.active, backend
+        if old is not None and old is not backend:
+            stop = getattr(old, "stop", None) or old.pause  # YouTube se cierra; Spotify se pausa
+            try:
+                await stop()
+            except BackendUnavailable:
+                pass
+
+    async def play(self, query: str, kind: str | None = None) -> PlayResult:
+        reasons: list[Exception] = []
+        for backend in self._backends:
+            try:
+                result = await backend.play(query, kind)
+            except (BackendUnavailable, NothingFound) as exc:
+                log.info("%s no pudo poner «%s»: %s", backend.name, query, exc)
+                reasons.append(exc)
+                continue
+            await self._switch_to(backend)
+            return result
+        for kind_of in (NothingFound, AuthRequired):
+            if any(isinstance(r, kind_of) for r in reasons):
+                raise next(r for r in reasons if isinstance(r, kind_of))
+        raise BackendUnavailable("no hay música disponible") from (reasons[-1] if reasons else None)
+
+    def _current(self) -> MusicBackend:
+        if self.active is None:
+            raise BackendUnavailable("no hay música configurada")
+        return self.active
+
+    async def pause(self) -> None:
+        await self._current().pause()
+
+    async def resume(self) -> None:
+        await self._current().resume()
+
+    async def next(self) -> None:
+        await self._current().next()
+
+    async def previous(self) -> None:
+        await self._current().previous()
+
+    async def seek(self, seconds: int) -> None:
+        await self._current().seek(seconds)
+
+    async def shuffle(self, on: bool) -> None:
+        await self._current().shuffle(on)
+
+    async def now_playing(self) -> NowPlaying | None:
+        return await self._current().now_playing()
+
+    async def display_now_playing(self) -> NowPlaying | None:
+        """Para la pantalla: Spotify se pregunta por MPRIS (local, sin gastar la Web API)."""
+        if self.active is self._spotify and self._spotify_now_playing is not None:
+            return await self._spotify_now_playing()
+        return await self._current().now_playing()
+
+    def _account(self) -> MusicBackend:
+        if self._spotify is None:
+            raise NotSupported("eso es de Spotify, y no está conectado")
+        return self._spotify
+
+    async def like(self) -> None:
+        if self.active is not self._spotify:
+            raise NotSupported("«Me gusta» es de Spotify")
+        await self._account().like()
+
+    async def transfer(self, device: str) -> str:
+        return await self._account().transfer(device)
+
+    async def playlists(self) -> list[Playlist]:
+        return await self._account().playlists()
+
+    async def search_playlists(self, query: str) -> list[Playlist]:
+        return await self._account().search_playlists(query)
+
+    async def play_uri(self, uri: str, title: str) -> PlayResult:
+        result = await self._account().play_uri(uri, title)
+        await self._switch_to(self._account())
+        return result
+
+    async def play_liked(self) -> PlayResult:
+        result = await self._account().play_liked()
+        await self._switch_to(self._account())
+        return result
 
 
 class LayeredMusicBackend:

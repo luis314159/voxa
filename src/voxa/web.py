@@ -35,7 +35,7 @@ _STATUS = {200: "OK", 303: "See Other", 400: "Bad Request", 403: "Forbidden", 40
 SETTINGS_PATHS = frozenset({
     "/api/ajustes", "/api/ajustes/revisar", "/api/clima/buscar", "/api/secreto", "/api/spotify/autorizar",
     "/api/spotify/codigo", "/api/telegram/codigo", "/api/telegram/quitar", "/api/voz/aprender", "/api/ia/probar",
-    "/api/casa/unir", "/api/casa/olvidar",
+    "/api/casa/unir", "/api/casa/olvidar", "/api/spotify/abrir",
 })
 
 FORBIDDEN_PAGE = """<!doctype html><html lang="es"><meta charset="utf-8">

@@ -182,13 +182,21 @@
 <section>
   <h2>Spotify</h2>
   <p class="estado" id="spotify-estado"></p>
+  <p class="ayuda">La música ya funciona desde YouTube, sin cuenta. Spotify (Premium) agrega tus playlists, tus Me gusta y poner la música en otras bocinas. Se hace una sola vez, en unos 5 minutos:</p>
   <ol class="ayuda" style="padding-left:18px">
-    <li>En <a href="https://developer.spotify.com/dashboard" target="_blank" rel="noopener">developer.spotify.com/dashboard</a> crea una app (marca «Web API») con esta Redirect URI: <b id="spotify-redirect"></b></li>
-    <li>Copia su Client ID aquí y guárdalo.</li>
+    <li>Abre <a href="https://developer.spotify.com/dashboard/create" target="_blank" rel="noopener">developer.spotify.com/dashboard</a> con tu cuenta de Spotify y toca «Create app».</li>
+    <li>Nombre: <b>VOXA de la casa</b>. Descripción: <b>Asistente de la cocina</b>. En «Redirect URIs» agrega estas dos:
+      <div class="fila campo"><code id="spotify-redirect" class="ayuda"></code><button type="button" data-copiar="spotify-redirect">Copiar</button></div>
+      <div class="fila campo"><code id="spotify-redirect2" class="ayuda"></code><button type="button" data-copiar="spotify-redirect2">Copiar</button></div>
+    </li>
+    <li>Marca «Web API», acepta los términos y guarda. Copia el «Client ID» y pégalo aquí (sirve para VOXA y para Spotifast).</li>
     <li>Toca «Conectar con Spotify» y acepta. Cuando el navegador diga que no puede abrir la página, copia la dirección completa y pégala abajo.</li>
+    <li>Para que la música suene en la cocina: «Abrir Spotifast en la cocina» y, en esa pantalla, «Sign in with Spotify» y «Set up playback here».</li>
   </ol>
   <form class="fila" id="form-spotify-id"><input type="text" id="spotify-id" placeholder="Client ID" autocomplete="off"><button>Guardar</button></form>
   <button id="spotify-conectar" class="principal" style="width:100%;margin-top:10px">Conectar con Spotify</button>
+  <button id="spotify-abrir" style="width:100%;margin-top:10px">Abrir Spotifast en la cocina</button>
+  <label class="campo"><span>¿De dónde sale la música?</span><select id="musica-fuente"><option value="auto">Spotify si está conectado; si no, YouTube</option><option value="spotify">Solo Spotify</option><option value="youtube">Solo YouTube (sin cuenta)</option></select></label>
   <form class="fila campo" id="form-spotify-codigo" hidden><input type="url" id="spotify-direccion" placeholder="http://127.0.0.1:8765/callback?code=…" autocomplete="off"><button class="principal">Listo</button></form>
   <p class="ayuda" id="spotify-respuesta"></p>
 </section>
@@ -551,9 +559,11 @@ async function cargarAjustes() {
 
   const sp = a.spotify;
   $("spotify-estado").replaceChildren(marca(sp.autorizado && sp.me_gusta !== false,
-    !sp.autorizado ? (sp.client_id ? "Falta conectar" : "Falta el Client ID")
+    !sp.autorizado ? (sp.client_id ? "Falta conectar" : "Sin conectar (la música sale de YouTube)")
       : sp.me_gusta === false ? "Conectado · vuelve a conectar para tus Me gusta" : "Conectado"));
   decir("spotify-redirect", sp.redirect);
+  decir("spotify-redirect2", sp.redirect_spotifast);
+  $("musica-fuente").value = sp.musica;
   $("spotify-id").placeholder = sp.client_id ? `Client ID (guardado: ${sp.client_id})` : "Client ID";
 
   const cl = a.clima;
@@ -671,6 +681,18 @@ $("spotify-conectar").onclick = async () => {
     decir("spotify-respuesta", e.message);
   }
 };
+$("spotify-abrir").onclick = async () => {
+  try { decir("spotify-respuesta", (await api("/api/spotify/abrir", {})).respuesta); }
+  catch (e) { decir("spotify-respuesta", e.message); }
+};
+$("musica-fuente").onchange = () => guardar("music", { provider: $("musica-fuente").value }, "spotify-respuesta");
+document.querySelectorAll("[data-copiar]").forEach((b) => {
+  b.onclick = async () => {
+    try { await navigator.clipboard.writeText($(b.dataset.copiar).textContent); b.textContent = "Copiado"; }
+    catch (e) { b.textContent = "Mantén presionado"; }
+    setTimeout(() => { b.textContent = "Copiar"; }, 2000);
+  };
+});
 $("form-spotify-codigo").onsubmit = async (ev) => {
   ev.preventDefault();
   try {

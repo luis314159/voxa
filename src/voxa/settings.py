@@ -23,6 +23,7 @@ SETTINGS_FILE = "ajustes.json"
 # Sección → opción → tipo, o la tupla de valores permitidos.
 EDITABLE: dict[str, dict[str, Any]] = {
     "spotify": {"client_id": str, "device_name": str},
+    "music": {"provider": ("auto", "spotify", "youtube")},
     "weather": {"latitude": float, "longitude": float, "place": str},
     "ai": {
         "enabled": bool, "provider": ("claude", "openai", "azure", "compatible"), "model": str, "endpoint": str,

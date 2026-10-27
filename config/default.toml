@@ -11,6 +11,11 @@ device_name = "VOXA Cocina"
 # Debe coincidir EXACTAMENTE con la Redirect URI registrada en la app de Spotify.
 redirect_uri = "http://127.0.0.1:8765/callback"
 
+[music]
+# De dónde sale la música: "auto" (Spotify si está conectado, con YouTube de respaldo; si no,
+# YouTube, que no pide cuenta), "spotify" o "youtube".
+provider = "auto"
+
 [spotifast]
 # Comando para la CLI de Spotifast. Con Flatpak sería algo como
 # ["flatpak", "run", "rocks.spotifast.Spotifast"] (confirmar en la Fase 0).

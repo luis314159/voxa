@@ -28,6 +28,12 @@ class SpotifyConfig:
 
 
 @dataclass(frozen=True)
+class MusicConfig:
+    provider: str = "auto"
+    """«auto»: Spotify si está conectado (y YouTube de respaldo); si no, YouTube. «spotify» o «youtube»."""
+
+
+@dataclass(frozen=True)
 class SpotifastConfig:
     command: tuple[str, ...] = ("spotifast",)
     mpris_player: str = "spotifast"
@@ -147,6 +153,7 @@ class DisplayConfig:
 class Config:
     spotify: SpotifyConfig = field(default_factory=SpotifyConfig)
     spotifast: SpotifastConfig = field(default_factory=SpotifastConfig)
+    music: MusicConfig = field(default_factory=MusicConfig)
     volume: VolumeConfig = field(default_factory=VolumeConfig)
     timers: TimersConfig = field(default_factory=TimersConfig)
     weather: WeatherConfig = field(default_factory=WeatherConfig)

@@ -76,6 +76,7 @@ async def test_problems_come_with_a_fix(tmp_path):
         "playerctl --list-all": "firefox",
         "systemctl --user is-active voxa.service": "failed",
     })
+    (tmp_path / "config.toml").write_text('[spotify]\nclient_id = "abc123"\n', encoding="utf-8")
     findings = by_name(await run_checkup(tmp_path / "config.toml", tools))
     assert findings["mpv"].fix == "sudo apt install mpv"
     assert findings["Spotifast"].status == FAIL and "firefox" in findings["Spotifast"].detail
@@ -96,3 +97,9 @@ def test_wake_models_are_checked_by_fingerprint(tmp_path):
     assert findings["melspectrogram.onnx"].status == FAIL and "huella" in findings["melspectrogram.onnx"].detail
     assert findings["embedding_model.onnx"].status == FAIL
     assert hashlib.sha256(b"alterado").hexdigest() not in FEATURE_MODEL_SHA256.values()
+
+
+async def test_without_spotify_music_comes_from_youtube(tmp_path):
+    findings = by_name(await run_checkup(tmp_path / "config.toml", fake_tools()))
+    assert findings["Música"].status == OK and "YouTube" in findings["Música"].detail
+    assert findings["Spotify"].status == SKIP

@@ -15,7 +15,7 @@ from voxa.services.ai import AiSetupError, build_chat, prices_for, read_key
 from voxa.services.calendar import Calendar
 from voxa.services.http import UrllibHttp
 from voxa.services.mpris import PlayerctlBackend
-from voxa.services.music_backend import LayeredMusicBackend, MusicBackend, NowPlaying
+from voxa.services.music_backend import LayeredMusicBackend, MusicBackend, MusicRouter, NowPlaying
 from voxa.services.pipewire import VolumeControl, WpctlVolume
 from voxa.services.simulated import SimulatedMusic, SimulatedVideoPlayer, SimulatedVideoSearch, SimulatedVolume
 from voxa.services.spotifast_cli import SpotifastCli
@@ -23,6 +23,7 @@ from voxa.services.spotify_api import SpotifyWebApi
 from voxa.services.spotify_auth import SpotifyAuth
 from voxa.services.video import MpvPlayer, VideoPlayer, VideoSearch, YtDlpSearch
 from voxa.services.weather import OpenMeteo
+from voxa.services.youtube_music import YouTubeMusic
 from voxa.skills.ai import AiFallback
 from voxa.skills.clock import ClockSkill
 from voxa.skills.kitchen import KitchenSkill
@@ -158,7 +159,7 @@ def build_voice(config: Config, app: App, *, simulated: bool = False) -> VoiceSe
     )
 
 
-def build_music(config: Config) -> MusicBackend:
+def build_spotify(config: Config) -> MusicBackend:
     """Tres capas: Web API + Connect, CLI de Spotifast y MPRIS (ver plan §6.1)."""
     http = UrllibHttp()
     auth = SpotifyAuth(config.spotify.client_id, config.spotify.redirect_uri, config.spotify_token_path, http)
@@ -166,6 +167,21 @@ def build_music(config: Config) -> MusicBackend:
     cli = SpotifastCli(config.spotifast.command)
     mpris = PlayerctlBackend(config.spotifast.mpris_player)
     return LayeredMusicBackend(search_order=[web, cli], control_order=[mpris, cli, web])
+
+
+def spotify_ready(config: Config) -> bool:
+    return bool(config.spotify.client_id) and config.spotify_token_path.exists()
+
+
+def build_music(config: Config) -> MusicRouter:
+    """Spotify si está conectado (o se pidió), y YouTube (sin cuenta) de respaldo o como única música."""
+    provider = config.music.provider
+    spotify = None
+    if provider == "spotify" or (provider == "auto" and spotify_ready(config)):
+        spotify = build_spotify(config)
+    youtube = None if provider == "spotify" else YouTubeMusic(ytdlp=(config.video.ytdlp,), mpv=config.video.mpv)
+    mpris = PlayerctlBackend(config.spotifast.mpris_player)
+    return MusicRouter(spotify, youtube, spotify_now_playing=mpris.now_playing)
 
 
 def build_app(config: Config, *, simulated: bool = False, on_ring: Callable[[Timer], None] | None = None) -> App:
@@ -176,7 +192,7 @@ def build_app(config: Config, *, simulated: bool = False, on_ring: Callable[[Tim
         ring_timeout_seconds=config.timers.alarm_timeout_minutes * 60,
     )
     music: MusicBackend = SimulatedMusic() if simulated else build_music(config)
-    now_playing = music.now_playing if simulated else PlayerctlBackend(config.spotifast.mpris_player).now_playing
+    now_playing = music.now_playing if simulated else music.display_now_playing
     volume: VolumeControl = SimulatedVolume() if simulated else WpctlVolume()
     calendar = None
     if config.calendar.enabled:
@@ -223,11 +239,13 @@ def build_app(config: Config, *, simulated: bool = False, on_ring: Callable[[Tim
     skills["recipe"] = recipe_skill
     checks: list[Check] = []
     if not simulated:
-        checks = [
-            internet_check(),
-            spotify_check(config.spotify.client_id, config.spotify_token_path),
-            player_check(now_playing, config.spotifast.mpris_player),
-        ]
+        checks = [internet_check()]
+        if config.music.provider == "spotify" or config.spotify.client_id:
+            # Con YouTube de respaldo, Spotify sin conectar no es un problema: solo si se eligió.
+            checks.append(spotify_check(config.spotify.client_id, config.spotify_token_path))
+        if spotify_ready(config):
+            checks.append(player_check(PlayerctlBackend(config.spotifast.mpris_player).now_playing,
+                                       config.spotifast.mpris_player))
     matcher = load_matcher()
     video_active = (lambda: player.current is not None) if player is not None else None
     assistant = Assistant(matcher, skills, timers, video_active=video_active)

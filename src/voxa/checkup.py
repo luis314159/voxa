@@ -184,6 +184,12 @@ def check_wake(config: Config, tools: Tools) -> list[Finding]:
 
 async def check_music(config: Config, tools: Tools) -> list[Finding]:
     group, out = "Música", []
+    if config.music.provider == "youtube":
+        return [Finding(group, "Música", OK, "desde YouTube (sin cuenta)")]
+    if config.music.provider == "auto" and not config.spotify.client_id:
+        return [Finding(group, "Música", OK, "desde YouTube (sin cuenta)"),
+                Finding(group, "Spotify", SKIP, "opcional: tus playlists, Me gusta y pasar la música a otras bocinas",
+                        "Celular → Ajustes → Spotify")]
     if not config.spotify.client_id:
         out.append(Finding(group, "Spotify", FAIL, "Falta el Client ID de tu app de Spotify", "Celular → Ajustes → Spotify"))
     elif not config.spotify_token_path.exists():
