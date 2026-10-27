@@ -131,6 +131,13 @@
 </section>
 
 <section>
+  <h2>Pendientes</h2>
+  <form class="fila" id="form-tarea"><input type="text" id="tarea-texto" placeholder="«Llamar al plomero»" autocomplete="off" enterkeyhint="done"><button class="principal">+</button></form>
+  <label class="campo"><span>¿De quién?</span><select id="tarea-persona"><option value="">De la casa</option></select></label>
+  <div id="tareas"></div>
+</section>
+
+<section>
   <h2>Playlists</h2>
   <div class="fila"><button id="mis-playlists" style="flex:1">Mis playlists</button><button id="me-gusta" style="flex:1">♥ Mis Me gusta</button></div>
   <form class="fila campo" id="form-playlist"><input type="text" id="playlist-texto" placeholder="Buscar en Spotify…" autocomplete="off" enterkeyhint="search"><button>Buscar</button></form>
@@ -410,6 +417,44 @@ $("foto").onchange = async () => {
   }
   $("foto").value = "";
 };
+
+// --- Pendientes ---------------------------------------------------------------------------
+function pintarTareas(datos) {
+  const sel = $("tarea-persona"), elegido = sel.value;
+  sel.replaceChildren(new Option("De la casa", ""), ...datos.personas.map((p) => new Option(p, p)));
+  sel.value = elegido;
+  const grupos = new Map();
+  for (const t of datos.tareas) {
+    const quien = t.persona || "De la casa";
+    if (!grupos.has(quien)) grupos.set(quien, []);
+    grupos.get(quien).push(t);
+  }
+  const cont = $("tareas");
+  cont.replaceChildren();
+  if (!datos.tareas.length) cont.append(el("p", "vacio", "No hay pendientes."));
+  for (const [quien, lista] of grupos) {
+    cont.append(el("div", "detalle", quien));
+    const ul = el("ul");
+    for (const t of lista) {
+      const li = el("li"), hecha = el("button", "", "✓");
+      hecha.setAttribute("aria-label", "Ya está: " + t.texto);
+      hecha.onclick = () => api("/api/tareas", { hecha: t.id }).then(pintarTareas);
+      li.append(el("span", "", capital(t.texto)), hecha);
+      ul.append(li);
+    }
+    cont.append(ul);
+  }
+}
+async function actualizarTareas() { try { pintarTareas(await api("/api/tareas")); } catch (e) { /* sin conexión */ } }
+$("form-tarea").onsubmit = async (ev) => {
+  ev.preventDefault();
+  const texto = $("tarea-texto").value.trim();
+  if (!texto) return;
+  pintarTareas(await api("/api/tareas", { agregar: texto, persona: $("tarea-persona").value }));
+  $("tarea-texto").value = "";
+};
+actualizarTareas();
+setInterval(actualizarTareas, 15000);
 
 // --- Playlists ---------------------------------------------------------------------------
 function mostrarPlaylists(lista) {

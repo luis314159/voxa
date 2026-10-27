@@ -159,6 +159,8 @@ class WebServer:
             return self._json(200, self._state())
         if method == "GET" and url.path == "/api/casa" and self._service.app.house is not None:
             return self._json(200, self._service.app.house.status())
+        if method == "GET" and url.path == "/api/tareas":
+            return self._json(200, self._tasks())
         if method == "GET" and url.path == "/api/playlists":
             return self._json(*await self._playlists())
         if method == "GET" and url.path == "/api/ajustes" and self.settings is not None:
@@ -215,6 +217,16 @@ class WebServer:
                 return await self._playlists(text)
             case "/api/playlists/poner":
                 return await self._play_playlist(str(data.get("uri") or "")[:100], str(data.get("nombre") or "")[:100])
+            case "/api/tareas":
+                tasks = app.tasks
+                person = str(data.get("persona") or "").strip()[:40] or None
+                if add := str(data.get("agregar") or "").strip()[:120]:
+                    tasks.add(add, person)
+                elif isinstance(data.get("hecha"), int):
+                    tasks.done(data["hecha"])
+                else:
+                    return 400, {"error": "¿qué agrego o tacho?"}
+                return 200, self._tasks()
             case "/api/temporizador":
                 minutes = data.get("minutos")
                 if not isinstance(minutes, (int, float)) or not 0 < minutes <= 24 * 60:
@@ -237,6 +249,15 @@ class WebServer:
                 service.display.publish()
                 return 200, {"lista": list(app.shopping.items)}
         return 404, {"error": "no existe"}
+
+    def _tasks(self) -> dict:
+        from voxa.audio.speaker import family_names
+
+        app = self._service.app
+        return {
+            "personas": family_names(app.config.wake_recordings_dir),
+            "tareas": [{"id": t.id, "texto": t.text, "persona": t.person} for t in app.tasks.tasks],
+        }
 
     async def _house(self, path: str, data: dict, peer: str) -> tuple[int, Any]:
         from voxa.house import HouseError

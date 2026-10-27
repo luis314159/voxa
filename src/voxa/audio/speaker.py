@@ -163,6 +163,13 @@ def person_name(folder: Path) -> str:
         return folder.name.replace("-", " ").title()
 
 
+def family_names(recordings: Path) -> list[str]:
+    """Quiénes grabaron su voz («aprende mi voz»), con su nombre como lo dijeron."""
+    if not recordings.is_dir():
+        return []
+    return sorted(person_name(p) for p in recordings.iterdir() if p.is_dir() and any(p.glob("si_*.wav")))
+
+
 class SpeakerIdentifier:
     """Lo que usa el turno de voz: carga el modelo una vez y los prototipos cada que cambian."""
 

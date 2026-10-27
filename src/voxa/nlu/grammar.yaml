@@ -55,6 +55,35 @@
     - "(pon|ponme|crea|agrega|programa) [un] recordatorio (a la|a las|para la|para las) {time} [(para|de|que)] {name}"
     - "(pon|ponme|crea|agrega|programa) [un] recordatorio (para|de|que) {name} (a la|a las) {time}"
 
+# Pendientes de la casa y de cada persona (antes que la lista del súper: «agrega… a mis pendientes»).
+- intent: tasks.add
+  patterns:
+    - pattern: "(agrega|anota|apunta|pon|anade) {query} (a|en) (mis|mi lista de) (pendientes|tareas)"
+      set: {whose: mine}
+    - pattern: "(agrega|anota|apunta|pon|anade) (a|en) mis (pendientes|tareas) [que] {query}"
+      set: {whose: mine}
+    - "(agrega|anota|apunta|pon|anade) {query} (a|en) (los pendientes|las tareas) de {person}"
+    - "(agrega|anota|apunta|pon|anade) {query} (a|en) (los pendientes|las tareas|la lista de pendientes) [de la casa]"
+
+- intent: tasks.list
+  patterns:
+    - pattern: "(que|cuales) (pendientes|tareas) tengo [hoy]"
+      set: {whose: mine}
+    - pattern: "(cuales son|dime|leeme|lee) mis (pendientes|tareas)"
+      set: {whose: mine}
+    - pattern: "tengo (pendientes|algo pendiente)"
+      set: {whose: mine}
+    - "(que|cuales) (pendientes|tareas) tiene {person}"
+    - "(que|cuales) (pendientes|tareas) (hay|tenemos|quedan)"
+
+- intent: tasks.done
+  patterns:
+    - pattern: "ya (hice|termine|acabe|quedo|quedaron) {query}"
+      set: {whose: mine}
+    - pattern: "(tacha|quita|borra) {query} de (mis|los) (pendientes|tareas)"
+      set: {whose: mine}
+    - "(tacha|quita|borra) {query} de los (pendientes|tareas) de {person}"
+
 # Lista del súper. Va antes que todo lo que empieza con «pon» o «quita».
 # Antes que la lista del súper: «agrega los ingredientes a la lista» es de la receta.
 - intent: recipe.to_list

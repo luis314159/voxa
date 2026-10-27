@@ -36,6 +36,7 @@ from voxa.skills.house import HouseSkill, RemoteSkill
 from voxa.skills.enroll import EnrollSkill
 from voxa.skills.screen import ScreenSkill
 from voxa.skills.shopping import ShoppingSkill
+from voxa.skills.tasks import TasksSkill
 from voxa.skills.system import SystemSkill
 from voxa.skills.timers import TimerSkill
 from voxa.skills.updates import UpdateSkill
@@ -46,6 +47,7 @@ from voxa.settings import read_secret
 from voxa.state.ai_usage import AiUsage
 from voxa.state.recipe import RecipeSession
 from voxa.state.shopping import ShoppingList
+from voxa.state.tasks import TaskList
 from voxa.state.timers import Timer, TimerManager
 from voxa.update import Updater
 
@@ -76,6 +78,7 @@ class App:
     music: MusicBackend | None = None
     """Para el celular: las playlists de la cuenta y ponerlas con un toque."""
     house: House | None = None
+    tasks: TaskList = field(default_factory=TaskList)
 
 
 class SetupError(Exception):
@@ -209,6 +212,8 @@ def build_app(config: Config, *, simulated: bool = False, on_ring: Callable[[Tim
 
     video = build_video(config, simulated=simulated)
     shopping = ShoppingList(None if simulated else config.shopping_path)
+    tasks = TaskList(None if simulated else config.state_dir / "pendientes.json")
+    tasks_skill = TasksSkill(tasks)
     skills = {
         "music": MusicSkill(music),
         "volume": VolumeSkill(volume, config.volume.step),
@@ -218,7 +223,9 @@ def build_app(config: Config, *, simulated: bool = False, on_ring: Callable[[Tim
         "system": SystemSkill(),
         "kitchen": KitchenSkill(),
         "routine": RoutineSkill(timers, weather, music, config.routine.morning_music,
-                                agenda=agenda.today_for_morning if agenda.calendar else None),
+                                agenda=agenda.today_for_morning if agenda.calendar else None,
+                                pending=tasks_skill.morning),
+        "tasks": tasks_skill,
         "calendar": agenda,
         "shopping": ShoppingSkill(shopping),
         "display": ScreenSkill(),
@@ -263,7 +270,7 @@ def build_app(config: Config, *, simulated: bool = False, on_ring: Callable[[Tim
         ai.extra_context = recipe.summary
     return App(
         assistant, timers, matcher, now_playing, weather, player, checks, config, shopping, recipe, updater, ai, ai_problem,
-        music, house,
+        music, house, tasks,
     )
 
 

@@ -227,3 +227,7 @@
 - {text: "dile a la sala que se bajen a cenar", intent: house.announce, slots: {device: sala}}
 - {text: "pon mis me gusta", intent: music.play, slots: {kind: liked}}
 - {text: "recuérdale a Ana que tome la medicina a las 8 de la noche", intent: timer.remind, slots: {person: ana}}
+# --- pendientes ---
+- {text: "agrega llamar al plomero a mis pendientes", intent: tasks.add, slots: {query: llamar al plomero}}
+- {text: "qué pendientes tengo", intent: tasks.list}
+- {text: "ya hice la tarea de mate", intent: tasks.done}

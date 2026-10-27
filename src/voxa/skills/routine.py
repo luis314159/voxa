@@ -26,6 +26,7 @@ class RoutineSkill:
         morning_music: str = "",
         now: Callable[[], datetime] = datetime.now,
         agenda: Callable[[], Awaitable[str]] | None = None,
+        pending: Callable[[str | None], str] | None = None,
     ) -> None:
         self._timers = timers
         self._weather = weather
@@ -33,6 +34,7 @@ class RoutineSkill:
         self._morning_music = morning_music
         self._now = now
         self._agenda = agenda
+        self._pending = pending
         """Lo de hoy en el calendario de la familia (vacío si no hay nada)."""
 
     async def handle(self, intent: Intent) -> Response:
@@ -61,6 +63,8 @@ class RoutineSkill:
                     parts.append(agenda)
             except CalendarUnavailable as exc:
                 log.info("Sin calendario para «buenos días»: %s", exc)
+        if self._pending is not None and (pending := self._pending(person)):
+            parts.append(pending)
         if self._morning_music and self._music is not None:
             try:
                 await self._music.play(self._morning_music)
