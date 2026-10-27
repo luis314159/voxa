@@ -128,6 +128,14 @@
 </section>
 
 <section>
+  <h2>Playlists</h2>
+  <div class="fila"><button id="mis-playlists" style="flex:1">Mis playlists</button></div>
+  <form class="fila campo" id="form-playlist"><input type="text" id="playlist-texto" placeholder="Buscar en Spotify…" autocomplete="off" enterkeyhint="search"><button>Buscar</button></form>
+  <ul id="playlists"></ul>
+  <p class="ayuda" id="playlist-respuesta"></p>
+</section>
+
+<section>
   <h2>Escríbele a VOXA</h2>
   <form class="fila" id="form-orden"><input type="text" id="orden" placeholder="«Pon algo tranquilo para cocinar»" autocomplete="off" enterkeyhint="send"><button class="principal">Enviar</button></form>
   <label class="voz"><input type="checkbox" id="en-voz"> Que lo diga en voz alta en la cocina</label>
@@ -358,6 +366,37 @@ $("foto").onchange = async () => {
     $("respuesta").textContent = json.respuesta || json.error || "No se pudo subir.";
   }
   $("foto").value = "";
+};
+
+// --- Playlists ---------------------------------------------------------------------------
+function mostrarPlaylists(lista) {
+  $("playlists").replaceChildren(...lista.map((p) => {
+    const li = el("li"), izq = el("div"), poner = el("button", "principal", "▶");
+    izq.append(el("div", "nombre", p.nombre));
+    izq.append(el("div", "detalle", [p.de, p.canciones != null ? `${p.canciones} canciones` : ""].filter(Boolean).join(" · ")));
+    poner.setAttribute("aria-label", "Poner " + p.nombre);
+    poner.onclick = async () => {
+      decir("playlist-respuesta", "Poniendo…");
+      try { decir("playlist-respuesta", (await api("/api/playlists/poner", { uri: p.uri, nombre: p.nombre })).respuesta); actualizar(); }
+      catch (e) { decir("playlist-respuesta", e.message); }
+    };
+    li.append(izq, poner);
+    return li;
+  }));
+  if (!lista.length) decir("playlist-respuesta", "No encontré playlists.");
+}
+$("mis-playlists").onclick = async () => {
+  decir("playlist-respuesta", "Cargando…");
+  try { mostrarPlaylists((await api("/api/playlists")).playlists); decir("playlist-respuesta", ""); }
+  catch (e) { decir("playlist-respuesta", e.message); }
+};
+$("form-playlist").onsubmit = async (ev) => {
+  ev.preventDefault();
+  const texto = $("playlist-texto").value.trim();
+  if (!texto) return;
+  decir("playlist-respuesta", "Buscando…");
+  try { mostrarPlaylists((await api("/api/playlists/buscar", { texto })).playlists); decir("playlist-respuesta", ""); }
+  catch (e) { decir("playlist-respuesta", e.message); }
 };
 
 // --- Ajustes -----------------------------------------------------------------------------

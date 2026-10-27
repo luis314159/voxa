@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Callable
 
-from voxa.services.music_backend import NothingFound, NowPlaying, PlayResult
+from voxa.services.music_backend import NothingFound, NowPlaying, PlayResult, Playlist
 from voxa.services.pipewire import VolumeState
 from voxa.services.video import Video, VideoNotFound
 
@@ -53,6 +53,18 @@ class SimulatedMusic:
 
     async def now_playing(self) -> NowPlaying | None:
         return self.current
+
+    async def playlists(self) -> list[Playlist]:
+        return [Playlist("Cocina", "spotify:playlist:cocina", "Familia", 42),
+                Playlist("Domingo en casa", "spotify:playlist:domingo", "Familia", 31)]
+
+    async def search_playlists(self, query: str) -> list[Playlist]:
+        return [Playlist(f"{query.title()} {n}", f"spotify:playlist:{n}", "Spotify", 50) for n in (1, 2)]
+
+    async def play_uri(self, uri: str, title: str) -> PlayResult:
+        self.calls.append(f"uri:{uri}")
+        self.current = NowPlaying(title, None, playing=True)
+        return PlayResult(title, kind="playlist")
 
     async def transfer(self, device: str) -> str:
         for name in self._devices:

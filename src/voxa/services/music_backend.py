@@ -47,6 +47,15 @@ class PlayResult:
 
 
 @dataclass(frozen=True)
+class Playlist:
+    name: str
+    uri: str
+    owner: str = ""
+    tracks: int | None = None
+    image: str | None = None
+
+
+@dataclass(frozen=True)
 class NowPlaying:
     title: str
     artist: str | None = None
@@ -71,10 +80,14 @@ class MusicBackend(Protocol):
     async def like(self) -> None: ...
     async def now_playing(self) -> NowPlaying | None: ...
     async def transfer(self, device: str) -> str: ...
+    # Opcionales (solo la Web API): las capas que no los tienen se saltan.
+    async def playlists(self) -> list[Playlist]: ...
+    async def search_playlists(self, query: str) -> list[Playlist]: ...
+    async def play_uri(self, uri: str, title: str) -> PlayResult: ...
 
 
 # Búsquedas y funciones de cuenta: primero la Web API. Transporte: primero MPRIS (local, sin red).
-SEARCH_METHODS = ("play", "like", "now_playing", "transfer", "shuffle")
+SEARCH_METHODS = ("play", "like", "now_playing", "transfer", "shuffle", "playlists", "search_playlists", "play_uri")
 CONTROL_METHODS = ("pause", "resume", "next", "previous", "seek")
 
 
@@ -89,8 +102,11 @@ class LayeredMusicBackend:
         layers = self._search if method in SEARCH_METHODS else self._control
         reasons = []
         for backend in layers:
+            call = getattr(backend, method, None)
+            if call is None:
+                continue
             try:
-                return await getattr(backend, method)(*args)
+                return await call(*args)
             except NotSupported:
                 continue
             except BackendUnavailable as exc:
@@ -129,3 +145,12 @@ class LayeredMusicBackend:
 
     async def transfer(self, device: str) -> str:
         return await self._first("transfer", device)
+
+    async def playlists(self) -> list[Playlist]:
+        return await self._first("playlists")
+
+    async def search_playlists(self, query: str) -> list[Playlist]:
+        return await self._first("search_playlists", query)
+
+    async def play_uri(self, uri: str, title: str) -> PlayResult:
+        return await self._first("play_uri", uri, title)

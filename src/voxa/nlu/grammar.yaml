@@ -204,6 +204,12 @@
     - pattern: "(pon|ponme|reproduce|toca|tocame|quiero escuchar|quiero oir|escuchemos) [unas|una|un poco de|algo de] (musica|algo|canciones|rolas) (para|pa) {query}"
       set: {kind: mood}
 
+- intent: music.playlists
+  patterns:
+    - "(que|cuales) (playlists|listas de reproduccion) tengo"
+    - "(cuales son|dime|lee|leeme) (mis|las) (playlists|listas de reproduccion)"
+    - "(que|cuales) playlists hay [en mi cuenta|en spotify]"
+
 - intent: music.transfer
   patterns:
     - "(ponla|ponlo|pasala|pasalo|mandala|mandalo|cambiala|cambialo|muevela|muevelo) (en|a|al|para) [la|el] {device}"

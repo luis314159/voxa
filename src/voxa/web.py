@@ -155,6 +155,8 @@ class WebServer:
             return 200, {"Content-Type": "text/html; charset=utf-8"}, self.page.encode()
         if method == "GET" and url.path == "/api/estado":
             return self._json(200, self._state())
+        if method == "GET" and url.path == "/api/playlists":
+            return self._json(*await self._playlists())
         if method == "GET" and url.path == "/api/ajustes" and self.settings is not None:
             return self._json(200, self.settings.summary())
         if method == "POST" and url.path == "/api/foto":
@@ -201,6 +203,12 @@ class WebServer:
                     return 400, {"error": "acción desconocida"}
                 response = await service.handle_text(action[data["accion"]], speak=False)
                 return 200, {"respuesta": response.speech or "Listo."}
+            case "/api/playlists/buscar":
+                if len(text) < 2:
+                    return 400, {"error": "¿qué busco?"}
+                return await self._playlists(text)
+            case "/api/playlists/poner":
+                return await self._play_playlist(str(data.get("uri") or "")[:100], str(data.get("nombre") or "")[:100])
             case "/api/temporizador":
                 minutes = data.get("minutos")
                 if not isinstance(minutes, (int, float)) or not 0 < minutes <= 24 * 60:
@@ -223,6 +231,36 @@ class WebServer:
                 service.display.publish()
                 return 200, {"lista": list(app.shopping.items)}
         return 404, {"error": "no existe"}
+
+    async def _playlists(self, query: str = "") -> tuple[int, Any]:
+        from voxa.services.music_backend import BackendUnavailable
+
+        music = self._service.app.music
+        if music is None:
+            return 400, {"error": "no hay música"}
+        try:
+            found = await (music.search_playlists(query) if query else music.playlists())
+        except BackendUnavailable as exc:
+            log.info("Playlists para el celular: %s", exc)
+            return 502, {"error": "No pude leer las playlists: revisa Spotify en Ajustes."}
+        return 200, {"playlists": [{"nombre": p.name, "uri": p.uri, "de": p.owner, "canciones": p.tracks,
+                                    "imagen": p.image} for p in found]}
+
+    async def _play_playlist(self, uri: str, name: str) -> tuple[int, Any]:
+        from voxa.services.music_backend import BackendUnavailable, NothingFound
+
+        music = self._service.app.music
+        if music is None or not uri:
+            return 400, {"error": "falta la playlist"}
+        try:
+            result = await music.play_uri(uri, name or "la playlist")
+        except NothingFound:
+            return 400, {"error": "esa no es una playlist de Spotify"}
+        except BackendUnavailable as exc:
+            log.info("Poner playlist desde el celular: %s", exc)
+            return 502, {"error": "No pude ponerla: ¿está encendida la bocina de la cocina?"}
+        self._service.display.publish()
+        return 200, {"respuesta": f"Sonando: {result.title}."}
 
     def _save_photo(self, data: bytes) -> tuple[int, Any]:
         ext = photo_kind(data)

@@ -219,3 +219,6 @@
 - {text: "¿qué tengo hoy?", intent: calendar.today}
 - {text: "qué hay en mi agenda para mañana", intent: calendar.tomorrow}
 - {text: "cuál es mi siguiente cita", intent: calendar.next}
+# --- playlists ---
+- {text: "¿qué playlists tengo?", intent: music.playlists}
+- {text: "cuáles son mis playlists", intent: music.playlists}

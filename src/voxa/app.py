@@ -70,6 +70,8 @@ class App:
     ai: AiFallback | None = None
     ai_problem: str | None = None
     """Por qué la IA activada no pudo arrancar (falta la llave, el SDK…)."""
+    music: MusicBackend | None = None
+    """Para el celular: las playlists de la cuenta y ponerlas con un toque."""
 
 
 class SetupError(Exception):
@@ -227,7 +229,8 @@ def build_app(config: Config, *, simulated: bool = False, on_ring: Callable[[Tim
         ai.start_recipe = recipe_skill.open
         ai.extra_context = recipe.summary
     return App(
-        assistant, timers, matcher, now_playing, weather, player, checks, config, shopping, recipe, updater, ai, ai_problem
+        assistant, timers, matcher, now_playing, weather, player, checks, config, shopping, recipe, updater, ai, ai_problem,
+        music,
     )
 
 

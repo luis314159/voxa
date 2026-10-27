@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 
-from voxa.core.phrases import capitalize
+from voxa.core.phrases import capitalize, join_words
 from voxa.core.types import OK, Intent, Response
 from voxa.services.music_backend import AuthRequired, BackendUnavailable, MusicBackend, NothingFound
 from voxa.skills.mood import mood_search
@@ -11,6 +11,7 @@ log = logging.getLogger(__name__)
 
 _NO_SPOTIFY = Response("No pude conectar con Spotify. Revisa que Spotifast esté abierto.", sound="error")
 _REAUTHORIZE = " Además, falta autorizar Spotify en VOXA."
+MAX_SAID = 8
 
 
 class MusicSkill:
@@ -65,6 +66,13 @@ class MusicSkill:
                 if current is None:
                     return Response("No está sonando nada.")
                 return Response(f"{current.title}, de {current.artist}." if current.artist else f"{current.title}.")
+            case "music.playlists":
+                names = [p.name for p in await backend.playlists()]
+                if not names:
+                    return Response("No encontré playlists en tu cuenta de Spotify.")
+                said = join_words(names[:MAX_SAID] + ([f"{len(names) - MAX_SAID} más"] if len(names) > MAX_SAID else []))
+                count = "una playlist" if len(names) == 1 else f"{len(names)} playlists"
+                return Response(f"Tienes {count}: {said}. Dime «pon mi playlist» y su nombre; en el celular están todas.")
             case "music.transfer":
                 name = await backend.transfer(intent.slots["device"])
                 return Response(f"Pasando la música a {name}.")

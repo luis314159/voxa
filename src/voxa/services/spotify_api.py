@@ -9,7 +9,8 @@ from __future__ import annotations
 
 import difflib
 import logging
-from typing import Any
+import time
+from typing import Any, Callable
 
 from voxa.nlu.normalize import normalize
 from voxa.services.http import Http, HttpError
@@ -20,6 +21,7 @@ from voxa.services.music_backend import (
     NothingFound,
     NowPlaying,
     PlayResult,
+    Playlist,
 )
 from voxa.services.spotify_auth import SpotifyAuth
 
@@ -28,6 +30,9 @@ log = logging.getLogger(__name__)
 API = "https://api.spotify.com/v1"
 _ARTIST_MATCH = 0.8
 _PLAYLIST_MATCH = 0.6
+_OWN_FIRST = 0.85  # «pon cocina» con una playlist propia que se llama «Cocina»: va esa
+_PLAYLISTS_MAX_AGE = 10 * 60
+_PLAYLISTS_LIMIT = 500
 
 
 def similarity(a: str, b: str) -> float:
@@ -42,10 +47,14 @@ def _artists(item: dict) -> str | None:
 class SpotifyWebApi:
     name = "web-api"
 
-    def __init__(self, auth: SpotifyAuth, http: Http, device_name: str) -> None:
+    def __init__(
+        self, auth: SpotifyAuth, http: Http, device_name: str, *, clock: Callable[[], float] = time.monotonic
+    ) -> None:
         self._auth = auth
         self._http = http
         self.device_name = device_name
+        self._clock = clock
+        self._own: tuple[float, list[Playlist]] | None = None
 
     async def _api(self, method: str, path: str, *, params=None, body=None, retry: bool = True) -> Any:
         headers = {"Authorization": f"Bearer {await self._auth.access_token()}"}
@@ -94,9 +103,9 @@ class SpotifyWebApi:
         return [i for i in (results.get(key) or {}).get("items", []) if i]
 
     async def _choose(self, query: str, kind: str | None) -> tuple[dict, PlayResult]:
-        if kind == "playlist":
-            if own := await self._own_playlist(query):
-                return {"context_uri": own["uri"]}, PlayResult(own["name"], kind="playlist")
+        if kind in ("playlist", None):
+            if own := await self._own_playlist(query, _PLAYLIST_MATCH if kind else _OWN_FIRST):
+                return {"context_uri": own.uri}, PlayResult(own.name, kind="playlist")
 
         if kind is None and " de " in query:
             # «persiana americana de soda stereo»: canción de un artista.
@@ -142,16 +151,49 @@ class SpotifyWebApi:
             return {"context_uri": album_uri, "offset": {"uri": track["uri"]}}
         return {"uris": [track["uri"]]}
 
-    async def _own_playlist(self, query: str) -> dict | None:
+    async def _own_playlist(self, query: str, threshold: float) -> Playlist | None:
         try:
-            data = await self._api("GET", "/me/playlists", params={"limit": 50})
+            playlists = await self.playlists()
         except BackendUnavailable as exc:
             log.info("No pude leer las playlists propias: %s", exc)
             return None
-        playlists = [p for p in (data or {}).get("items", []) if p]
-        scored = [(similarity(query, p.get("name", "")), p) for p in playlists]
+        scored = [(similarity(query, p.name), p) for p in playlists]
         best = max(scored, key=lambda pair: pair[0], default=(0.0, None))
-        return best[1] if best[0] >= _PLAYLIST_MATCH else None
+        return best[1] if best[0] >= threshold else None
+
+    @staticmethod
+    def _playlist(item: dict) -> Playlist:
+        images = item.get("images") or []
+        tracks = (item.get("tracks") or item.get("items") or {}).get("total")
+        return Playlist(item.get("name", ""), item["uri"], ((item.get("owner") or {}).get("display_name") or ""),
+                        tracks, images[0].get("url") if images and images[0] else None)
+
+    async def playlists(self) -> list[Playlist]:
+        """Las playlists de la cuenta (propias y seguidas), todas las páginas; 10 min en memoria."""
+        if self._own is not None and self._clock() - self._own[0] < _PLAYLISTS_MAX_AGE:
+            return self._own[1]
+        found: list[Playlist] = []
+        offset = 0
+        while offset < _PLAYLISTS_LIMIT:
+            data = await self._api("GET", "/me/playlists", params={"limit": 50, "offset": offset}) or {}
+            items = [p for p in data.get("items", []) if p and p.get("uri")]
+            found += [self._playlist(p) for p in items]
+            if not data.get("next") or not items:
+                break
+            offset += 50
+        self._own = (self._clock(), found)
+        return found
+
+    async def search_playlists(self, query: str) -> list[Playlist]:
+        return [self._playlist(p) for p in self._items(await self._search(query, "playlist", 10), "playlists")
+                if p.get("uri")]
+
+    async def play_uri(self, uri: str, title: str) -> PlayResult:
+        if not uri.startswith(("spotify:playlist:", "spotify:album:", "spotify:artist:")):
+            raise NothingFound(title)
+        device_id = await self._home_device_id()
+        await self._api("PUT", "/me/player/play", params={"device_id": device_id}, body={"context_uri": uri})
+        return PlayResult(title, kind="playlist" if uri.startswith("spotify:playlist:") else None)
 
     # --- MusicBackend ----------------------------------------------------
     async def play(self, query: str, kind: str | None = None) -> PlayResult:
