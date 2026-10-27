@@ -130,6 +130,11 @@
   <ul id="lista"></ul>
 </section>
 
+<section id="seccion-medicinas" hidden>
+  <h2>Medicinas de hoy</h2>
+  <ul id="medicinas"></ul>
+</section>
+
 <section>
   <h2>Pendientes</h2>
   <form class="fila" id="form-tarea"><input type="text" id="tarea-texto" placeholder="«Llamar al plomero»" autocomplete="off" enterkeyhint="done"><button class="principal">+</button></form>
@@ -282,6 +287,18 @@
   <label class="campo"><span>Música de «buenos días» (opcional)</span><input type="text" id="rutina-musica" placeholder="«mi playlist de la mañana»" autocomplete="off"></label>
   <button id="rutina-guardar" style="width:100%;margin-top:10px">Guardar</button>
   <p class="ayuda" id="rutina-respuesta"></p>
+</section>
+
+<section>
+  <h2>Medicinas</h2>
+  <p class="ayuda">Un recordatorio de medicina («recuérdale a Ana que se tome la pastilla a las 8») pregunta «¿ya te la tomaste?» hasta que le contesten «ya me la tomé». Si nadie contesta, avisa a otra persona.</p>
+  <div class="interruptor"><span>Preguntar si ya se la tomaron</span><input type="checkbox" id="med-encendido"></div>
+  <label class="campo"><span>Preguntar otra vez cada</span><select id="med-cada"><option value="3">3 min</option><option value="5">5 min</option><option value="10">10 min</option><option value="15">15 min</option></select></label>
+  <label class="campo"><span>Avisar a otra persona después de preguntar</span><select id="med-veces"><option value="2">2 veces</option><option value="3">3 veces</option><option value="4">4 veces</option></select></label>
+  <div class="interruptor"><span>Avisar por Telegram</span><input type="checkbox" id="med-telegram"></div>
+  <div class="interruptor"><span>Avisar en los otros cuartos</span><input type="checkbox" id="med-casa"></div>
+  <button id="med-guardar" style="width:100%;margin-top:10px">Guardar</button>
+  <p class="ayuda" id="med-respuesta"></p>
 </section>
 
 <section>
@@ -515,6 +532,21 @@ const EN = {
   "mochila, lonche, uniforme": "backpack, lunch, uniform",
   "Música de «buenos días» (opcional)": "«Good morning» music (optional)",
   "«mi playlist de la mañana»": "«my morning playlist»",
+  // Medicinas
+  "Medicinas de hoy": "Today's medicine",
+  "Medicinas": "Medicine",
+  "Un recordatorio de medicina («recuérdale a Ana que se tome la pastilla a las 8») pregunta «¿ya te la tomaste?» hasta que le contesten «ya me la tomé». Si nadie contesta, avisa a otra persona.": "A medicine reminder («remind Ana to take her pill at 8») asks «did you take it?» until someone answers «I took it». If no one answers, it tells someone else.",
+  "Preguntar si ya se la tomaron": "Ask whether it was taken",
+  "Preguntar otra vez cada": "Ask again every",
+  "Avisar a otra persona después de preguntar": "Tell someone else after asking",
+  "2 veces": "2 times",
+  "3 veces": "3 times",
+  "4 veces": "4 times",
+  "Avisar por Telegram": "Tell them on Telegram",
+  "Avisar en los otros cuartos": "Tell the other rooms",
+  "Tomada a las {hora}": "Taken at {hora}",
+  "Sin confirmar": "Not confirmed",
+  "Ya se la tomó": "Taken",
   // Horas de silencio
   "Horas de silencio": "Quiet hours",
   "De noche VOXA habla bajito y, si una alarma suena sin que nadie la apague, no avisa en los otros cuartos. Las alarmas siguen sonando normal.": "At night VOXA speaks softly and, if an alarm rings with no one turning it off, it doesn't tell the other rooms. Alarms still ring as usual.",
@@ -682,6 +714,7 @@ async function actualizar() {
     if (estado.language) ponerIdioma(estado.language);
     $("conexion").textContent = tr("en línea");
     pintar();
+    pintarMedicinas(estado.medicinas || []);
   } catch (e) {
     $("conexion").textContent = tr("sin conexión con VOXA");
   }
@@ -752,6 +785,25 @@ function pintarTareas(datos) {
     cont.append(ul);
   }
 }
+function horaDe(ts) { return new Date(ts * 1000).toLocaleTimeString(idioma === "en" ? "en-US" : "es-MX", { hour: "numeric", minute: "2-digit" }); }
+
+function pintarMedicinas(dosis) {
+  $("seccion-medicinas").hidden = !dosis.length;
+  $("medicinas").replaceChildren(...dosis.map((d, i) => {
+    const li = el("li"), izq = el("div");
+    izq.append(el("div", "nombre", `${horaDe(d.hora)} · ${capital(d.medicina)}`));
+    const estadoDosis = d.tomada ? tr("Tomada a las {hora}", { hora: horaDe(d.tomada) }) : d.sin_confirmar ? tr("Sin confirmar") : "";
+    izq.append(el("div", "detalle", [d.persona || tr("De la casa"), estadoDosis].filter(Boolean).join(" · ")));
+    li.append(izq);
+    if (d.sin_confirmar && !d.tomada) {
+      const tomada = el("button", "", tr("Ya se la tomó"));
+      tomada.onclick = () => api("/api/medicinas", { tomada: i }).then((r) => pintarMedicinas(r.medicinas)).catch((e) => alert(e.message));
+      li.append(tomada);
+    }
+    return li;
+  }));
+}
+
 async function actualizarTareas() { try { pintarTareas(await api("/api/tareas")); } catch (e) { /* sin conexión */ } }
 $("form-tarea").onsubmit = async (ev) => {
   ev.preventDefault();
@@ -963,6 +1015,11 @@ async function cargarAjustes() {
     etiqueta.append(caja, document.createTextNode(letra));
     return etiqueta;
   }));
+  $("med-encendido").checked = a.medicinas.enabled;
+  $("med-cada").value = String(a.medicinas.cada);
+  $("med-veces").value = String(a.medicinas.veces);
+  $("med-telegram").checked = a.medicinas.telegram;
+  $("med-casa").checked = a.medicinas.casa;
   $("silencio-encendido").checked = a.silencio.enabled;
   $("silencio-desde").value = a.silencio.start;
   $("silencio-hasta").value = a.silencio.end;
@@ -1154,6 +1211,13 @@ $("rutina-guardar").onclick = () => guardar("routine", {
   checklist: $("rutina-llevar").value.trim(),
   morning_music: $("rutina-musica").value.trim(),
 }, "rutina-respuesta");
+$("med-guardar").onclick = () => guardar("medicine", {
+  enabled: $("med-encendido").checked,
+  ask_every_minutes: Number($("med-cada").value),
+  tries: Number($("med-veces").value),
+  notify_telegram: $("med-telegram").checked,
+  notify_house: $("med-casa").checked,
+}, "med-respuesta");
 $("silencio-guardar").onclick = () => guardar("quiet", {
   enabled: $("silencio-encendido").checked,
   start: $("silencio-desde").value,

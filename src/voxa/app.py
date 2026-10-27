@@ -28,6 +28,7 @@ from voxa.services.youtube_music import YouTubeMusic
 from voxa.skills.ai import AiFallback
 from voxa.skills.clock import ClockSkill
 from voxa.skills.kids import KidsSkill
+from voxa.skills.medicine import MedicineSkill
 from voxa.skills.kitchen import KitchenSkill
 from voxa.skills.music import MusicSkill
 from voxa.skills.recipe import RecipeSkill
@@ -37,6 +38,7 @@ from voxa.house import SHARED_DOMAINS, House
 from voxa.i18n import other_language, set_language
 from voxa.kids import KidsRules
 from voxa.kids import saver as kids_saver
+from voxa.medicine import MedicineLog, MedicineTracker
 from voxa.quiet import QuietHours
 from voxa.skills.calendar import CalendarSkill
 from voxa.skills.house import HouseSkill, RemoteSkill
@@ -90,6 +92,7 @@ class App:
     tasks: TaskList = field(default_factory=TaskList)
     kids: KidsRules | None = None
     quiet: QuietHours = field(default_factory=lambda: QuietHours(QuietConfig()))
+    medicine: MedicineTracker | None = None
 
 
 class SetupError(Exception):
@@ -228,6 +231,7 @@ def build_app(config: Config, *, simulated: bool = False, on_ring: Callable[[Tim
         ring_timeout_seconds=config.timers.alarm_timeout_minutes * 60,
     )
     kids = KidsRules(config.kids, save=None if simulated else kids_saver(config_path()))
+    medicine = MedicineTracker(config.medicine, timers, MedicineLog(None if simulated else config.state_dir / "medicinas.json"))
     music: MusicBackend = SimulatedMusic() if simulated else build_music(config, kids.clean_music)
     now_playing = music.now_playing if simulated else music.display_now_playing
     volume: VolumeControl = SimulatedVolume() if simulated else WpctlVolume()
@@ -251,6 +255,7 @@ def build_app(config: Config, *, simulated: bool = False, on_ring: Callable[[Tim
         "music": MusicSkill(music, kids),
         "volume": VolumeSkill(volume, config.volume.step, kids),
         "kids": KidsSkill(kids),
+        "medicine": MedicineSkill(medicine),
         "timer": TimerSkill(timers),
         "clock": ClockSkill(),
         "weather": WeatherSkill(weather),
@@ -309,7 +314,7 @@ def build_app(config: Config, *, simulated: bool = False, on_ring: Callable[[Tim
         ai.extra_context = recipe.summary
     return App(
         assistant, timers, matcher, now_playing, weather, player, checks, config, shopping, recipe, updater, ai, ai_problem,
-        music, house, tasks, kids, QuietHours(config.quiet),
+        music, house, tasks, kids, QuietHours(config.quiet), medicine,
     )
 
 

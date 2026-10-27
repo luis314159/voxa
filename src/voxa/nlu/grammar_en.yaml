@@ -241,6 +241,18 @@
     - "(cancel|stop|delete|remove) [the|my] {name} (timer|alarm|reminder)"
     - "(cancel|stop|delete|remove) the (timer|alarm|reminder) [(for the|for) {name}]"
 
+# Medicine: «I took it» answers «did you take your medicine?» (with no alarm ringing it's a question).
+- intent: medicine.later
+  patterns:
+    - "(not yet|later|in a bit|in a minute|give me a minute|ill take it later|i will take it later)"
+
+- intent: medicine.taken
+  patterns:
+    - "[yes] i (took|have taken|already took|just took|took) (it|them|my medicine|my pills|my pill|my meds|the medicine|the pill|the pills)"
+    - "did i take my (medicine|pills|pill|meds)"
+    - "(did|has) {person} (take|taken) (her|his|their|the) (medicine|pills|pill|meds)"
+    - "{person} (took|has taken) (her|his|their|the) (medicine|pills|pill|meds)"
+
 # Kids mode: turned on by voice (for everyone); turning it off is from the phone.
 - intent: kids.off
   patterns:

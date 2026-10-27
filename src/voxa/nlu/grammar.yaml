@@ -157,6 +157,20 @@
     - "(cancela|quita|borra|elimina|deten|para|apaga) [el|la|mi] (temporizador|timer|cronometro|alarma|recordatorio|despertador) [(del|de la|de|para) {name}]"
     - "(cancela|quita|borra|elimina) (el|la) (del|de la|de los|de las|de|para) {name}"
 
+# Medicinas: «ya me la tomé» contesta a «¿ya te tomaste la medicina?» (sin alarma, es una pregunta).
+- intent: medicine.later
+  patterns:
+    - "(todavia no|aun no|ahorita no|al rato|en un rato|ahorita voy|ahorita me la tomo|todavia no me la tomo|mas tarde|dame unos minutos)"
+
+- intent: medicine.taken
+  patterns:
+    - "[si] ya me (la|las|lo|los) (tome|tomo)"
+    - "[si] ya (me tome|tome|me la tome|me las tome) (la|mi|las|mis|el|mi|los|mis) (medicina|medicinas|pastilla|pastillas|medicamento|medicamentos|vitamina|vitaminas|jarabe|insulina|gotas)"
+    - "[si] ya se (la|las|lo|los) (tomo|dimos|di)"
+    - "[ya] (se tomo|ya se tomo|tomo) {person} (la|su|sus|el) (medicina|medicinas|pastilla|pastillas|medicamento|medicamentos|vitamina|vitaminas|jarabe|insulina|gotas)"
+    - "{person} ya se tomo (la|su|sus|el) (medicina|medicinas|pastilla|pastillas|medicamento|medicamentos|vitamina|vitaminas|jarabe|insulina|gotas)"
+    - "ya (se tomaron|nos tomamos) (la|las|sus) (medicina|medicinas|pastilla|pastillas|medicamento|medicamentos|vitamina|vitaminas|jarabe|insulina|gotas)"
+
 # Modo niños: se enciende por voz (para todos); apagarlo es desde el celular.
 - intent: kids.off
   patterns:

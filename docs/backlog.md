@@ -21,7 +21,6 @@ Lo que falta para que VOXA sea un producto excelente para familias, en orden de 
 
 ## Siguiente
 
-- **Medicinas con confirmación:** «Ana, ¿ya te tomaste la medicina?». Si no contesta, se repite y se avisa a otra persona.
 - **Notas y mensajes:** «déjale una nota a papá» aparece en la pantalla y se dice cuando VOXA reconoce su voz.
 - **Agregar al calendario por voz** («agrega dentista el martes a las 5»). Hoy solo se lee el iCal; escribir requiere conectar la cuenta de Google con OAuth.
 - **Spotify por persona:** cada quien conecta su cuenta, y «pon mis me gusta» usa la de quien habla.

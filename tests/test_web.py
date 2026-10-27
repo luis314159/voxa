@@ -128,3 +128,17 @@ async def test_a_new_kitchen_shows_the_setup_code(tmp_path):
     assert service.needs_setup()
     async with service.running(None):
         assert service.display.snapshot()["phone"].startswith("http://")
+
+
+async def test_phone_shows_todays_medicine_and_marks_it_taken(phone):
+    server, service, _ = phone
+    timers = service.app.timers
+    timer = timers.add(60, "tomar la pastilla", kind="reminder")
+    timer.person = "Ana"
+    service.app.medicine.unanswered(timer)  # nadie contestó
+    state = json.loads((await http(server.port, "GET", "/api/estado", headers=logged_in()))[2])
+    assert state["medicinas"][0]["medicina"] == "la pastilla" and state["medicinas"][0]["sin_confirmar"]
+    status, _, body = await http(server.port, "POST", "/api/medicinas", **as_json({"tomada": 0}))
+    assert status == 200 and json.loads(body)["medicinas"][0]["tomada"]
+    status, _, _ = await http(server.port, "POST", "/api/medicinas", **as_json({"tomada": 0}))
+    assert status == 400  # ya estaba anotada

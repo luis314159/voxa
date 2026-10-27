@@ -117,6 +117,9 @@ class SettingsApi:
                 "bilingue": config.voice.bilingual,
             },
             "casa": {**(app.house.status() if app.house else {}), "invitacion": self.invitation()},
+            "medicinas": {"enabled": config.medicine.enabled, "cada": config.medicine.ask_every_minutes,
+                          "veces": config.medicine.tries, "telegram": config.medicine.notify_telegram,
+                          "casa": config.medicine.notify_house},
             "silencio": {"enabled": config.quiet.enabled, "start": config.quiet.start, "end": config.quiet.end,
                          "level": config.quiet.level},
             "ninos": {

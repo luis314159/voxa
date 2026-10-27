@@ -22,6 +22,7 @@ from voxa.display import Display, DisplayServer
 from voxa.health import Health, Problem
 from voxa.i18n import tr
 from voxa.kids import skip_explicit
+from voxa.medicine import ring_phrase as medicine_phrase
 from voxa.services.music_backend import BackendUnavailable
 from voxa.services.http import UrllibHttp
 from voxa.skills.enroll import ENROLL_ACTION
@@ -78,6 +79,8 @@ class Service:
             recipe.on_wait = self._say_meanwhile
         if app.ai_problem:
             self.health.report(Problem("ia", "La IA no está lista", app.ai_problem))
+        if app.medicine is not None:
+            app.medicine.notify = self._medicine_missed
         if app.ai is not None:
             app.ai.on_setup_error = lambda detail: self.health.report(Problem("ia", "La IA no funciona", detail))
             app.ai.on_ok = lambda: self.health.clear("ia")
@@ -350,10 +353,12 @@ class Service:
 
     def on_ring(self, timer: Timer) -> None:
         self.display.publish()
+        medicine = self.app.medicine
+        phrase = medicine_phrase(timer) if medicine is not None and medicine.watches(timer) else ring_phrase(timer)
         if self.session is not None:
-            self._spawn(self.session.announce(ring_phrase(timer)))
+            self._spawn(self.session.announce(phrase))
         if self._video_showing():
-            self._spawn(self.app.video.show_text(f"⏰ {ring_phrase(timer)}", 8.0))
+            self._spawn(self.app.video.show_text(f"⏰ {phrase}", 8.0))
         if self.app.house is not None and timer.id not in self._told_house:
             self._told_house.add(timer.id)
             self._spawn(self._tell_house_if_unanswered(timer))
@@ -461,7 +466,7 @@ class Service:
         log.info("Durante la alarma: «%s» → %s", text, intent.name if intent else None)
         if intent is not None and intent.name in STOPS_ALARM:
             await self.stop_alarm()
-        elif intent is not None and intent.name == "timer.adjust":
+        elif intent is not None and intent.name in ("timer.adjust", "medicine.taken", "medicine.later"):
             # «5 minutos más»: se pospone sin decir «Hey Voxa».
             response = await self.app.assistant.handle_intent(intent)
             self.exchange(text, response)
@@ -475,6 +480,28 @@ class Service:
             await asyncio.sleep(_MIC_RETRY_SECONDS)
             if self.mic is not None and not self.muted and not self.mic.is_open and not self._turn.locked():
                 self._open_microphone()
+
+    async def _medicine_missed(self, text: str) -> None:
+        """Nadie confirmó una medicina: se avisa por Telegram y, si no es de noche, en los otros cuartos."""
+        config = self.app.config.medicine
+        if config.notify_telegram and self.app.config.telegram.enabled:
+            token = read_token(self.app.config.telegram_token_path)
+            chats = Chats(self.app.config.telegram_chats_path, self.app.config.telegram_code_path).all()
+            if token and chats:
+                api = TelegramApi(token, UrllibHttp(daemon=True))
+                for chat in chats:
+                    try:
+                        await api.call("sendMessage", {"chat_id": chat, "text": f"💊 {text}"})
+                    except Exception as exc:  # noqa: BLE001 - sin red, al menos los cuartos
+                        log.warning("No pude avisar la medicina por Telegram: %s", exc)
+        house = self.app.house
+        if config.notify_house and house is not None and not self.app.quiet.active():
+            from voxa.house import HouseError
+
+            try:
+                await house.announce(text)
+            except HouseError as exc:
+                log.info("No pude avisar la medicina en los cuartos: %s", exc)
 
     async def _clean_music(self) -> None:
         """Modo niños: si suena una canción que Spotify marca como explícita, se salta."""

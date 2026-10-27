@@ -194,7 +194,9 @@ class WebServer:
     def _state(self) -> dict:
         snapshot = self._service.display.snapshot()
         keys = ("phase", "heard", "answer", "timers", "music", "shopping", "recipe", "muted", "weather", "language")
-        return {"now": time.time(), **{k: snapshot.get(k) for k in keys}}
+        medicine = self._service.app.medicine
+        doses = medicine.log.snapshot() if medicine is not None else []
+        return {"now": time.time(), **{k: snapshot.get(k) for k in keys}, "medicinas": doses}
 
     async def _post(self, path: str, data: dict) -> tuple[int, Any]:
         service, app = self._service, self._service.app
@@ -217,6 +219,13 @@ class WebServer:
                 return await self._playlists(text)
             case "/api/playlists/poner":
                 return await self._play_playlist(str(data.get("uri") or "")[:100], str(data.get("nombre") or "")[:100])
+            case "/api/medicinas":
+                medicine = app.medicine
+                if medicine is None or not isinstance(data.get("tomada"), int):
+                    return 400, {"error": "¿cuál medicina?"}
+                if not medicine.log.mark_taken(data["tomada"]):
+                    return 400, {"error": "esa ya estaba anotada"}
+                return 200, {"medicinas": medicine.log.snapshot()}
             case "/api/tareas":
                 tasks = app.tasks
                 person = str(data.get("persona") or "").strip()[:40] or None

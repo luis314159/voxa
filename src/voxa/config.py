@@ -119,6 +119,17 @@ class QuietConfig:
 
 
 @dataclass(frozen=True)
+class MedicineConfig:
+    enabled: bool = True
+    """Los recordatorios de medicina preguntan «¿ya te la tomaste?» y esperan respuesta."""
+    ask_every_minutes: int = 5
+    tries: int = 3
+    """Cuántas veces pregunta antes de avisar a otra persona."""
+    notify_telegram: bool = True
+    notify_house: bool = True
+
+
+@dataclass(frozen=True)
 class WakeConfig:
     enabled: bool = True
     model: str = ""
@@ -195,6 +206,7 @@ class Config:
     routine: RoutineConfig = field(default_factory=RoutineConfig)
     kids: KidsConfig = field(default_factory=KidsConfig)
     quiet: QuietConfig = field(default_factory=QuietConfig)
+    medicine: MedicineConfig = field(default_factory=MedicineConfig)
     display: DisplayConfig = field(default_factory=DisplayConfig)
     video: VideoConfig = field(default_factory=VideoConfig)
     ai: AiConfig = field(default_factory=AiConfig)

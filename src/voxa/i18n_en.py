@@ -305,6 +305,23 @@ EN: dict[str, str] = {
     "Listo, aunque todavía te confundo a veces. Si no te hago caso, repítelo en un lugar más silencioso.":
         "Done, though I still mix you up sometimes. If I don't answer you, do it again somewhere quieter.",
     "Listo, ya reconozco tu voz.": "Done, I know your voice now.",
+    # --- medicine -------------------------------------------------------------------------------------------------
+    "{person}, es hora de tu medicina: {label}. Cuando te la tomes, dime «ya me la tomé».":
+        "{person}, it's time for your medicine: {label}. When you've taken it, tell me «I took it».",
+    "Es hora de la medicina: {label}. Cuando se la tomen, díganme «ya me la tomé».":
+        "It's time for the medicine: {label}. When it's taken, tell me «I took it».",
+    "{person}, ¿ya te tomaste la medicina? {label}.": "{person}, did you take your medicine? {label}.",
+    "¿Ya se tomaron la medicina? {label}.": "Has the medicine been taken? {label}.",
+    "{person} no ha confirmado su medicina de las {hour}: {label}.": "{person} hasn't confirmed their {hour} medicine: {label}.",
+    "Nadie confirmó la medicina de las {hour}: {label}.": "No one confirmed the {hour} medicine: {label}.",
+    "No hay ninguna medicina pendiente ahorita.": "There's no medicine waiting right now.",
+    "Va, te pregunto otra vez en {duration}.": "OK, I'll ask you again in {duration}.",
+    "¡Muy bien, {person}! Lo anoté.": "Great, {person}! I wrote it down.",
+    "¡Muy bien! Lo anoté.": "Great! I wrote it down.",
+    "Hoy no tengo medicinas anotadas.": "I don't have any medicine written down for today.",
+    "Sí: {label}, a las {hour}.": "Yes: {label}, at {hour}.",
+    "No está confirmada: la de las {hour} ({label}). Se puede marcar desde el celular.":
+        "It isn't confirmed: the {hour} one ({label}). You can mark it from your phone.",
     # --- kids mode -------------------------------------------------------------------------------------------------
     "Listo, modo niños para todos: música sin groserías, volumen con tope y la IA para niños. Se apaga desde el celular.":
         "Done, kids mode for everyone: clean music, a volume limit and kid-friendly AI answers. Turn it off from your phone.",

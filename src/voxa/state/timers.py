@@ -95,6 +95,12 @@ class TimerManager:
         self.on_ring = on_ring
         self._repeat = repeat_seconds
         self._ring_timeout = ring_timeout_seconds
+        self.ring_rules: Callable[[Timer], tuple[float, float] | None] = lambda timer: None
+        """Cada cuánto repite y cuánto suena una alarma en particular (las medicinas preguntan más espaciado)."""
+        self.on_stopped: list[Callable[[list[Timer]], None]] = []
+        """Alguien apagó estas alarmas («ya», «para», tocar la pantalla)."""
+        self.on_unanswered: list[Callable[[Timer], None]] = []
+        """Esta alarma sonó todo su tiempo y nadie la apagó."""
         self._timers: list[Timer] = []
         self._next_id = 1
         self._load()
@@ -192,6 +198,8 @@ class TimerManager:
         stopped = self.ringing
         self._timers = self.active
         self._save()
+        for listener in self.on_stopped:
+            listener(stopped)
         return stopped
 
     def check(self) -> None:
@@ -207,11 +215,14 @@ class TimerManager:
                 self._schedule_next(timer, now)
                 self._ring(timer, now)
             elif timer.ringing_since is not None:
-                if now - timer.ringing_since >= self._ring_timeout:
-                    log.info("Alarma %s apagada tras sonar %ss sin respuesta", timer.id, self._ring_timeout)
+                repeat, timeout = self.ring_rules(timer) or (self._repeat, self._ring_timeout)
+                if now - timer.ringing_since >= timeout:
+                    log.info("Alarma %s apagada tras sonar %ss sin respuesta", timer.id, timeout)
                     self._timers.remove(timer)
                     changed = True
-                elif timer.last_rang_at is not None and now - timer.last_rang_at >= self._repeat:
+                    for listener in self.on_unanswered:
+                        listener(timer)
+                elif timer.last_rang_at is not None and now - timer.last_rang_at >= repeat:
                     self._ring(timer, now)
         if changed:
             self._save()
