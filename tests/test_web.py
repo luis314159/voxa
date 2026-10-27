@@ -151,3 +151,13 @@ async def test_phone_leaves_and_deletes_notes(phone):
     assert service.display.snapshot()["notes"][0]["to"] == "Ana"
     status, _, body = await http(server.port, "POST", "/api/notas", **as_json({"borrar": 1}))
     assert json.loads(body)["notas"] == []
+
+
+async def test_phone_shows_how_voxa_is_doing(phone):
+    server, service, _ = phone
+    await http(server.port, "POST", "/api/orden", **as_json({"texto": "blablá blablá"}))
+    status, _, body = await http(server.port, "GET", "/api/como-va", headers=logged_in())
+    summary = json.loads(body)
+    assert status == 200 and summary["no_entendidas"] == 1 and "blablá" in summary["reporte"]
+    status, _, body = await http(server.port, "POST", "/api/como-va", **as_json({"borrar": True}))
+    assert json.loads(body)["ordenes"] == 0

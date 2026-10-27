@@ -296,3 +296,21 @@ def test_diagnostics_report_is_plain_json():
     titles = [s["title"] for s in report["sections"]]
     assert titles == ["VOXA", "Voz", "Música y video", "Red"]
     assert dict(report["sections"][1]["items"])["Micrófono"] == "sin voz cargada"
+
+
+async def test_voice_turns_are_measured():
+    service, app = simulated_service()
+    session = FakeSession()
+    service.attach_voice(session, FakeMic())
+    await service.talk()  # «algo»: no lo entendió (sin IA)
+    heard = []
+
+    async def silence(mic, after_wake=False):
+        return TurnResult(heard.pop() if heard else None, None, TurnTimings())
+
+    session.turn = silence
+    await service.talk(after_wake=True)  # «Hey Voxa» y nada: activación falsa
+    await service.talk()  # tocar el anillo y no hablar no es una activación falsa
+    summary = app.metrics.summary()
+    assert summary["ordenes"] == 1 and summary["no_entendidas"] == 1
+    assert app.metrics.days and next(iter(app.metrics.days.values()))["sin_orden"] == 1

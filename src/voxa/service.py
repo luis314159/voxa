@@ -154,8 +154,19 @@ class Service:
                 await self.session.say(Response(tr("No encuentro el micrófono."), sound="error"))
                 return None
             result = await self.session.turn(self.mic, after_wake=after_wake)
+        self._measure(result, after_wake)
         await self._apply(result.response)
         return result
+
+    def _measure(self, result: TurnResult, after_wake: bool) -> None:
+        metrics = self.app.metrics
+        if not result.heard:
+            if after_wake:  # «Hey Voxa» y luego nada: casi siempre se activó sola
+                metrics.no_command()
+            return
+        t = result.timings
+        metrics.turn(result.heard, self.app.assistant.last_outcome, seconds=t.stt + t.nlu_and_action + t.tts,
+                     person=result.person, voices=self.app.config.voices_path.exists())
 
     async def handle_text(self, text: str, *, speak: bool = True, button: bool = False) -> Response:
         """Orden escrita o botón de la pantalla: misma ruta que una hablada, con respuesta en voz si la hay.
@@ -164,6 +175,8 @@ class Service:
         ``button``: una orden fija de un botón («pausa»), que va en español aunque la casa hable inglés.
         """
         response = await self.app.assistant.handle_text(text, button=button)
+        if not button:
+            self.app.metrics.turn(text, self.app.assistant.last_outcome)
         self.exchange(text, response)
         if self.session is not None and speak:
             await self.session.say(response)
@@ -423,6 +436,7 @@ class Service:
 
         Mientras suena una alarma, además, entiende «para», «ya», «gracias»… sin «Hey Voxa».
         """
+        from voxa.audio.clip import MIC_RATE
         from voxa.audio.endpoint import State, UtteranceCollector
 
         recent: collections.deque = collections.deque(maxlen=2)
@@ -439,8 +453,10 @@ class Service:
                 wake.reset()  # tocaron la pantalla: ese turno se queda con el micrófono
                 continue
             recent.append(frame)
+            self.app.metrics.listening(len(frame) / MIC_RATE)
             if await asyncio.to_thread(wake.feed, frame):
                 self.wake_count += 1
+                self.app.metrics.wake()
                 log.info("«%s» (%.2f)", WAKE_PHRASE, wake.last_score)
                 # El último bloque (ya después de «Voxa») pudo traer el inicio de la orden: se devuelve.
                 # Los anteriores no: traerían la cola de «Voxa» y confundirían al reconocedor.

@@ -194,6 +194,15 @@
 </section>
 
 <section>
+  <h2>Cómo va VOXA</h2>
+  <p class="ayuda">Los últimos 7 días. Se queda en esta PC: no sale a internet.</p>
+  <ul id="como-va"></ul>
+  <div id="como-va-frases"></div>
+  <div class="fila" style="margin-top:10px"><button id="como-va-copiar" style="flex:1">Copiar reporte</button><button id="como-va-borrar" style="flex:1">Borrar</button></div>
+  <p class="ayuda" id="como-va-respuesta"></p>
+</section>
+
+<section>
   <h2>Voz de la familia</h2>
   <p class="estado" id="voz-estado"></p>
   <p class="ayuda">Para que VOXA reconozca a cada quien y no se active con la tele. Escribe tu nombre, toca «Grabar» y ve a la cocina: VOXA te guía en voz alta (como un minuto). También se le puede decir «Hey Voxa, aprende mi voz».</p>
@@ -548,6 +557,22 @@ const EN = {
   "mochila, lonche, uniforme": "backpack, lunch, uniform",
   "Música de «buenos días» (opcional)": "«Good morning» music (optional)",
   "«mi playlist de la mañana»": "«my morning playlist»",
+  // Cómo va VOXA
+  "Cómo va VOXA": "How VOXA is doing",
+  "Los últimos 7 días. Se queda en esta PC: no sale a internet.": "The last 7 days. It stays on this PC: nothing goes to the internet.",
+  "Copiar reporte": "Copy report",
+  "Borrar": "Clear",
+  "Órdenes": "Requests",
+  "Entendidas": "Understood",
+  "{n} con la IA": "{n} with the AI",
+  "Activaciones falsas": "False activations",
+  "{n} por hora": "{n} per hour",
+  "Respuesta": "Response time",
+  "{n} s · {lenta} s las más lentas": "{n} s · {lenta} s the slowest",
+  "Reconoce a quien habla": "Recognizes who's talking",
+  "sin datos todavía": "no data yet",
+  "Lo que no entendió": "What it didn't understand",
+  "¿Borrar las mediciones?": "Clear the measurements?",
   // Notas
   "Notas": "Notes",
   "«Compra tortillas»": "«Buy tortillas»",
@@ -1004,7 +1029,42 @@ $("tab-ajustes").onclick = () => mostrarVista("ajustes");
 function marca(ok, texto) { return el("span", ok ? "ok" : "aviso", (ok ? "✓ " : "⚠ ") + texto); }
 function decir(id, texto) { $(id).textContent = texto; }
 
+function pintarComoVa(c) {
+  const sinDatos = tr("sin datos todavía");
+  const filas = [
+    [tr("Órdenes"), String(c.ordenes)],
+    [tr("Entendidas"), c.entendidas == null ? sinDatos : `${c.entendidas} % · ${tr("{n} con la IA", { n: c.con_ia })}`],
+    [tr("Activaciones falsas"), c.falsas_por_hora == null ? sinDatos : tr("{n} por hora", { n: c.falsas_por_hora })],
+    [tr("Respuesta"), c.respuesta_s == null ? sinDatos : tr("{n} s · {lenta} s las más lentas", { n: c.respuesta_s, lenta: c.respuesta_lenta_s })],
+    [tr("Reconoce a quien habla"), c.reconocidas == null ? sinDatos : `${c.reconocidas} %`],
+  ];
+  $("como-va").replaceChildren(...filas.map(([nombre, valor]) => {
+    const li = el("li");
+    li.append(el("span", "", nombre), el("span", "detalle", valor));
+    return li;
+  }));
+  const frases = $("como-va-frases");
+  frases.replaceChildren();
+  if (c.frases && c.frases.length) {
+    frases.append(el("div", "detalle", tr("Lo que no entendió")));
+    const ul = el("ul");
+    for (const f of c.frases.slice(0, 10)) ul.append(el("li", "", `«${f.texto}»`));
+    frases.append(ul);
+  }
+  $("como-va-copiar").onclick = async () => {
+    try { await navigator.clipboard.writeText(c.reporte || ""); decir("como-va-respuesta", tr("Copiado.")); }
+    catch (e) { decir("como-va-respuesta", c.reporte || ""); }
+  };
+}
+async function cargarComoVa() { try { pintarComoVa(await api("/api/como-va")); } catch (e) { /* sin conexión */ } }
+$("como-va-borrar").onclick = async () => {
+  if (!confirm(tr("¿Borrar las mediciones?"))) return;
+  await api("/api/como-va", { borrar: true });
+  cargarComoVa();
+};
+
 async function cargarAjustes() {
+  cargarComoVa();
   let a;
   try { a = await api("/api/ajustes"); } catch (e) { return; }
   $("voz-estado").replaceChildren(a.voz.personas.length

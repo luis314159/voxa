@@ -508,6 +508,8 @@ def main(argv: list[str] | None = None) -> int:
     record.add_argument("--platica", type=int, default=30, metavar="SEGUNDOS", help="segundos de plática normal")
     sub.add_parser("entrenar-verificador", help="entrena el verificador familiar con las grabaciones")
     sub.add_parser("revisar", help="revisa la instalación y dice qué falta y cómo arreglarlo")
+    how = sub.add_parser("como-va", help="cómo va VOXA: órdenes entendidas, activaciones falsas, tiempos")
+    how.add_argument("--dias", type=int, default=7)
     sub.add_parser("preparar", help="baja lo que falta (modelos de voz, fondos, Spotifast); lo hace solo al primer arranque")
     upgrade = sub.add_parser("actualizar", help="instala la versión más reciente de VOXA (releases de GitHub)")
     upgrade.add_argument("--revisar", action="store_true", help="solo dice si hay una versión nueva")
@@ -537,6 +539,11 @@ def main(argv: list[str] | None = None) -> int:
         return update(args.revisar, args.version, args.forzar)
     config = load_config()
 
+    if args.command == "como-va":
+        from voxa.state.metrics import UsageMetrics, report
+
+        print(report(UsageMetrics(config.state_dir / "metricas.json").summary(max(1, args.dias))))
+        return 0
     if args.command == "preparar":
         from voxa.prepare import prepare
 

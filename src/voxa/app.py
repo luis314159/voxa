@@ -55,6 +55,7 @@ from voxa.skills.volume import VolumeSkill
 from voxa.skills.weather import WeatherSkill
 from voxa.settings import read_secret
 from voxa.state.ai_usage import AiUsage
+from voxa.state.metrics import UsageMetrics
 from voxa.state.notes import NoteBoard
 from voxa.state.recipe import RecipeSession
 from voxa.state.shopping import ShoppingList
@@ -96,6 +97,7 @@ class App:
     quiet: QuietHours = field(default_factory=lambda: QuietHours(QuietConfig()))
     medicine: MedicineTracker | None = None
     notes: NoteBoard = field(default_factory=NoteBoard)
+    metrics: UsageMetrics = field(default_factory=UsageMetrics)
 
 
 class SetupError(Exception):
@@ -322,6 +324,7 @@ def build_app(config: Config, *, simulated: bool = False, on_ring: Callable[[Tim
     return App(
         assistant, timers, matcher, now_playing, weather, player, checks, config, shopping, recipe, updater, ai, ai_problem,
         music, house, tasks, kids, QuietHours(config.quiet), medicine, notes,
+        UsageMetrics(None if simulated else config.state_dir / "metricas.json"),
     )
 
 

@@ -201,6 +201,8 @@ Para publicar un release: subir la versión en `pyproject.toml`, `src/voxa/__ini
 
 El instalador se puede repetir sin miedo: respeta lo ya instalado y nunca sobrescribe `~/.config/voxa/config.toml`. Deja la bocina Bluetooth fija en alta calidad y sin «dormirse» ([deploy/wireplumber/](deploy/wireplumber/)), VOXA como servicio de usuario (`systemctl --user status voxa`), la pantalla abriéndose al iniciar sesión y yt-dlp actualizándose cada semana (`voxa-ytdlp.timer`), porque YouTube cambia seguido. Si al servicio le faltan los modelos de voz o el micrófono, no se cae: la pantalla lo avisa en ámbar. Queda a mano el inicio de sesión automático y `voxa spotify-login`.
 
+**Cómo va VOXA.** VOXA mide su uso real, solo en esa PC (`~/.local/state/voxa/metricas.json`, últimos 30 días): cuántas órdenes entiende (por sus reglas o con la IA), cuáles no (con las últimas frases), cuántas veces se activa «Hey Voxa» sin que nadie dé una orden (por hora escuchando), cuánto tarda en contestar y en cuántas órdenes reconoce a quien habla. Se ve en el celular (Ajustes → Cómo va VOXA, con «Copiar reporte») o con `voxa como-va`. Las frases que no entendió son las que hay que agregar a `tests/data/utterances.yaml`.
+
 `voxa revisar` revisa la instalación de punta a punta (modelos y sus huellas, micrófono, bocina Bluetooth en A2DP, Spotify y Spotifast, yt-dlp/mpv/deno, internet y clima, IA, servicios de systemd y erratas en `config.toml`) y dice, para cada cosa que falte, el comando que la arregla. Solo lee: no cambia nada ni gasta.
 
 ## Pruebas

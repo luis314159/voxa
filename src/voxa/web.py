@@ -161,6 +161,11 @@ class WebServer:
             return self._json(200, self._state())
         if method == "GET" and url.path == "/api/casa" and self._service.app.house is not None:
             return self._json(200, self._service.app.house.status())
+        if method == "GET" and url.path == "/api/como-va":
+            from voxa.state.metrics import report
+
+            summary = self._service.app.metrics.summary(7)
+            return self._json(200, {**summary, "reporte": report(summary)})
         if method == "GET" and url.path == "/api/notas":
             return self._json(200, {"notas": self._service.app.notes.snapshot()})
         if method == "GET" and url.path == "/api/tareas":
@@ -223,6 +228,11 @@ class WebServer:
                 return await self._playlists(text)
             case "/api/playlists/poner":
                 return await self._play_playlist(str(data.get("uri") or "")[:100], str(data.get("nombre") or "")[:100])
+            case "/api/como-va":
+                if data.get("borrar") is not True:
+                    return 400, {"error": "¿qué hago?"}
+                app.metrics.forget()
+                return 200, app.metrics.summary(7)
             case "/api/notas":
                 notes = app.notes
                 if text:

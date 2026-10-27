@@ -7,7 +7,7 @@ Lo que falta para que VOXA sea un producto excelente para familias, en orden de 
 1. **Probar en una cocina real.** Nada de lo hecho ha corrido en la PC de la cocina con la familia. Hay que:
    - instalar el `.deb`;
    - correr «aprende mi voz» con cada persona;
-   - usarla dos semanas y revisar el registro de lo que no entendió.
+   - usarla dos semanas y revisar «Cómo va VOXA» (celular o `voxa como-va`): lo que no entendió, activaciones falsas, tiempos.
 
    Luego, dársela a 2 o 3 familias más. Con eso se miden:
    - qué tan seguido se activa «Hey Voxa» por error y qué tan seguido no oye;
@@ -53,13 +53,6 @@ Lo que falta para que VOXA sea un producto excelente para familias, en orden de 
   - descargar de memoria los modelos que no se usan un rato, si la PC tiene poca RAM.
 - **Voz en inglés con licencia abierta:** cambiar Lessac (licencia de investigación) por LibriTTS-R o Kokoro después de escucharlas ([docs/licencias.md](licencias.md)).
 
-- **Mediciones del uso real** (solo en esa PC):
-  - frases no entendidas;
-  - activaciones falsas por hora;
-  - tiempo de respuesta;
-  - aciertos al reconocer a la persona.
-
-  En el celular, una página de «cómo va VOXA».
 - **Más frases de familias reales** en el corpus de pruebas (`tests/data/utterances.yaml`), con acentos de distintas regiones.
 - **Accesibilidad:**
   - habla más lenta para abuelos;
