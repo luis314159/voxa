@@ -118,6 +118,13 @@ class TelegramConfig:
 
 
 @dataclass(frozen=True)
+class HouseConfig:
+    room: str = "Cocina"
+    main: str = ""
+    """Dirección de la VOXA principal (``http://IP:8770``); vacío: esta es la principal."""
+
+
+@dataclass(frozen=True)
 class CalendarConfig:
     enabled: bool = False
 
@@ -151,6 +158,7 @@ class Config:
     web: WebConfig = field(default_factory=WebConfig)
     telegram: TelegramConfig = field(default_factory=TelegramConfig)
     calendar: CalendarConfig = field(default_factory=CalendarConfig)
+    house: HouseConfig = field(default_factory=HouseConfig)
     config_dir: Path = field(default_factory=lambda: _xdg("XDG_CONFIG_HOME", ".config"))
     state_dir: Path = field(default_factory=lambda: _xdg("XDG_STATE_HOME", ".local/state"))
 
@@ -161,6 +169,15 @@ class Config:
     @property
     def web_key_path(self) -> Path:
         return self.config_dir / "web_clave"
+
+    @property
+    def house_key_path(self) -> Path:
+        """La clave de la VOXA principal (en un cuarto unido a la casa)."""
+        return self.config_dir / "casa_clave"
+
+    @property
+    def house_rooms_path(self) -> Path:
+        return self.state_dir / "cuartos.json"
 
     @property
     def calendar_url_path(self) -> Path:

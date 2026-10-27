@@ -29,7 +29,9 @@ from voxa.skills.kitchen import KitchenSkill
 from voxa.skills.music import MusicSkill
 from voxa.skills.recipe import RecipeSkill
 from voxa.skills.routine import RoutineSkill
+from voxa.house import SHARED_DOMAINS, House
 from voxa.skills.calendar import CalendarSkill
+from voxa.skills.house import HouseSkill, RemoteSkill
 from voxa.skills.enroll import EnrollSkill
 from voxa.skills.screen import ScreenSkill
 from voxa.skills.shopping import ShoppingSkill
@@ -72,6 +74,7 @@ class App:
     """Por qué la IA activada no pudo arrancar (falta la llave, el SDK…)."""
     music: MusicBackend | None = None
     """Para el celular: las playlists de la cuenta y ponerlas con un toque."""
+    house: House | None = None
 
 
 class SetupError(Exception):
@@ -200,6 +203,13 @@ def build_app(config: Config, *, simulated: bool = False, on_ring: Callable[[Tim
         "display": ScreenSkill(),
         "voice": EnrollSkill(),
     }
+    house = House(config.house.room, UrllibHttp(), config.house_rooms_path, main_url=config.house.main,
+                  main_key_path=config.house_key_path)
+    skills["house"] = HouseSkill(house)
+    if not house.is_main:
+        # Un cuarto: la lista del súper y el calendario son los de la principal.
+        for domain in SHARED_DOMAINS:
+            skills[domain] = RemoteSkill(house)
     player = None
     if video is not None:
         search, player = video
@@ -230,7 +240,7 @@ def build_app(config: Config, *, simulated: bool = False, on_ring: Callable[[Tim
         ai.extra_context = recipe.summary
     return App(
         assistant, timers, matcher, now_playing, weather, player, checks, config, shopping, recipe, updater, ai, ai_problem,
-        music,
+        music, house,
     )
 
 

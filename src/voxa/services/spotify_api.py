@@ -39,6 +39,10 @@ def similarity(a: str, b: str) -> float:
     return difflib.SequenceMatcher(None, normalize(a), normalize(b)).ratio()
 
 
+def _without_voxa(name: str) -> str:
+    return name[5:] if name.lower().startswith("voxa ") else name
+
+
 def _artists(item: dict) -> str | None:
     names = [a["name"] for a in item.get("artists") or [] if a]
     return ", ".join(names) or None
@@ -82,7 +86,9 @@ class SpotifyWebApi:
 
     async def _find_device(self, name: str) -> dict | None:
         devices = await self.devices()
-        scored = [(similarity(name, d.get("name", "")), d) for d in devices]
+        # «la sala» también es «VOXA Sala» (cada cuarto con VOXA es un dispositivo así).
+        scored = [(max(similarity(name, d.get("name", "")), similarity(name, _without_voxa(d.get("name", "")))), d)
+                  for d in devices]
         best = max(scored, key=lambda pair: pair[0], default=(0.0, None))
         return best[1] if best[0] >= 0.6 else None
 

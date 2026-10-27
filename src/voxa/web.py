@@ -35,6 +35,7 @@ _STATUS = {200: "OK", 303: "See Other", 400: "Bad Request", 403: "Forbidden", 40
 SETTINGS_PATHS = frozenset({
     "/api/ajustes", "/api/ajustes/revisar", "/api/clima/buscar", "/api/secreto", "/api/spotify/autorizar",
     "/api/spotify/codigo", "/api/telegram/codigo", "/api/telegram/quitar", "/api/voz/aprender", "/api/ia/probar",
+    "/api/casa/unir", "/api/casa/olvidar",
 })
 
 FORBIDDEN_PAGE = """<!doctype html><html lang="es"><meta charset="utf-8">
@@ -109,8 +110,9 @@ class WebServer:
 
     # --- HTTP mínimo -------------------------------------------------------------------
     async def _client(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
+        peer = writer.get_extra_info("peername")
         try:
-            status, headers, payload = await self._handle(reader)
+            status, headers, payload = await self._handle(reader, peer[0] if peer else "")
         except (asyncio.TimeoutError, asyncio.IncompleteReadError, ValueError, UnicodeDecodeError):
             status, headers, payload = 400, {"Content-Type": "text/plain; charset=utf-8"}, b"Peticion invalida"
         head = [f"HTTP/1.1 {status} {_STATUS.get(status, 'OK')}", f"Content-Length: {len(payload)}", "Connection: close",
@@ -124,7 +126,7 @@ class WebServer:
         finally:
             writer.close()
 
-    async def _handle(self, reader: asyncio.StreamReader) -> tuple[int, dict[str, str], bytes]:
+    async def _handle(self, reader: asyncio.StreamReader, peer: str = "") -> tuple[int, dict[str, str], bytes]:
         line = (await asyncio.wait_for(reader.readline(), 10)).decode("latin-1").strip()
         method, target, _ = line.split(" ", 2)
         headers: dict[str, str] = {}
@@ -155,6 +157,8 @@ class WebServer:
             return 200, {"Content-Type": "text/html; charset=utf-8"}, self.page.encode()
         if method == "GET" and url.path == "/api/estado":
             return self._json(200, self._state())
+        if method == "GET" and url.path == "/api/casa" and self._service.app.house is not None:
+            return self._json(200, self._service.app.house.status())
         if method == "GET" and url.path == "/api/playlists":
             return self._json(*await self._playlists())
         if method == "GET" and url.path == "/api/ajustes" and self.settings is not None:
@@ -167,6 +171,8 @@ class WebServer:
             data = json.loads(body or b"{}")
             if not isinstance(data, dict):
                 return self._json(400, {"error": "se esperaba un objeto"})
+            if url.path.startswith("/api/casa/") and url.path not in SETTINGS_PATHS:
+                return self._json(*await self._house(url.path, data, peer))
             if url.path in SETTINGS_PATHS and self.settings is not None:
                 return self._json(*await self.settings.post(url.path, data))
             return self._json(*await self._post(url.path, data))
@@ -230,6 +236,35 @@ class WebServer:
                     return 400, {"error": "¿qué agrego o quito?"}
                 service.display.publish()
                 return 200, {"lista": list(app.shopping.items)}
+        return 404, {"error": "no existe"}
+
+    async def _house(self, path: str, data: dict, peer: str) -> tuple[int, Any]:
+        from voxa.house import HouseError
+
+        service, house = self._service, self._service.app.house
+        if house is None:
+            return 404, {"error": "no existe"}
+        text = str(data.get("texto") or "").strip()[:300]
+        try:
+            match path:
+                case "/api/casa/decir":
+                    if not text:
+                        return 400, {"error": "falta el aviso"}
+                    asyncio.ensure_future(service.say_announcement(text))
+                    return 200, {"respuesta": "Dicho."}
+                case "/api/casa/registrar" if house.is_main:
+                    port = data.get("puerto")
+                    house.register(str(data.get("nombre") or ""), peer, port if isinstance(port, int) else 0,
+                                   str(data.get("clave") or ""))
+                    return 200, {"cuarto": house.room}
+                case "/api/casa/aviso":
+                    if not text:
+                        return 400, {"error": "falta el aviso"}
+                    source = str(data.get("desde") or "celular")[:40]
+                    heard = await house.announce(text, source, str(data.get("a") or "") or None)
+                    return 200, {"llego_a": heard}
+        except HouseError as exc:
+            return 400, {"error": str(exc)}
         return 404, {"error": "no existe"}
 
     async def _playlists(self, query: str = "") -> tuple[int, Any]:

@@ -34,6 +34,7 @@ EDITABLE: dict[str, dict[str, Any]] = {
     "update": {"check": bool, "automatic": bool},
     "web": {"enabled": bool},
     "voice": {"whisper_model": ("tiny", "base", "small")},
+    "house": {"room": str, "main": str},
 }
 _TEXT_LIMIT = 300
 

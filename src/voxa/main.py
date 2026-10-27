@@ -277,6 +277,22 @@ def set_ai_key(config: Config) -> int:
     return 0
 
 
+async def join_house(config: Config, link: str, room: str) -> int:
+    """Une esta PC a la casa como un cuarto más (la principal da el comando en Ajustes → Cuartos)."""
+    from voxa.house import HouseError, join, place_name
+
+    try:
+        main_room = await join(link, room, config, config_path(), UrllibHttp())
+    except HouseError as exc:
+        print(f"No se pudo unir: {exc}")
+        return 2
+    print(f"Listo: esta VOXA es {place_name(room)} y la principal es {place_name(main_room or 'Cocina')}.")
+    print("La lista del súper y el calendario son los de la principal; los avisos llegan aquí.")
+    print(f"En Spotify, este cuarto se llama «VOXA {room}» (ponle ese nombre a Spotifast en esta PC).")
+    print("Reinicia VOXA para empezar: systemctl --user restart voxa")
+    return 0
+
+
 async def link_telegram(config: Config, new_token: bool) -> int:
     """Guarda el token del bot (si hace falta) y vincula un chat con un código de 6 dígitos."""
     import getpass
@@ -472,6 +488,9 @@ def main(argv: list[str] | None = None) -> int:
     probe_ai_cmd = sub.add_parser("ia-probar", help="hace una pregunta de prueba a la IA y dice cuánto costó")
     probe_ai_cmd.add_argument("pregunta", nargs="*")
     sub.add_parser("spotify-login", help="autoriza a VOXA en tu cuenta de Spotify")
+    house = sub.add_parser("unir-casa", help="une esta PC a la casa como un cuarto más (sala, comedor…)")
+    house.add_argument("direccion", help="la dirección de la VOXA principal (http://…/?k=…)")
+    house.add_argument("--cuarto", required=True, help="el nombre de este cuarto: Sala, Comedor, Recámara…")
     telegram = sub.add_parser("telegram-vincular", help="conecta el bot de Telegram de la lista del súper")
     telegram.add_argument("--nuevo-token", action="store_true", help="pide el token otra vez (bot nuevo)")
     args = parser.parse_args(argv)
@@ -495,6 +514,8 @@ def main(argv: list[str] | None = None) -> int:
         return train_wake_verifier(config)
     if args.command == "ia-clave":
         return set_ai_key(config)
+    if args.command == "unir-casa":
+        return asyncio.run(join_house(config, args.direccion, args.cuarto))
     if args.command == "telegram-vincular":
         try:
             return asyncio.run(link_telegram(config, args.nuevo_token))

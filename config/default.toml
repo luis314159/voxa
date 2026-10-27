@@ -104,6 +104,12 @@ morning_music = ""
 enabled = true
 port = 8770
 
+[house]
+# VOXA en varios cuartos. En la principal (la cocina) basta el nombre; en cada cuarto se une
+# con «voxa unir-casa» (el celular, en Ajustes → Cuartos, da el comando completo).
+room = "Cocina"
+# main = "http://192.168.1.10:8770"   # solo en los cuartos: la VOXA principal
+
 [calendar]
 # «¿Qué tengo hoy?» y lo de hoy en «buenos días», del calendario de la familia (solo lectura).
 # Se configura desde el celular (Ajustes → Calendario) pegando la «dirección secreta en formato

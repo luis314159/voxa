@@ -87,6 +87,8 @@ class Service:
         self._tasks: set[asyncio.Task] = set()
         if app.video is not None:
             app.video.on_end = self._video_ended
+        if app.house is not None:
+            app.house.speak = self.say_announcement
 
     @classmethod
     def create(cls, app: App) -> Service:
@@ -253,6 +255,15 @@ class Service:
         self.display.phone_url = url
         self.display.phone_until = time.monotonic() + seconds if url else None
         self.display.publish()
+
+    async def say_announcement(self, text: str) -> None:
+        """Un aviso de otro cuarto (o del celular): sonido, voz y en la pantalla."""
+        self.display.exchange("Aviso", Response(text))
+        if self._video_showing():
+            self._spawn(self.app.video.show_text(f"📢 {text}", 8.0))
+        if self.session is not None:
+            await self.session.say(Response(sound="listening"))
+            await self.session.say(Response(text))
 
     def needs_setup(self) -> bool:
         """Falta lo básico (Spotify conectado y la ciudad del clima): se configura desde el celular."""
@@ -436,13 +447,17 @@ class Service:
                 server = None
         config = self.app.config
         if config.web.enabled:
-            web = WebServer(self, load_or_create_key(config.web_key_path), config.backgrounds_dir, port=config.web.port,
+            key = load_or_create_key(config.web_key_path)
+            web = WebServer(self, key, config.backgrounds_dir, port=config.web.port,
                             settings=SettingsApi(self, config_path()))
             try:
                 await web.start()
                 self.web = web
             except OSError as exc:
                 log.warning("No pude abrir VOXA para el celular en el puerto %d: %s", config.web.port, exc)
+            house = self.app.house
+            if self.web is not None and house is not None and not house.is_main:
+                background.append(asyncio.create_task(house.run(self.web.port, key)))
         if config.telegram.enabled and (bot := self._telegram_bot()) is not None:
             background.append(asyncio.create_task(bot.run()))
         screen = self.app.assistant.skill("display")

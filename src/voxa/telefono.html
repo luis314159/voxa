@@ -83,6 +83,9 @@
   .hallazgo:first-child { border-top: 0; }
   .arreglo { color: var(--dim); font-size: 13px; font-family: ui-monospace, monospace; word-break: break-word; }
   #aviso-ajustes { position: sticky; top: 8px; z-index: 2; background: var(--blue); border-radius: 12px; padding: 10px 14px; margin-bottom: 12px; }
+  .punto { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 8px; background: var(--dim); }
+  .punto.en-linea { background: #4ade80; }
+  pre.comando { background: var(--card2); border-radius: 12px; padding: 12px; font-size: 13px; white-space: pre-wrap; word-break: break-all; margin: 8px 0; }
   .lugar { display: block; width: 100%; text-align: left; margin-top: 6px; font-weight: 500; }
 </style>
 </head>
@@ -133,6 +136,14 @@
   <form class="fila campo" id="form-playlist"><input type="text" id="playlist-texto" placeholder="Buscar en Spotify…" autocomplete="off" enterkeyhint="search"><button>Buscar</button></form>
   <ul id="playlists"></ul>
   <p class="ayuda" id="playlist-respuesta"></p>
+</section>
+
+<section id="casa" hidden>
+  <h2>Casa</h2>
+  <ul id="casa-cuartos"></ul>
+  <form class="fila campo" id="form-aviso"><input type="text" id="aviso-texto" placeholder="«Ya está la comida»" autocomplete="off" enterkeyhint="send"><button class="principal">Avisar</button></form>
+  <label class="campo"><span>¿Dónde?</span><select id="aviso-donde"><option value="">En toda la casa</option></select></label>
+  <p class="ayuda" id="aviso-respuesta"></p>
 </section>
 
 <section>
@@ -220,6 +231,29 @@
   <form class="fila campo" id="form-ia-llave"><input type="password" id="ia-llave" placeholder="Llave (API key)" autocomplete="off"><button>Guardar llave</button></form>
   <div class="interruptor"><span>Encendida</span><input type="checkbox" id="ia-encendida"></div>
   <p class="ayuda" id="ia-respuesta"></p>
+</section>
+
+<section>
+  <h2>Cuartos</h2>
+  <p class="estado" id="cuarto-estado"></p>
+  <form class="fila" id="form-cuarto"><input type="text" id="cuarto-nombre" placeholder="Nombre de este cuarto" autocomplete="off"><button>Guardar</button></form>
+  <div id="cuartos-principal">
+    <p class="ayuda">VOXA también puede estar en la sala, el comedor o las recámaras: otra PC o una Raspberry Pi con micrófono y bocina (la pantalla es opcional). La lista del súper y el calendario son los de esta; los avisos llegan a todos.</p>
+    <form class="fila" id="form-invitar"><input type="text" id="invitar-cuarto" placeholder="Cuarto nuevo (p. ej. Sala)" autocomplete="off"><button>Agregar</button></form>
+    <label class="voz"><input type="checkbox" id="invitar-pantalla"> Ese cuarto tiene pantalla</label>
+    <div id="invitacion" hidden>
+      <p class="ayuda">En la terminal de esa PC (Linux Mint o Ubuntu, conectada al wifi de la casa), pega esto:</p>
+      <pre class="comando" id="invitar-comando"></pre>
+      <button id="copiar-comando" style="width:100%">Copiar</button>
+      <p class="ayuda">Lleva la clave de esta VOXA: compártelo solo con esa PC.</p>
+    </div>
+    <ul id="cuartos-lista"></ul>
+  </div>
+  <div id="cuartos-unir">
+    <p class="ayuda">¿Esta VOXA es de otro cuarto? Pega la dirección que da la principal (Ajustes → Cuartos → Agregar).</p>
+    <form id="form-unir"><input type="url" id="unir-direccion" placeholder="http://192.168.…:8770/?k=…" autocomplete="off" style="width:100%"><div class="fila campo"><input type="text" id="unir-cuarto" placeholder="Este cuarto (Sala…)" autocomplete="off"><button>Unir</button></div></form>
+  </div>
+  <p class="ayuda" id="cuartos-respuesta"></p>
 </section>
 
 <section>
@@ -399,6 +433,91 @@ $("form-playlist").onsubmit = async (ev) => {
   catch (e) { decir("playlist-respuesta", e.message); }
 };
 
+// --- Casa (varios cuartos) ----------------------------------------------------------------
+let invitacion = null;
+const INSTALADOR = "https://github.com/luis314159/voxa/releases/latest/download/instalar-voxa.sh";
+
+function pintarCasa(casa) {
+  const cuartos = casa.cuartos || [];
+  $("casa").hidden = !casa.principal || !cuartos.length;
+  if ($("casa").hidden) return;
+  $("casa-cuartos").replaceChildren(...[{ nombre: `${casa.cuarto} (aquí)`, en_linea: true }, ...cuartos].map((c) => {
+    const li = el("li"), nombre = el("span");
+    nombre.append(el("span", "punto" + (c.en_linea ? " en-linea" : "")), document.createTextNode(c.nombre));
+    li.append(nombre, el("span", "detalle", c.en_linea ? "conectado" : "sin conexión"));
+    return li;
+  }));
+  const donde = $("aviso-donde"), elegido = donde.value;
+  donde.replaceChildren(new Option("En toda la casa", ""), new Option(casa.cuarto, casa.cuarto),
+    ...cuartos.map((c) => new Option(c.nombre, c.nombre)));
+  donde.value = elegido;
+}
+
+async function actualizarCasa() {
+  try { pintarCasa(await api("/api/casa")); } catch (e) { /* sin casa: nada que mostrar */ }
+}
+
+$("form-aviso").onsubmit = async (ev) => {
+  ev.preventDefault();
+  const texto = $("aviso-texto").value.trim();
+  if (!texto) return;
+  try {
+    const r = await api("/api/casa/aviso", { texto, desde: "celular", a: $("aviso-donde").value });
+    decir("aviso-respuesta", r.llego_a.length ? `Se oyó en: ${r.llego_a.join(", ")}.` : "No hay cuartos conectados para ese aviso.");
+    $("aviso-texto").value = "";
+  } catch (e) { decir("aviso-respuesta", e.message); }
+};
+
+function pintarCuartos(casa) {
+  if (!casa || !casa.cuarto) return;
+  invitacion = casa.invitacion;
+  $("cuarto-estado").replaceChildren(casa.principal
+    ? marca(true, `Este es: ${casa.cuarto} (la principal)`)
+    : marca(casa.en_linea !== false, `Este es: ${casa.cuarto} · ${casa.en_linea === false ? "sin conexión con la principal" : "unido a la casa"}`));
+  $("cuarto-nombre").placeholder = `Nombre de este cuarto (${casa.cuarto})`;
+  $("cuartos-principal").hidden = !casa.principal;
+  $("cuartos-unir").hidden = casa.principal && (casa.cuartos || []).length > 0;
+  $("cuartos-lista").replaceChildren(...(casa.cuartos || []).map((c) => {
+    const li = el("li"), nombre = el("span"), olvidar = el("button", "", "Quitar");
+    nombre.append(el("span", "punto" + (c.en_linea ? " en-linea" : "")), document.createTextNode(c.nombre));
+    olvidar.onclick = () => api("/api/casa/olvidar", { nombre: c.nombre }).then(cargarAjustes, (e) => decir("cuartos-respuesta", e.message));
+    li.append(nombre, olvidar);
+    return li;
+  }));
+}
+
+function comillas(texto) { return "'" + texto.replace(/'/g, "'\\''") + "'"; }
+
+$("form-invitar").onsubmit = (ev) => {
+  ev.preventDefault();
+  const cuarto = $("invitar-cuarto").value.trim();
+  if (!cuarto || !invitacion) return;
+  const pantalla = $("invitar-pantalla").checked ? "" : " --sin-pantalla";
+  $("invitar-comando").textContent =
+    `curl -fLO ${INSTALADOR} && bash instalar-voxa.sh${pantalla} && ~/.local/bin/voxa unir-casa ${comillas(invitacion)} --cuarto ${comillas(cuarto)} && systemctl --user restart voxa`;
+  $("invitacion").hidden = false;
+};
+$("invitar-pantalla").onchange = () => { if (!$("invitacion").hidden) $("form-invitar").requestSubmit(); };
+$("copiar-comando").onclick = async () => {
+  try { await navigator.clipboard.writeText($("invitar-comando").textContent); decir("cuartos-respuesta", "Copiado."); }
+  catch (e) { decir("cuartos-respuesta", "Mantén presionado el texto para copiarlo."); }
+};
+$("form-cuarto").onsubmit = async (ev) => {
+  ev.preventDefault();
+  const nombre = $("cuarto-nombre").value.trim();
+  if (nombre && await guardar("house", { room: nombre }, "cuartos-respuesta")) $("cuarto-nombre").value = "";
+};
+$("form-unir").onsubmit = async (ev) => {
+  ev.preventDefault();
+  try {
+    const r = await api("/api/casa/unir", { direccion: $("unir-direccion").value.trim(), cuarto: $("unir-cuarto").value.trim() });
+    decir("cuartos-respuesta", r.respuesta);
+    despues(r);
+  } catch (e) { decir("cuartos-respuesta", e.message); }
+};
+actualizarCasa();
+setInterval(actualizarCasa, 15000);
+
 // --- Ajustes -----------------------------------------------------------------------------
 const MARCAS = { ok: "✓", aviso: "⚠", falla: "✖", omitido: "·" };
 const pausa = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -457,6 +576,7 @@ async function cargarAjustes() {
   const valores = { "video.enabled": a.funciones.video, "update.check": a.funciones.avisar_version, "update.automatic": a.funciones.actualizar_solo };
   document.querySelectorAll("[data-ajuste]").forEach((c) => { c.checked = Boolean(valores[c.dataset.ajuste]); });
   $("whisper").value = a.voz.whisper;
+  pintarCuartos(a.casa);
   decir("version", `VOXA ${a.version}` + (a.nueva ? ` · hay una versión nueva: ${a.nueva} (dile «actualízate»)` : ""));
 }
 

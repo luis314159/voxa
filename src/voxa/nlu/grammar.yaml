@@ -416,6 +416,16 @@
   patterns:
     - "(ya|ok|okay|listo|gracias|muchas gracias|perfecto|ya esta|ya estuvo|bien|esta bien)"
 
+# Avisos entre cuartos (VOXA en varios cuartos).
+- intent: house.announce
+  patterns:
+    - "(avisa|anuncia|diles|dile|avisales) a todos [que] {query}"
+    - "(avisa|anuncia|di) en toda la casa [que] {query}"
+    - "(avisa|anuncia|di) en (la|el) {device} que {query}"
+    - "(dile|diles|avisa|avisale|avisales|anuncia) (a la|al|a el|a los|a las) {device} que {query}"
+    - pattern: "(llama|llamale|llamales) a todos a {query}"
+      set: {call: "si"}
+
 # «Aprende mi voz»: VOXA guía la grabación para el verificador de «Hey Voxa».
 - intent: voice.enroll
   patterns:

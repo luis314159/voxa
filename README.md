@@ -99,6 +99,14 @@ python scripts/descargar_fondos.py           # ~77 fondos: México, pueblos y pa
 
 **Desde el celular.** «Conecta mi celular» muestra un código QR: al escanearlo (en el wifi de la casa) el celular abre una página para ver y cancelar temporizadores, poner temporizadores rápidos, manejar la lista del súper y la música, ver las playlists de la cuenta o buscar otras en Spotify y ponerlas con un toque, escribirle órdenes a VOXA (sin que hable en la cocina, salvo que se pida) y subir fotos de la familia al fondo de pantalla, además de los **Ajustes** de arriba. El código lleva la clave de esa PC (`~/.config/voxa/web_clave`); sin ella, nadie más en la red puede usarlo. Se apaga con `enabled = false` en `[web]`.
 
+**VOXA en varios cuartos.** La cocina es la VOXA principal, y la sala, el comedor o las recámaras pueden tener la suya: otra PC o una Raspberry Pi con micrófono y bocina (la pantalla es opcional).
+
+- **Agregar un cuarto:** en el celular, Ajustes → Cuartos → «Agregar» da un comando para pegar en esa PC. Instala VOXA y la une a la casa con `voxa unir-casa`.
+- **Qué hace cada cuarto:** cada uno tiene su «Hey Voxa», sus temporizadores y su música («VOXA Sala» en Spotify).
+- **Qué comparten:** la lista del súper y el calendario son los de la cocina.
+- **Avisos:** «avisa a todos que ya está la comida», «dile a la sala que se bajen a cenar» o «llama a todos a comer» se oyen en los otros cuartos. También se mandan desde el celular, en la sección «Casa».
+- **Cómo se conectan:** cada cuarto le avisa a la principal cada minuto que sigue ahí. Todo va por la red de la casa y con la clave de cada VOXA.
+
 **Calendario de la familia (opcional).** «¿Qué tengo hoy?», «¿qué tengo mañana?», «¿cuál es mi siguiente cita?», y lo de hoy en «buenos días». Lee la dirección secreta iCal del calendario (Google Calendar, iCloud, Outlook), sin pedir acceso a la cuenta y solo para leer. Entiende eventos de todo el día, zonas horarias, eventos que se repiten y sus cambios. Se refresca cada 15 minutos y, sin internet, responde con la última copia.
 
 **La lista del súper en Telegram (opcional).** Para apuntar cosas desde la calle:

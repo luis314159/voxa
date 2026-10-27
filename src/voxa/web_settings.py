@@ -101,6 +101,7 @@ class SettingsApi:
                 "lista": self._enroll_ready(),
                 "whisper": config.voice.whisper_model,
             },
+            "casa": {**(app.house.status() if app.house else {}), "invitacion": self.invitation()},
             "funciones": {
                 "video": config.video.enabled, "actualizar_solo": config.update.automatic,
                 "avisar_version": config.update.check,
@@ -135,6 +136,13 @@ class SettingsApi:
                     return self._enroll(str(data.get("nombre") or "").strip()[:40])
                 case "/api/ia/probar":
                     return await self._try_ai()
+                case "/api/casa/unir":
+                    return await self._join(str(data.get("direccion") or ""), str(data.get("cuarto") or ""))
+                case "/api/casa/olvidar":
+                    house = self._service.app.house
+                    if house is None or not house.forget(str(data.get("nombre") or "")):
+                        return 404, {"error": "no existe ese cuarto"}
+                    return 200, {"respuesta": "Listo: ese cuarto ya no recibe avisos."}
         except SettingsError as exc:
             return 400, {"error": str(exc)}
         return 404, {"error": "no existe"}
@@ -311,6 +319,24 @@ class SettingsApi:
             "pregunta": AI_TEST_QUESTION, "respuesta": response.speech or "",
             "segundos": round(time.perf_counter() - started, 1), "uso": ai.usage.summary(),
         }
+
+    async def _join(self, link: str, room: str) -> tuple[int, Any]:
+        from voxa.house import HouseError, join
+
+        try:
+            main_room = await join(link, room, self.config, self._config_file, self._http)
+        except HouseError as exc:
+            return 400, {"error": str(exc)}
+        return 200, await self._saved({"principal": main_room})
+
+    def invitation(self) -> str | None:
+        """El comando para unir otra PC a la casa (con la clave de esta, que es la principal)."""
+        web, house = self._service.web, self._service.app.house
+        if web is None or house is None or not house.is_main:
+            return None
+        from voxa import diagnostics
+
+        return web.url(diagnostics.local_ip() or "127.0.0.1")
 
     async def close(self) -> None:
         await self._spotify_close()
