@@ -7,6 +7,7 @@ Asistente de voz familiar para la cocina, sobre una PC All-in-One con Linux Mint
 - **Plan del proyecto:** [docs/voxa_plan.md](docs/voxa_plan.md)
 - **Fase 0 (diagnóstico del equipo):** [docs/fase0_guia.md](docs/fase0_guia.md)
 - **Marca:** [assets/brand/](assets/brand/)
+- **Licencias de modelos y programas:** [docs/licencias.md](docs/licencias.md)
 
 ## Estado
 

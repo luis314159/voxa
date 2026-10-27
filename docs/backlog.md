@@ -42,6 +42,12 @@ Lo que falta para que VOXA sea un producto excelente para familias, en orden de 
 
 ## Calidad
 
+- **Probar motores más nuevos en la PC real** (con `scripts/evaluar_voz.py`; ideas de los que compara VoiceStudio, sin usar su código, que es AGPL):
+  - voz: Kokoro (Apache 2.0, por sherpa-onnx; trae español e inglés) contra Piper, midiendo naturalidad y cuánto tarda la primera frase en CPU;
+  - reconocimiento: Parakeet TDT (25 idiomas, rápido en CPU) y SenseVoice (detecta el idioma, útil para casas bilingües; revisar su licencia) contra Whisper *base*;
+  - descargar de memoria los modelos que no se usan un rato, si la PC tiene poca RAM.
+- **Licencias:** elegir la licencia de VOXA y cambiar la voz en inglés por una con licencia clara ([docs/licencias.md](licencias.md)).
+
 - **Mediciones del uso real** (solo en esa PC):
   - frases no entendidas;
   - activaciones falsas por hora;
