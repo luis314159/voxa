@@ -122,6 +122,8 @@ Con **casa bilingüe** (`bilingual = true`, o el interruptor en Ajustes → Func
 
 «Para todos» aplica las reglas a cualquiera (visitas, o si nadie ha grabado su voz). Por voz, «Hey Voxa, modo niños» o «ya vienen los sobrinos» lo enciende para todos; para que no lo apaguen los niños, se apaga solo desde el celular.
 
+**Horas de silencio.** En Ajustes → Horas de silencio (por ejemplo de 22:00 a 7:00), VOXA habla y suena bajito, y una alarma que nadie apaga ya no se avisa en los otros cuartos. Las alarmas siguen sonando a su volumen: para eso se pusieron.
+
 **Rutina de la mañana.** Con la hora de salida (Ajustes → Rutina de la mañana: hora, días y «no olviden»), los días de escuela VOXA avisa «Faltan 15 minutos para salir. No olviden: mochila, lonche y uniforme», luego a los 5 minutos y «¡Hora de salir!». «¿Cuánto falta para salir?» también lo dice. «Buenos días» saluda por nombre y junta la hora, el clima, los recordatorios, el calendario de la familia y el de quien saluda, sus pendientes y cuánto falta para salir; si se configuró, también pone la música de la mañana.
 
 **Pendientes de cada quien.** «Agrega llamar al plomero a mis pendientes», «¿qué pendientes tengo?», «ya hice la tarea de mate», «agrega la tarea de mate a los pendientes de Luis», «¿qué pendientes tiene Ana?». «Mis» es de quien habla (si VOXA reconoce su voz); si no, de la casa. «Buenos días» dice los pendientes de quien saluda, y en el celular están todos, por persona, para tacharlos.

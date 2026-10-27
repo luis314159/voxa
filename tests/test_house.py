@@ -129,3 +129,18 @@ async def test_an_unanswered_alarm_is_heard_in_the_other_rooms(house, monkeypatc
     main.on_ring(timer)  # vuelve a sonar: no se repite el aviso
     await asyncio.sleep(0.2)
     assert len(room_said) == 1
+
+
+async def test_at_night_an_unanswered_alarm_stays_in_the_kitchen(house, monkeypatch):
+    import asyncio
+
+    import voxa.service
+
+    main, room, main_said, room_said = house
+    monkeypatch.setattr(voxa.service, "UNANSWERED_SECONDS", 0.05)
+    monkeypatch.setattr(main.app.quiet, "active", lambda: True)
+    timer = main.app.timers.add(1, "arroz")
+    timer.ringing_since = 1.0
+    main.on_ring(timer)
+    await asyncio.sleep(0.3)
+    assert room_said == []

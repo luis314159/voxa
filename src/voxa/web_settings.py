@@ -117,6 +117,8 @@ class SettingsApi:
                 "bilingue": config.voice.bilingual,
             },
             "casa": {**(app.house.status() if app.house else {}), "invitacion": self.invitation()},
+            "silencio": {"enabled": config.quiet.enabled, "start": config.quiet.start, "end": config.quiet.end,
+                         "level": config.quiet.level},
             "ninos": {
                 "enabled": config.kids.enabled, "everyone": config.kids.everyone, "children": list(config.kids.children),
                 "clean_music": config.kids.clean_music, "max_volume": config.kids.max_volume,

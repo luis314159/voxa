@@ -285,6 +285,16 @@
 </section>
 
 <section>
+  <h2>Horas de silencio</h2>
+  <p class="ayuda">De noche VOXA habla bajito y, si una alarma suena sin que nadie la apague, no avisa en los otros cuartos. Las alarmas siguen sonando normal.</p>
+  <div class="interruptor"><span>Encendidas</span><input type="checkbox" id="silencio-encendido"></div>
+  <div class="fila"><label class="campo" style="flex:1"><span>Desde</span><input type="time" id="silencio-desde"></label><label class="campo" style="flex:1"><span>hasta</span><input type="time" id="silencio-hasta"></label></div>
+  <label class="campo"><span>Voz de noche</span><select id="silencio-nivel"><option value="0.2">Muy bajita</option><option value="0.35">Bajita</option><option value="0.6">Un poco más baja</option></select></label>
+  <button id="silencio-guardar" style="width:100%;margin-top:10px">Guardar</button>
+  <p class="ayuda" id="silencio-respuesta"></p>
+</section>
+
+<section>
   <h2>Modo niños</h2>
   <p class="ayuda">Cuando VOXA reconoce la voz de un niño: música sin canciones explícitas (con Spotify), volumen con tope, respuestas de la IA para niños y videos solo en su horario. Por voz se enciende con «Hey Voxa, modo niños» (para todos); se apaga solo aquí.</p>
   <div class="interruptor"><span>Encendido</span><input type="checkbox" id="ninos-encendido"></div>
@@ -505,6 +515,15 @@ const EN = {
   "mochila, lonche, uniforme": "backpack, lunch, uniform",
   "Música de «buenos días» (opcional)": "«Good morning» music (optional)",
   "«mi playlist de la mañana»": "«my morning playlist»",
+  // Horas de silencio
+  "Horas de silencio": "Quiet hours",
+  "De noche VOXA habla bajito y, si una alarma suena sin que nadie la apague, no avisa en los otros cuartos. Las alarmas siguen sonando normal.": "At night VOXA speaks softly and, if an alarm rings with no one turning it off, it doesn't tell the other rooms. Alarms still ring as usual.",
+  "Encendidas": "On",
+  "Desde": "From",
+  "Voz de noche": "Night voice",
+  "Muy bajita": "Very soft",
+  "Bajita": "Soft",
+  "Un poco más baja": "A little softer",
   // Modo niños
   "Modo niños": "Kids mode",
   "Cuando VOXA reconoce la voz de un niño: música sin canciones explícitas (con Spotify), volumen con tope, respuestas de la IA para niños y videos solo en su horario. Por voz se enciende con «Hey Voxa, modo niños» (para todos); se apaga solo aquí.": "When VOXA recognizes a child's voice: no explicit songs (with Spotify), a volume limit, kid-friendly AI answers and videos only during their hours. By voice, «Hey Voxa, kids mode» turns it on (for everyone); it can only be turned off here.",
@@ -944,6 +963,10 @@ async function cargarAjustes() {
     etiqueta.append(caja, document.createTextNode(letra));
     return etiqueta;
   }));
+  $("silencio-encendido").checked = a.silencio.enabled;
+  $("silencio-desde").value = a.silencio.start;
+  $("silencio-hasta").value = a.silencio.end;
+  $("silencio-nivel").value = String(a.silencio.level);
   const ninos = a.ninos;
   $("ninos-encendido").checked = ninos.enabled;
   $("ninos-todos").checked = ninos.everyone;
@@ -1131,6 +1154,12 @@ $("rutina-guardar").onclick = () => guardar("routine", {
   checklist: $("rutina-llevar").value.trim(),
   morning_music: $("rutina-musica").value.trim(),
 }, "rutina-respuesta");
+$("silencio-guardar").onclick = () => guardar("quiet", {
+  enabled: $("silencio-encendido").checked,
+  start: $("silencio-desde").value,
+  end: $("silencio-hasta").value,
+  level: Number($("silencio-nivel").value),
+}, "silencio-respuesta");
 $("ninos-guardar").onclick = () => guardar("kids", {
   enabled: $("ninos-encendido").checked,
   everyone: $("ninos-todos").checked,

@@ -110,6 +110,15 @@ class KidsConfig:
 
 
 @dataclass(frozen=True)
+class QuietConfig:
+    enabled: bool = False
+    start: str = "22:00"
+    end: str = "07:00"
+    level: float = 0.35
+    """Qué tan fuerte salen la voz y los sonidos en esas horas (1 = normal); las alarmas, normal."""
+
+
+@dataclass(frozen=True)
 class WakeConfig:
     enabled: bool = True
     model: str = ""
@@ -185,6 +194,7 @@ class Config:
     wake: WakeConfig = field(default_factory=WakeConfig)
     routine: RoutineConfig = field(default_factory=RoutineConfig)
     kids: KidsConfig = field(default_factory=KidsConfig)
+    quiet: QuietConfig = field(default_factory=QuietConfig)
     display: DisplayConfig = field(default_factory=DisplayConfig)
     video: VideoConfig = field(default_factory=VideoConfig)
     ai: AiConfig = field(default_factory=AiConfig)

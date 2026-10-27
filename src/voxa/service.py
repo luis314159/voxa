@@ -105,6 +105,7 @@ class Service:
 
     # --- voz ------------------------------------------------------------------
     def attach_voice(self, session: VoiceSession, mic: Microphone) -> None:
+        session.gain = self.app.quiet.gain  # de noche, bajito
         session.observer = self
         self.session, self.mic = session, mic
         if self.app.ai is not None:
@@ -363,6 +364,9 @@ class Service:
 
         await asyncio.sleep(UNANSWERED_SECONDS)
         if not any(t.id == timer.id for t in self.app.timers.ringing):
+            return
+        if self.app.quiet.active():
+            log.info("Horas de silencio: la alarma sin atender no se avisa en los cuartos")
             return
         try:
             heard = await self.app.house.announce(ring_phrase(timer))

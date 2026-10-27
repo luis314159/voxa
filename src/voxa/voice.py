@@ -98,6 +98,12 @@ class VoiceSession:
         self.observer: TurnObserver = observer or _NoObserver()
         self.identify: Callable[[object], str | None] | None = None
         """Quién habla (por su voz); ``None`` si nadie ha grabado su voz."""
+        self.gain: Callable[[], float] = lambda: 1.0
+        """Horas de silencio: qué tan fuerte salen la voz y los sonidos (las alarmas, siempre normal)."""
+
+    async def _play(self, clip: Clip) -> None:
+        gain = self.gain()
+        await self._output.play(clip if gain >= 1.0 else Clip(clip.samples * gain, clip.rate))
 
     def warm_up(self, phrases: list[str] = COMMON_PHRASES) -> None:
         if self._tts is not None and hasattr(self._tts, "warm_up"):
@@ -116,16 +122,16 @@ class VoiceSession:
             start = time.perf_counter()
             collector = UtteranceCollector(self._endpoint)
             if after_wake:
-                chime = asyncio.ensure_future(self._output.play(self._sounds["listening"]))
+                chime = asyncio.ensure_future(self._play(self._sounds["listening"]))
                 audio = await mic.record_utterance(collector, clear=False)
                 await chime
             else:
-                await self._output.play(self._sounds["listening"])
+                await self._play(self._sounds["listening"])
                 start = time.perf_counter()
                 audio = await mic.record_utterance(collector, skip_ms=self._echo_guard_ms)
             timings.listen = time.perf_counter() - start
             if audio is None:
-                await self._output.play(self._sounds["cancel"])
+                await self._play(self._sounds["cancel"])
                 return TurnResult(None, None, timings)
             return await self.respond_to_audio(audio, timings)
         finally:
@@ -145,7 +151,7 @@ class VoiceSession:
         person = await who
         if not text:
             self.observer.exchange("", None)
-            await self._output.play(self._sounds["error"])
+            await self._play(self._sounds["error"])
             return TurnResult("", None, timings, person)
 
         start = time.perf_counter()
@@ -175,7 +181,7 @@ class VoiceSession:
                 return await self.say_stream(_iterate(speech_chunks(response.speech)))
         async with self._speaking:
             if response.sound or response.speech:
-                await self._output.play(self._sounds.get(response.sound or "ok", self._sounds["ok"]))
+                await self._play(self._sounds.get(response.sound or "ok", self._sounds["ok"]))
             return 0.0
 
     async def say_stream(self, chunks: AsyncIterable[str]) -> float:
@@ -208,7 +214,7 @@ class VoiceSession:
             try:
                 while (clip := await clips.get()) is not None:
                     self.observer.phase("speaking")
-                    await self._output.play(clip)
+                    await self._play(clip)
             finally:
                 self.observer.phase("idle")
                 if not producer.done():
@@ -222,7 +228,7 @@ class VoiceSession:
         await self._ducker.duck()
         try:
             async with self._speaking:
-                await self._output.play(self._sounds["alarm"])
+                await self._output.play(self._sounds["alarm"])  # la alarma suena normal, aun de noche
             await self.say(Response(text))
         finally:
             await self._ducker.restore()

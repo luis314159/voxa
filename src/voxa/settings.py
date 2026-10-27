@@ -38,6 +38,7 @@ EDITABLE: dict[str, dict[str, Any]] = {
     "voice": {"whisper_model": ("tiny", "base", "small"), "language": ("es", "en"), "bilingual": bool},
     "routine": {"departure": "time", "departure_days": "days", "checklist": str, "morning_music": str},
     "house": {"room": str, "main": str},
+    "quiet": {"enabled": bool, "start": "time", "end": "time", "level": float},
     "kids": {
         "enabled": bool, "children": "names", "everyone": bool, "clean_music": bool, "max_volume": int,
         "video_from": "time", "video_until": "time",
@@ -110,6 +111,8 @@ def validate(section: str, values: dict[str, Any]) -> dict[str, Any]:
     if section == "weather":
         if not -90 <= clean.get("latitude", 0) <= 90 or not -180 <= clean.get("longitude", 0) <= 180:
             raise SettingsError("coordenadas fuera de rango")
+    if section == "quiet" and not 0.05 <= clean.get("level", 0.35) <= 1:
+        raise SettingsError("el volumen de noche va de 0.05 a 1")
     if section == "kids" and clean.get("max_volume", 0) > 100:
         raise SettingsError("el volumen máximo va de 0 a 100")
     return clean

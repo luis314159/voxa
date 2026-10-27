@@ -8,7 +8,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Awaitable, Callable
 
-from voxa.config import MODEL_DEFAULTS, Config, config_path
+from voxa.config import MODEL_DEFAULTS, Config, QuietConfig, config_path
 from voxa.core.assistant import Assistant
 from voxa.health import Check, internet_check, player_check, spotify_check
 from voxa.nlu.matcher import Matcher, load_matcher
@@ -37,6 +37,7 @@ from voxa.house import SHARED_DOMAINS, House
 from voxa.i18n import other_language, set_language
 from voxa.kids import KidsRules
 from voxa.kids import saver as kids_saver
+from voxa.quiet import QuietHours
 from voxa.skills.calendar import CalendarSkill
 from voxa.skills.house import HouseSkill, RemoteSkill
 from voxa.skills.enroll import EnrollSkill
@@ -88,6 +89,7 @@ class App:
     house: House | None = None
     tasks: TaskList = field(default_factory=TaskList)
     kids: KidsRules | None = None
+    quiet: QuietHours = field(default_factory=lambda: QuietHours(QuietConfig()))
 
 
 class SetupError(Exception):
@@ -307,7 +309,7 @@ def build_app(config: Config, *, simulated: bool = False, on_ring: Callable[[Tim
         ai.extra_context = recipe.summary
     return App(
         assistant, timers, matcher, now_playing, weather, player, checks, config, shopping, recipe, updater, ai, ai_problem,
-        music, house, tasks, kids,
+        music, house, tasks, kids, QuietHours(config.quiet),
     )
 
 
