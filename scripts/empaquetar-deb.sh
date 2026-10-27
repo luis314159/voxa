@@ -25,6 +25,10 @@ mkdir -p "$raiz/opt/voxa/wheels"
 tar -xzf "$paquete" -C "$raiz/opt/voxa"
 mv "$raiz/opt/voxa/voxa" "$raiz/opt/voxa/app"
 version="$(cat "$raiz/opt/voxa/app/VERSION")"
+case "$(basename "$rueda")" in
+  "voxa-$version-"*.whl) ;;
+  *) echo "La rueda $(basename "$rueda") no es la de VOXA $version" >&2; exit 1 ;;
+esac
 install -m 644 "$rueda" "$raiz/opt/voxa/wheels/"
 chmod 755 "$raiz/opt/voxa/app/packaging/deb/actualizar.sh"
 

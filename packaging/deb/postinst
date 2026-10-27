@@ -10,6 +10,8 @@ case "$1" in
       python3 -m venv "$VENV"
     fi
     echo "VOXA: instalando sus bibliotecas de Python (unos minutos, necesita internet)…"
+    # El pip de Ubuntu 22.04 es viejo para algunas bibliotecas de hoy.
+    "$VENV/bin/pip" install --disable-pip-version-check --no-cache-dir --quiet --upgrade pip || true
     if ! "$VENV/bin/pip" install --disable-pip-version-check --no-cache-dir --quiet --upgrade \
         "$(ls /opt/voxa/wheels/voxa-*.whl | head -1)[audio,ia]" "yt-dlp[default]" deno; then
       echo "No se pudo instalar VOXA: revisa la conexión a internet y vuelve a abrir el paquete" >&2

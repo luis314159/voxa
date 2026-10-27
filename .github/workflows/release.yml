@@ -41,7 +41,9 @@ jobs:
           done
       - name: Paquete .deb (doble clic en Mint, Ubuntu y Raspberry Pi OS)
         run: |
-          python3 -m pip wheel --no-deps -q -w rueda .
+          # El pip de Ubuntu 22.04 no entiende [project] de pyproject.toml: uno al día en un entorno aparte.
+          python3 -m venv /tmp/rueda-env && /tmp/rueda-env/bin/pip install -q --upgrade pip
+          /tmp/rueda-env/bin/pip wheel --no-deps -q -w rueda .
           bash scripts/empaquetar-deb.sh "${{ matrix.arch }}" "dist/voxa-linux-${{ matrix.arch }}.tar.gz" rueda/voxa-*.whl dist
           dpkg-deb -I dist/voxa_*.deb
       - name: El .deb se instala y VOXA arranca su primera vez
