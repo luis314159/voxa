@@ -17,6 +17,8 @@ Lo que falta para que VOXA sea un producto excelente para familias, en orden de 
    - qué tan seguido Whisper confunde el idioma en órdenes muy cortas;
    - si conviene un Vosk cerrado también para el otro idioma (hoy las órdenes cortas solo van rápido en el idioma de la casa);
 3. **Spotifast:** sus comandos (`play-search --kind`, `now-playing --raw`, `like`) ya se confirmaron con Spotifast 0.14 en Windows; falta verlos en la PC de la cocina con `voxa -v texto`.
+4. **Probar en una Raspberry Pi 4 o 5 real:** la imagen con Raspberry Pi Imager (con la lista de VOXA), el primer arranque, el código hablado sin pantalla y unirla a la casa desde el celular.
+5. **Probar las cuentas nuevas:** Spotify de cada quien (con 2 o 3 cuentas en «User Management») y Google Calendar (cliente propio publicado en producción).
 
 ## Siguiente
 
@@ -27,7 +29,6 @@ Lo que falta para que VOXA sea un producto excelente para familias, en orden de 
 
 ## Producto e instalación
 
-- **Imagen lista para Raspberry Pi:** se graba, se conecta y se configura desde el celular, sin instalar nada.
 - **Repositorio apt firmado:** actualizaciones por el Gestor de actualizaciones de Mint, en lugar del temporizador nocturno.
 - **Satélites mínimos:** solo micrófono y bocina (por ejemplo una ESP32-S3 o una Raspberry Pi Zero 2 W) que mandan el audio a la principal, en lugar de una VOXA completa por cuarto.
 - **Llamar a alguien por la casa:** «llama a Ana» usa el reconocimiento de voz para saber en qué cuarto habló Ana por última vez.
