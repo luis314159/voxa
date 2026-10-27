@@ -7,7 +7,7 @@ Asistente de voz familiar para la cocina, sobre una PC All-in-One con Linux Mint
 - **Plan del proyecto:** [docs/voxa_plan.md](docs/voxa_plan.md)
 - **Fase 0 (diagnóstico del equipo):** [docs/fase0_guia.md](docs/fase0_guia.md)
 - **Marca:** [assets/brand/](assets/brand/)
-- **Licencias de modelos y programas:** [docs/licencias.md](docs/licencias.md)
+- **Licencia:** AGPL-3.0 ([LICENSE](LICENSE)); lo que tiene la suya propia, en [NOTICE.md](NOTICE.md) y [docs/licencias.md](docs/licencias.md)
 
 ## Estado
 
@@ -231,3 +231,7 @@ ui/             voxa-ui: pantalla de cocina (Rust + egui)
 scripts/fase0/  diagnóstico y benchmarks para correr en la PC
 config/         configuración de ejemplo
 ```
+
+## Licencia
+
+VOXA es software libre bajo la [GNU AGPL-3.0](LICENSE) (o una versión posterior): se puede usar, cambiar y compartir gratis, y quien reparta una versión cambiada, o la ofrezca por la red, tiene que publicar su código con la misma licencia. El modelo de «Hey Voxa» (CC BY-NC-SA 4.0) y la voz en inglés Lessac (licencia de investigación de sus datos) tienen la suya propia; ver [NOTICE.md](NOTICE.md).

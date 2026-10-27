@@ -28,11 +28,12 @@ VOXA baja sus modelos en el primer arranque (`src/voxa/prepare.py`), cada uno co
 
 ## Qué quiere decir
 
-- **VOXA es para usarse en casa, sin fines comerciales.** «Hey Voxa» es CC BY-NC-SA 4.0 y la voz en inglés viene de datos de investigación. Venderla o usarla en un negocio necesitaría otro detector de «Hey Voxa» y otra voz en inglés.
+- **El código de VOXA se puede usar para lo que sea; dos modelos, no.** «Hey Voxa» es CC BY-NC-SA 4.0 y la voz en inglés viene de datos de investigación: usar VOXA en un negocio necesitaría otro detector de «Hey Voxa» y otra voz en inglés.
+- **VOXA es AGPL-3.0** ([LICENSE](../LICENSE), [NOTICE.md](../NOTICE.md)). Lo de esta página conserva su propia licencia.
+- **La voz Lessac** no se reparte con VOXA: se baja de su fuente y, junto a ella, queda `en_US-lessac-medium.onnx.LICENCIA.txt` con sus términos.
 - **Créditos:** VoxCeleb (CC BY 4.0) y openWakeWord piden que se les dé crédito; este documento lo hace.
-- **piper-tts es GPL-3.0:** el `.deb` instala VOXA junto con él. Al repartir el paquete hay que dejar a la mano el código de VOXA, y el repositorio de GitHub ya cumple con eso.
+- **piper-tts es GPL-3.0:** es compatible con la AGPL-3.0 de VOXA. Al repartir el paquete hay que dejar a la mano el código de VOXA, y el repositorio de GitHub ya cumple con eso.
 
 ## Pendientes
 
-- **VOXA todavía no tiene licencia** (no hay `LICENSE` en el repositorio). Sin ella, el código es público pero nadie más tiene permiso de usarlo. La elección es de quien hizo VOXA; por lo de arriba, encajan GPL-3.0 o AGPL-3.0.
 - **Voz en inglés con licencia clara:** probar `en_US-libritts_r-medium` (LibriTTS-R, CC BY 4.0) o Kokoro (Apache 2.0) en lugar de `en_US-lessac-medium`.

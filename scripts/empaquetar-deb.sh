@@ -41,6 +41,9 @@ for unidad in voxa-actualizar.service voxa-actualizar.timer voxa-ytdlp.service v
 done
 install -D -m 644 "$REPO/deploy/autostart/voxa-ui.desktop" "$raiz/etc/xdg/autostart/voxa-ui.desktop"
 install -D -m 644 "$fuente/50-voxa.rules" "$raiz/usr/share/polkit-1/rules.d/50-voxa.rules"
+# La licencia (AGPL-3.0) y lo que tiene la suya propia, donde Debian los busca.
+install -D -m 644 "$REPO/LICENSE" "$raiz/usr/share/doc/voxa/copyright"
+install -D -m 644 "$REPO/NOTICE.md" "$raiz/usr/share/doc/voxa/NOTICE.md"
 
 mkdir -p "$raiz/DEBIAN"
 for script in postinst prerm postrm; do

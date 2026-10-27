@@ -59,6 +59,21 @@ def test_models_are_downloaded_and_unzipped(tmp_path, monkeypatch):
     assert prepare.missing(config) == []
 
 
+def test_the_lessac_voice_carries_its_own_license(tmp_path, monkeypatch):
+    """La voz en inglés no tiene licencia abierta: junto al modelo queda el aviso de sus términos."""
+    english = Config(voice=VoiceConfig(language="en", vosk_model=str(tmp_path / "vosk"),
+                                       piper_voice=str(tmp_path / "piper/en_US-lessac-medium.onnx")))
+    voice = prepare.model_downloads(english)[0]
+    assert "Blizzard Challenge 2013" in voice.notice and "AGPL" in voice.notice
+    assert all(not d.notice for d in prepare.model_downloads(Config()))  # la voz en español es Apache 2.0
+    (tmp_path / "vosk").mkdir()
+    voice.target.parent.mkdir(parents=True)
+    voice.target.write_bytes(b"voz")  # ya bajada: igual se deja el aviso
+    monkeypatch.setattr(prepare, "model_downloads", lambda c: [voice])
+    prepare.prepare_models(english, lambda text: None, whisper=False)
+    assert "sin uso comercial" in (tmp_path / "piper/en_US-lessac-medium.onnx.LICENCIA.txt").read_text(encoding="utf-8")
+
+
 def test_zip_with_paths_outside_is_refused(tmp_path, monkeypatch):
     config = config_in(tmp_path)
     archive = tmp_path / "malo.zip"

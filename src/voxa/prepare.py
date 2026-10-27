@@ -45,6 +45,17 @@ PIPER_VOICES = {
            "5efe09e69902187827af646e1a6e9d269dee769f9877d17b16b1b46eeaaf019f",
            "efe19c417bed055f2d69908248c6ba650fa135bc868b0e6abb3da181dab690a0"),
 }
+# Las voces que no tienen licencia abierta: junto al modelo se deja el aviso de sus términos.
+PIPER_NOTICES = {
+    "en": (
+        "Voz en_US-lessac-medium de Piper (https://huggingface.co/rhasspy/piper-voices).\n"
+        "No es parte de VOXA y la licencia AGPL de VOXA no la cubre.\n\n"
+        "Se entrenó con los datos de Lessac Technologies del Blizzard Challenge 2013, cuya licencia\n"
+        "se otorga a quien la firma y es para investigación, sin uso comercial:\n"
+        "https://www.cstr.ed.ac.uk/projects/blizzard/2013/lessac_blizzard2013/license.html\n\n"
+        "Úsala solo en casa, sin fines comerciales, y no la vuelvas a repartir.\n"
+    ),
+}
 VOSK_MODELS = {
     "es": ("https://alphacephei.com/vosk/models/vosk-model-small-es-0.42.zip",
            "09b239888f633ef2f0b4e09736e3d9936acfd810bc65d53fad45261762c6511f"),
@@ -68,6 +79,8 @@ class Download:
     url: str
     sha256: str
     target: Path
+    notice: str = ""
+    """Términos de uso que se dejan junto al archivo (``<archivo>.LICENCIA.txt``)."""
 
 
 def data_dir() -> Path:
@@ -87,7 +100,7 @@ def model_downloads(config: Config) -> list[Download]:
     wake = Path(config.wake.feature_dir).expanduser()
     base, onnx_sha, json_sha = PIPER_VOICES.get(config.voice.language, PIPER_VOICES["es"])
     voices = [
-        Download("la voz de VOXA", f"{base}/{piper.name}", onnx_sha, piper),
+        Download("la voz de VOXA", f"{base}/{piper.name}", onnx_sha, piper, PIPER_NOTICES.get(config.voice.language, "")),
         Download("la voz de VOXA (ajustes)", f"{base}/{piper.name}.json", json_sha, piper.with_name(piper.name + ".json")),
     ]
     if config.voice.bilingual:  # la voz del otro idioma, para contestar en él
@@ -95,7 +108,7 @@ def model_downloads(config: Config) -> list[Download]:
         second = Path(MODEL_DEFAULTS[other][1]).expanduser()
         base, onnx_sha, json_sha = PIPER_VOICES[other]
         voices += [
-            Download("la voz del otro idioma", f"{base}/{second.name}", onnx_sha, second),
+            Download("la voz del otro idioma", f"{base}/{second.name}", onnx_sha, second, PIPER_NOTICES.get(other, "")),
             Download("la voz del otro idioma (ajustes)", f"{base}/{second.name}.json", json_sha,
                      second.with_name(second.name + ".json")),
         ]
@@ -165,6 +178,8 @@ def prepare_models(config: Config, progress: Progress, *, whisper: bool = True) 
     for item in model_downloads(config):
         if not item.target.exists():
             fetch(item.url, item.target, item.sha256, progress, item.name)
+        if item.notice and item.target.exists():
+            item.target.with_name(item.target.name + ".LICENCIA.txt").write_text(item.notice, encoding="utf-8")
     if not whisper:
         return
     progress("Preparando el reconocimiento preciso (Whisper)…")
