@@ -17,7 +17,7 @@ Lo que falta para que VOXA sea un producto excelente para familias, en orden de 
    - qué tan seguido Whisper confunde el idioma en órdenes muy cortas;
    - si conviene un Vosk cerrado también para el otro idioma (hoy las órdenes cortas solo van rápido en el idioma de la casa);
    - nombres de temporizadores entre idiomas: «the rice timer» no encuentra el temporizador «arroz».
-3. **Confirmar los comandos de Spotifast en la PC real.** VOXA usa `play-search`, `now-playing --raw` y `like`, pero la documentación pública solo muestra `spotifast [LINK]`. Si no existen, la capa de Spotifast se salta sola; hay que revisarlo con `voxa -v texto`.
+3. **Spotifast:** sus comandos (`play-search --kind`, `now-playing --raw`, `like`) ya se confirmaron con Spotifast 0.14 en Windows; falta verlos en la PC de la cocina con `voxa -v texto`.
 
 ## Siguiente
 
