@@ -231,6 +231,15 @@ class Config:
         return _xdg("XDG_DATA_HOME", ".local/share") / "activacion"
 
     @property
+    def speaker_model_path(self) -> Path:
+        return _xdg("XDG_DATA_HOME", ".local/share") / "models" / "speaker" / "wespeaker_en_voxceleb_resnet34_LM.onnx"
+
+    @property
+    def voices_path(self) -> Path:
+        """Los prototipos de voz de cada persona (para saber quién habla)."""
+        return _xdg("XDG_DATA_HOME", ".local/share") / "voces.npz"
+
+    @property
     def verifier_path(self) -> Path:
         if self.wake.verifier:
             return Path(self.wake.verifier).expanduser()

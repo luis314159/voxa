@@ -86,7 +86,22 @@ def train_family_verifier(config: Config) -> Training:
     accepted = float((verifier.predict(positives) >= verifier.threshold).mean())
     rejected = float((verifier.predict(negatives) < verifier.threshold).mean())
     verifier.save(config.verifier_path)
+    train_voices(config)
     return Training(accepted, rejected, len(people(folder)), notes)
+
+
+def train_voices(config: Config) -> int:
+    """Los prototipos de voz de cada persona (para saber quién habla); cuántas personas quedaron."""
+    from voxa.audio.speaker import SpeakerModel, build_voices, embeddings_from_recordings
+
+    if not config.speaker_model_path.exists():
+        log.info("Sin el modelo de quién habla: «voxa preparar» lo baja")
+        return 0
+    model = SpeakerModel(config.speaker_model_path)
+    voices = build_voices(embeddings_from_recordings(config.wake_recordings_dir, model.embed))
+    voices.save(config.voices_path)
+    log.info("Voces: %s (umbral %.2f)", ", ".join(voices.names), voices.threshold)
+    return len(voices.names)
 
 
 class VoiceEnrollment:
@@ -117,6 +132,8 @@ class VoiceEnrollment:
         name = person.strip() or "familia"
         folder = self.folder / folder_name(name)
         folder.mkdir(parents=True, exist_ok=True)
+        if person.strip():
+            (folder / "nombre.txt").write_text(name, encoding="utf-8")
         stamp = time.strftime("%Y%m%d-%H%M%S")
         await self._say(Response(
             f"Vamos a grabar tu voz{', ' + name if person.strip() else ''}. Cada vez que escuches el sonido, "

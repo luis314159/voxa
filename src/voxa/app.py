@@ -147,7 +147,7 @@ def build_voice(config: Config, app: App, *, simulated: bool = False) -> VoiceSe
     from voxa.voice import VoiceSession
 
     voice = config.voice
-    return VoiceSession(
+    session = VoiceSession(
         app.assistant,
         build_stt(config, app.matcher),
         build_tts(config),
@@ -157,6 +157,11 @@ def build_voice(config: Config, app: App, *, simulated: bool = False) -> VoiceSe
         echo_guard_ms=voice.echo_guard_ms,
         endpoint=EndpointConfig(end_silence_ms=voice.end_silence_ms),
     )
+    if not simulated:
+        from voxa.audio.speaker import SpeakerIdentifier
+
+        session.identify = SpeakerIdentifier(config.speaker_model_path, config.voices_path)
+    return session
 
 
 def build_spotify(config: Config) -> MusicBackend:

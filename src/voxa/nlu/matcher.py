@@ -33,7 +33,7 @@ _TYPED_SLOTS = {
     "days": _word_run(DAY_WORDS),
 }
 # Slots de texto libre: si los contiene, la intención no se puede corregir con fuzzy.
-_FREE_SLOTS = frozenset({"query", "name", "device"})
+_FREE_SLOTS = frozenset({"query", "name", "device", "person"})
 
 
 def compile_pattern(pattern: str) -> re.Pattern[str]:

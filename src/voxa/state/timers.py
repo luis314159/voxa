@@ -68,6 +68,8 @@ class Timer:
     """Recordatorio semanal: los días en que suena (0 = lunes)."""
     at: list[int] | None = None
     """La hora y minuto de un recordatorio semanal, para programar la siguiente vez."""
+    person: str | None = None
+    """Para quién es («recuérdame…» dicho por Ana, o «recuérdale a Ana…»): se le dice por su nombre."""
 
     @property
     def is_reminder(self) -> bool:
@@ -132,13 +134,15 @@ class TimerManager:
         kind: str = "reminder",
         repeat: list[int] | None = None,
         at: list[int] | None = None,
+        person: str | None = None,
     ) -> Timer:
         """A una hora fija (epoch): la hora exacta que se dijo, no «ahora + segundos».
 
         Con ``repeat`` (días) y ``at`` (hora, minuto), al sonar se programa solo la siguiente vez.
         """
         timer = Timer(
-            self._next_id, max(1, round(ends_at - self._clock())), ends_at, label, kind=kind, repeat=repeat, at=at
+            self._next_id, max(1, round(ends_at - self._clock())), ends_at, label, kind=kind, repeat=repeat, at=at,
+            person=person,
         )
         self._next_id += 1
         self._timers.append(timer)
@@ -222,7 +226,7 @@ class TimerManager:
         if not timer.repeat or not timer.at:
             return
         at = next_weekly((timer.at[0], timer.at[1]), timer.repeat, datetime.fromtimestamp(now) + timedelta(minutes=1))
-        self.add_at(at.timestamp(), timer.label, kind=timer.kind, repeat=timer.repeat, at=timer.at)
+        self.add_at(at.timestamp(), timer.label, kind=timer.kind, repeat=timer.repeat, at=timer.at, person=timer.person)
 
     def _ring(self, timer: Timer, now: float) -> None:
         timer.last_rang_at = now

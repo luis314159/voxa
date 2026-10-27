@@ -27,6 +27,11 @@
 # quedaría dentro del nombre («sacar la basura mañana»).
 - intent: timer.remind
   patterns:
+    # Para otra persona de la familia: «recuérdale a Ana que tome la medicina a las 8».
+    - "(recuerdale|recuerdales|avisale|avisales) a {person} (que|de) {name} (a la|a las) {time}"
+    - "(recuerdale|recuerdales|avisale|avisales) a {person} (a la|a las) {time} (que|de) {name}"
+    - pattern: "(recuerdale|recuerdales|avisale|avisales) a {person} manana (a la|a las) {time} (que|de) {name}"
+      set: {day: manana}
     # Con días: «de lunes a viernes», «los martes», «todos los días», «el viernes».
     - "(despiertame|levantame) {days} (a la|a las|a|al) {time}"
     - "(pon|ponme|programa|crea|activa) [una|un] (alarma|despertador) [para] {days} (a la|a las|a|al) {time} [(para|de|que) {name}]"

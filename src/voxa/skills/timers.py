@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 from typing import Callable
 
+from voxa.core.people import speaker
 from voxa.core.phrases import (
     capitalize,
     clock_words,
@@ -22,6 +23,9 @@ _SOON = timedelta(seconds=30)  # «a las 7» dicho a las 6:59:50 es para mañana
 
 
 def ring_phrase(timer: Timer) -> str:
+    if timer.is_reminder and timer.person:
+        what = f"te recuerdo: {timer.label}." if timer.label else "es la hora."
+        return f"{timer.person}, {what}"
     if timer.is_reminder:
         if timer.label:
             return f"Te recuerdo: {timer.label}."
@@ -65,6 +69,11 @@ def next_occurrence(
     return next((c for c in candidates if c > now + _SOON), None)
 
 
+def _remind_whom(whom: tuple[str | None, bool]) -> str:
+    person, for_other = whom
+    return f"le recuerdo a {person}" if for_other and person else "te recuerdo"
+
+
 class TimerSkill:
     def __init__(self, timers: TimerManager, now: Callable[[], datetime] = datetime.now) -> None:
         self.timers = timers
@@ -75,13 +84,16 @@ class TimerSkill:
             case "timer.set":
                 return self._set(intent.slots["duration"], intent.slots.get("name"))
             case "timer.remind":
+                # «Recuérdale a Ana…»: para Ana. «Recuérdame…» dicho por alguien que VOXA reconoce: para esa persona.
+                target = (intent.slots.get("person") or "").strip()
+                whom = (target.title() if target else speaker(), bool(target))
                 days = intent.slots.get("days")
                 if days is not None:
-                    return self._remind_on(intent.slots["time"], intent.slots.get("name"), *days)
+                    return self._remind_on(intent.slots["time"], intent.slots.get("name"), *days, whom=whom)
                 clock = intent.slots["time"]
                 if intent.text.startswith(("despiertame", "levantame")) and clock[2] is None and 1 <= clock[0] <= 11:
                     clock = (clock[0], clock[1], "manana")  # «despiértame a las 6» es de la mañana
-                return self._remind(clock, intent.slots.get("name"), intent.slots.get("day") == "manana")
+                return self._remind(clock, intent.slots.get("name"), intent.slots.get("day") == "manana", whom)
             case "timer.adjust":
                 return self._adjust(intent.slots["duration"] * int(intent.slots.get("sign", 1)), intent.slots.get("name"))
             case "timer.pause" | "timer.resume":
@@ -115,21 +127,25 @@ class TimerSkill:
         said = format_duration(seconds)
         return Response(capitalize(f"{said} para {label}." if label else f"{said}. Empezando."))
 
-    def _remind(self, clock: tuple[int, int, str | None], label: str | None, tomorrow: bool) -> Response:
+    def _remind(
+        self, clock: tuple[int, int, str | None], label: str | None, tomorrow: bool,
+        whom: tuple[str | None, bool] = (None, False),
+    ) -> Response:
         now = self._now()
         at = next_occurrence(clock, now, tomorrow=tomorrow)
         if at is None:
             return Response("No entendí la hora. Prueba con «a las 8 de la noche».", sound="error")
         label = label.strip() if label else None
-        self.timers.add_at(at.timestamp(), label)
+        self.timers.add_at(at.timestamp(), label, person=whom[0])
         hour = clock_words(at.hour, at.minute, on_the_hour="")  # «las 8 de la noche»
         when = f"mañana a {hour}" if at.date() > now.date() else f"a {hour}"
         if label:
-            return Response(capitalize(f"{when} te recuerdo {label}."))
+            return Response(capitalize(f"{when} {_remind_whom(whom)} {label}."))
         return Response(f"Alarma para {when.removeprefix('a ')}.")
 
     def _remind_on(
-        self, clock: tuple[int, int, str | None], label: str | None, days: frozenset[int], repeat: bool
+        self, clock: tuple[int, int, str | None], label: str | None, days: frozenset[int], repeat: bool,
+        whom: tuple[str | None, bool] = (None, False),
     ) -> Response:
         """«De lunes a viernes a las 6», «los martes a las 8 de la noche», «el viernes a las 5»."""
         now = self._now()
@@ -143,14 +159,15 @@ class TimerSkill:
         after = now if repeat else now.replace(hour=23, minute=59)  # «el viernes» dicho en viernes: el próximo
         when_at = next_weekly(at, days, after)
         label = label.strip() if label else None
-        self.timers.add_at(when_at.timestamp(), label, repeat=sorted(days) if repeat else None, at=list(at))
+        self.timers.add_at(when_at.timestamp(), label, repeat=sorted(days) if repeat else None, at=list(at),
+                           person=whom[0])
         hour_words = clock_words(at[0], at[1], on_the_hour="")
         if repeat:
             when = f"{days_phrase(days)} a {hour_words}"
         else:
             when = f"el {weekday_name(when_at.weekday())} a {hour_words}"
         if label:
-            return Response(capitalize(f"{when} te recuerdo {label}."))
+            return Response(capitalize(f"{when} {_remind_whom(whom)} {label}."))
         return Response(f"Alarma {when}.")
 
     def _adjust(self, seconds: int, name: str | None) -> Response:

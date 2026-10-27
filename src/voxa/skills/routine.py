@@ -6,6 +6,7 @@ import logging
 from datetime import datetime
 from typing import Awaitable, Callable
 
+from voxa.core.people import speaker
 from voxa.core.phrases import clock_words, join_words, time_phrase
 from voxa.core.types import Intent, Response
 from voxa.services.calendar import CalendarUnavailable
@@ -41,8 +42,9 @@ class RoutineSkill:
 
     async def _good_morning(self) -> str:
         now = self._now()
-        parts = [f"¡{'Buenos días' if now.hour < 12 else 'Buenas tardes' if now.hour < 20 else 'Buenas noches'}!",
-                 time_phrase(now)]
+        greeting = "Buenos días" if now.hour < 12 else "Buenas tardes" if now.hour < 20 else "Buenas noches"
+        person = speaker()
+        parts = [f"¡{greeting}, {person}!" if person else f"¡{greeting}!", time_phrase(now)]
         if self._weather is not None:
             try:
                 w = await self._weather.today()

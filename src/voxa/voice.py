@@ -10,7 +10,7 @@ import contextlib
 import logging
 import time
 from dataclasses import dataclass, field
-from typing import AsyncIterable, Protocol
+from typing import AsyncIterable, Callable, Protocol
 
 from voxa.audio.clip import Clip
 from voxa.audio.devices import AudioOutput, Microphone
@@ -19,6 +19,7 @@ from voxa.audio.endpoint import EndpointConfig, UtteranceCollector
 from voxa.audio.stt import SpeechToText
 from voxa.audio.tts import TextToSpeech
 from voxa.core.assistant import Assistant
+from voxa.core.people import speaking
 from voxa.core.speech import speech_chunks
 from voxa.core.types import Response
 
@@ -68,6 +69,7 @@ class TurnResult:
     heard: str | None
     response: Response | None
     timings: TurnTimings
+    person: str | None = None
 
 
 class VoiceSession:
@@ -93,6 +95,8 @@ class VoiceSession:
         self._endpoint = endpoint or EndpointConfig()
         self._speaking = asyncio.Lock()
         self.observer: TurnObserver = observer or _NoObserver()
+        self.identify: Callable[[object], str | None] | None = None
+        """Quién habla (por su voz); ``None`` si nadie ha grabado su voz."""
 
     def warm_up(self, phrases: list[str] = COMMON_PHRASES) -> None:
         if self._tts is not None and hasattr(self._tts, "warm_up"):
@@ -134,20 +138,32 @@ class VoiceSession:
         timings = timings or TurnTimings()
         self.observer.phase("thinking")
         start = time.perf_counter()
+        who = asyncio.ensure_future(asyncio.to_thread(self._who, audio))  # a la par del reconocimiento
         text = await asyncio.to_thread(self._stt.transcribe, audio)
         timings.stt = time.perf_counter() - start
+        person = await who
         if not text:
             self.observer.exchange("", None)
             await self._output.play(self._sounds["error"])
-            return TurnResult("", None, timings)
+            return TurnResult("", None, timings, person)
 
         start = time.perf_counter()
-        response = await self.assistant.handle_text(text)
+        with speaking(person):
+            response = await self.assistant.handle_text(text)
         timings.nlu_and_action = time.perf_counter() - start
         self.observer.exchange(text, response)
         timings.tts = await self.say(response)
-        log.info("«%s» → %s (%s)", text, response.speech or response.sound, timings)
-        return TurnResult(text, response, timings)
+        log.info("«%s»%s → %s (%s)", text, f" ({person})" if person else "", response.speech or response.sound, timings)
+        return TurnResult(text, response, timings, person)
+
+    def _who(self, audio) -> str | None:
+        if self.identify is None:
+            return None
+        try:
+            return self.identify(audio)
+        except Exception as exc:  # noqa: BLE001 - saber quién habla nunca debe tumbar el turno
+            log.warning("No pude reconocer la voz: %s", exc)
+            return None
 
     async def say(self, response: Response) -> float:
         """Reproduce la respuesta; devuelve lo que tardó en empezar a sonar (síntesis del primer trozo)."""

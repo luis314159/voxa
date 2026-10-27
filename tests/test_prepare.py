@@ -37,7 +37,7 @@ def config_in(tmp_path):
 def test_missing_lists_what_voxa_needs(tmp_path):
     config = config_in(tmp_path)
     assert prepare.missing(config)[0] == "el reconocimiento de voz"
-    assert len(prepare.missing(config)) == 5
+    assert len(prepare.missing(config)) == 6
 
 
 def test_models_are_downloaded_and_unzipped(tmp_path, monkeypatch):

@@ -29,6 +29,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
 
+from voxa.audio.speaker import MODEL_SHA256 as SPEAKER_SHA256
+from voxa.audio.speaker import MODEL_URL as SPEAKER_URL
 from voxa.config import Config
 
 log = logging.getLogger(__name__)
@@ -79,12 +81,15 @@ def model_downloads(config: Config) -> list[Download]:
                  "ba2b0e0f8b7b875369a2c89cb13360ff53bac436f2895cced9f479fa65eb176f", wake / "melspectrogram.onnx"),
         Download("«Hey Voxa» (2 de 2)", f"{WAKE}/embedding_model.onnx",
                  "70d164290c1d095d1d4ee149bc5e00543250a7316b59f31d056cff7bd3075c1f", wake / "embedding_model.onnx"),
+        Download("quién habla", SPEAKER_URL, SPEAKER_SHA256, config.speaker_model_path),
     ]
 
 
 def missing(config: Config) -> list[str]:
     """Lo que falta para que VOXA oiga y hable (vacío: lista)."""
     out = [d.name for d in model_downloads(config) if not d.target.exists()]
+    if not config.voices_path.exists() and any(config.wake_recordings_dir.glob("*/si_*.wav")):
+        out.append("las voces de la familia")
     if not Path(config.voice.vosk_model).expanduser().is_dir():
         out.insert(0, "el reconocimiento de voz")
     return out
@@ -257,6 +262,14 @@ def prepare(config: Config, progress: Progress = lambda text: None) -> list[str]
         prepare_models(config, progress)
     except (OSError, PrepareError, zipfile.BadZipFile) as exc:
         problems.append(f"modelos de voz: {exc}")
+    if not config.voices_path.exists() and any(config.wake_recordings_dir.glob("*/si_*.wav")):
+        progress("Aprendiendo las voces de la familia…")
+        try:
+            from voxa.enroll import train_voices
+
+            train_voices(config)
+        except (OSError, ValueError) as exc:
+            problems.append(f"voces: {exc}")
     app = app_dir()
     for name, step in (("audio", lambda: prepare_audio(app)), ("escritorio", prepare_desktop),
                        ("fondos", lambda: prepare_backgrounds(app, progress))):
