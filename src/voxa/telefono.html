@@ -315,6 +315,14 @@
 </section>
 
 <section>
+  <h2>Privacidad</h2>
+  <div class="detalle">Se queda en esta PC</div>
+  <ul id="priv-local"></ul>
+  <div class="detalle">Sale a internet (según lo que tienes encendido)</div>
+  <ul id="priv-internet"></ul>
+</section>
+
+<section>
   <h2>Accesibilidad</h2>
   <label class="campo"><span>Velocidad de la voz</span><select id="acc-velocidad"><option value="1">Normal</option><option value="1.15">Un poco más despacio</option><option value="1.3">Más despacio</option></select></label>
   <div class="campo"><span class="detalle">Aún más despacio cuando habla con (si reconoce su voz)</span><div class="fila" id="acc-lento" style="flex-wrap:wrap"></div></div>
@@ -596,6 +604,10 @@ const EN = {
   "Borrar nota": "Delete note",
   "¿Cómo más les dicen? Así «déjale una nota a papá» sabe a quién va (separado por comas).": "What else do people call them? That way «leave a note for dad» knows who it's for (comma-separated).",
   "papá, pa": "dad, pa",
+  // Privacidad
+  "Privacidad": "Privacy",
+  "Se queda en esta PC": "Stays on this PC",
+  "Sale a internet (según lo que tienes encendido)": "Goes to the internet (depending on what you turned on)",
   // Accesibilidad
   "Accesibilidad": "Accessibility",
   "Velocidad de la voz": "Voice speed",
@@ -1155,6 +1167,8 @@ async function cargarAjustes() {
     campo.append(el("span", "", p), caja);
     return campo;
   }));
+  $("priv-local").replaceChildren(...a.privacidad.local.map((t) => el("li", "", t)));
+  $("priv-internet").replaceChildren(...a.privacidad.internet.map((t) => el("li", "", t)));
   const acc = a.accesibilidad;
   $("acc-velocidad").value = String(acc.velocidad);
   if (!$("acc-velocidad").value) $("acc-velocidad").value = "1";

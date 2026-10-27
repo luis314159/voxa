@@ -25,9 +25,6 @@ Lo que falta para que VOXA sea un producto excelente para familias, en orden de 
 - **Reconocer mejor a quien habla en órdenes muy cortas:**
   - sumar el audio de «Hey Voxa» al de la orden;
   - ajustar el prototipo poco a poco con las órdenes en que VOXA esté muy segura (voz con catarro, niños que crecen).
-- **Privacidad visible:**
-  - una página en el celular que explique qué se queda en la PC y qué sale a internet;
-  - una marca en la pantalla cuando la IA (de paga) está encendida.
 - **Modo niños, siguiente paso:** con YouTube no se sabe si una canción es explícita; probar si YouTube Music lo expone, o un filtro por letra.
 
 ## Producto e instalación

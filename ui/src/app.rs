@@ -477,6 +477,17 @@ impl VoxaApp {
         if mic.clicked() {
             self.send(Command::Mute { on: !state.muted });
         }
+        if state.ai {
+            // Privacidad visible: con la IA (de paga) encendida, lo que VOXA no entiende sola sale a internet.
+            let font = theme::strong(f.px(22.0));
+            let galley = painter.layout_no_wrap(t("IA", "AI").to_owned(), font, theme::TEXT);
+            let pill = Rect::from_center_size(
+                pos2(mic_center.x, mic_center.y - size / 2.0 - f.px(30.0)),
+                vec2(galley.size().x + f.px(24.0), galley.size().y + f.px(8.0)),
+            );
+            painter.rect_filled(pill, CornerRadius::same((pill.height() / 2.0) as u8), theme::alpha(theme::PURPLE, 0.55));
+            painter.galley(pill.center() - galley.size() / 2.0, galley, theme::TEXT);
+        }
 
         // Debajo, qué pasa: en reposo se invita a tocar; al escuchar o pensar lo dice el texto grande.
         let below = pos2(area.right(), center.y + radius + f.px(18.0));

@@ -305,6 +305,28 @@ EN: dict[str, str] = {
     "Listo, aunque todavía te confundo a veces. Si no te hago caso, repítelo en un lugar más silencioso.":
         "Done, though I still mix you up sometimes. If I don't answer you, do it again somewhere quieter.",
     "Listo, ya reconozco tu voz.": "Done, I know your voice now.",
+    # --- privacy (phone) ----------------------------------------------------------------------------------------
+    "Lo que dices: el audio se reconoce en esta PC y no se guarda ni se manda a ningún lado.":
+        "What you say: the audio is recognized on this PC and is never saved or sent anywhere.",
+    "Las grabaciones de «aprende mi voz» y las voces de la familia.": "The «learn my voice» recordings and the family's voices.",
+    "La lista del súper, los pendientes, las notas, las medicinas, los temporizadores y las mediciones de «Cómo va VOXA».":
+        "The shopping list, to do lists, notes, medicine, timers and the «How VOXA is doing» measurements.",
+    "Las llaves y contraseñas (Spotify, IA, Telegram, calendario), en archivos que solo tu usuario puede leer.":
+        "Keys and passwords (Spotify, AI, Telegram, calendar), in files only your user can read.",
+    "IA (de paga): solo el texto de las frases que VOXA no entiende sola, nunca el audio, va a {provider}. "
+    "En la pantalla se ve la marca «IA» mientras está encendida.":
+        "AI (paid): only the text of the sentences VOXA doesn't understand on its own, never the audio, goes to {provider}. "
+        "The screen shows an «AI» badge while it's on.",
+    "el servicio que se configuró": "the service you set up",
+    "Spotify: lo que pides poner y lo que suena, con tu cuenta.": "Spotify: what you ask to play and what's playing, with your account.",
+    "YouTube: las búsquedas de música y videos (sin cuenta).": "YouTube: music and video searches (no account).",
+    "El clima: la ubicación aproximada de la casa va a Open-Meteo.": "Weather: the house's approximate location goes to Open-Meteo.",
+    "El calendario: VOXA lee la dirección secreta del calendario; no escribe en él.":
+        "Calendar: VOXA reads the calendar's secret address; it never writes to it.",
+    "Telegram: la lista del súper, solo con los chats que vinculaste.": "Telegram: the shopping list, only with the chats you linked.",
+    "Actualizaciones: VOXA pregunta a GitHub si hay versión nueva.": "Updates: VOXA asks GitHub whether there's a new version.",
+    "La primera vez: los modelos de voz se bajan de su fuente, con su huella.":
+        "The first time: the voice models are downloaded from their source, with their checksum.",
     # --- notes -------------------------------------------------------------------------------------------------
     "{author} te dejó un recado: {text}": "{author} left you a message: {text}",
     "Te dejaron un recado: {text}": "Someone left you a message: {text}",

@@ -48,6 +48,9 @@ pub struct State {
     /// Accesibilidad: letra más grande para leer de lejos.
     #[serde(default)]
     pub big_text: bool,
+    /// La IA (de paga) está encendida: se marca en la pantalla.
+    #[serde(default)]
+    pub ai: bool,
 }
 
 #[derive(Debug, Clone, Deserialize, PartialEq)]

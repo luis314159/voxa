@@ -83,6 +83,7 @@ class Service:
         display.recipe = app.recipe.snapshot
         display.notes = app.notes.snapshot
         display.big_text = app.config.accessibility.big_text
+        display.ai_on = app.ai is not None
         recipe = app.assistant.skill("recipe")
         if recipe is not None and hasattr(recipe, "on_wait"):
             recipe.on_wait = self._say_meanwhile

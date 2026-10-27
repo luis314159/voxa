@@ -18,6 +18,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Awaitable, Callable
 
 import voxa
+from voxa.privacy import privacy_report
 from voxa.services.http import Http, UrllibHttp
 from voxa.services.calendar import personal_calendars, save_personal_calendar
 from voxa.services.spotifast_setup import REDIRECT as SPOTIFAST_REDIRECT
@@ -118,6 +119,7 @@ class SettingsApi:
                 "bilingue": config.voice.bilingual,
             },
             "casa": {**(app.house.status() if app.house else {}), "invitacion": self.invitation()},
+            "privacidad": privacy_report(config),
             "accesibilidad": {
                 "velocidad": config.voice.speech_rate, "lento_para": list(config.accessibility.slow_for),
                 "letra_grande": config.accessibility.big_text, "seguir": config.accessibility.follow_up_seconds,
