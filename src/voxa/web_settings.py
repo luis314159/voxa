@@ -94,7 +94,8 @@ class SettingsApi:
                 "chats": [{"id": c, "nombre": n} for c, n in
                           Chats(config.telegram_chats_path, config.telegram_code_path).all().items()],
             },
-            "calendario": {"enabled": config.calendar.enabled, "url": read_secret(config.calendar_url_path) is not None},
+            "calendario": {"enabled": config.calendar.enabled, "url": read_secret(config.calendar_url_path) is not None,
+                           "avisar": config.calendar.remind_minutes},
             "voz": {
                 "personas": people(config.wake_recordings_dir),
                 "verificador": config.verifier_path.exists(),

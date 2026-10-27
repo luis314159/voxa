@@ -38,6 +38,8 @@ log = logging.getLogger(__name__)
 MUTE_ACTION = "mic.mute"
 PHOTO_ACTIONS = {"display.photo": True, "display.info": False}
 PHONE_SECONDS = 120.0
+UNANSWERED_SECONDS = 45.0
+"""Si una alarma suena este tiempo sin que nadie la apague, se avisa en los demás cuartos."""
 SETUP_SECONDS = 600.0
 _MIC_RETRY_SECONDS = 30.0
 # Lo que se ve encima del video mientras VOXA escucha o piensa (el video tapa la pantalla).
@@ -82,6 +84,7 @@ class Service:
         self.wake_count = 0
         self._turn = asyncio.Lock()
         self.web: WebServer | None = None
+        self._told_house: set[int] = set()
         self.enrolling: str | None = None
         """Quién está grabando su voz ahora («aprende mi voz»)."""
         self._tasks: set[asyncio.Task] = set()
@@ -256,9 +259,9 @@ class Service:
         self.display.phone_until = time.monotonic() + seconds if url else None
         self.display.publish()
 
-    async def say_announcement(self, text: str) -> None:
-        """Un aviso de otro cuarto (o del celular): sonido, voz y en la pantalla."""
-        self.display.exchange("Aviso", Response(text))
+    async def say_announcement(self, text: str, heading: str = "Aviso") -> None:
+        """Un aviso de otro cuarto, del celular o del calendario: sonido, voz y en la pantalla."""
+        self.display.exchange(heading, Response(text))
         if self._video_showing():
             self._spawn(self.app.video.show_text(f"📢 {text}", 8.0))
         if self.session is not None:
@@ -344,6 +347,41 @@ class Service:
             self._spawn(self.session.announce(ring_phrase(timer)))
         if self._video_showing():
             self._spawn(self.app.video.show_text(f"⏰ {ring_phrase(timer)}", 8.0))
+        if self.app.house is not None and timer.id not in self._told_house:
+            self._told_house.add(timer.id)
+            self._spawn(self._tell_house_if_unanswered(timer))
+
+    async def _tell_house_if_unanswered(self, timer: Timer) -> None:
+        """El arroz suena en la cocina y no hay nadie: se avisa en los demás cuartos."""
+        from voxa.house import HouseError
+
+        await asyncio.sleep(UNANSWERED_SECONDS)
+        if not any(t.id == timer.id for t in self.app.timers.ringing):
+            return
+        try:
+            heard = await self.app.house.announce(ring_phrase(timer))
+        except HouseError as exc:
+            log.info("No pude avisar la alarma en los cuartos: %s", exc)
+            return
+        if heard:
+            log.info("Alarma sin atender: avisé en %s", ", ".join(heard))
+
+    async def _calendar_reminders(self) -> None:
+        """«En 10 minutos: dentista»: un aviso antes de cada evento del calendario."""
+        from voxa.services.calendar import CalendarUnavailable
+
+        skill = self.app.assistant.skill("calendar")
+        minutes = self.app.config.calendar.remind_minutes
+        if getattr(skill, "calendar", None) is None or minutes <= 0:
+            return
+        told: set[tuple[str, str]] = set()
+        while True:
+            try:
+                for text in await skill.coming_up(minutes, told):
+                    await self.say_announcement(text, heading="Calendario")
+            except CalendarUnavailable as exc:
+                log.info("Avisos del calendario: %s", exc)
+            await asyncio.sleep(60)
 
     def _spawn(self, coro) -> None:
         task = asyncio.ensure_future(coro)
@@ -433,6 +471,7 @@ class Service:
             asyncio.create_task(self.health.run()),
             asyncio.create_task(self._keep_microphone()),
             asyncio.create_task(self._listen_for_wake()),
+            asyncio.create_task(self._calendar_reminders()),
         ]
         if self.app.updater is not None:
             self.app.updater.on_change = self.display.publish

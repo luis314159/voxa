@@ -112,3 +112,20 @@ def test_bad_registrations_are_refused(tmp_path):
     for name, port, key in (("Cocina", 8770, ROOM_KEY), ("", 8770, ROOM_KEY), ("Sala", 0, ROOM_KEY), ("Sala", 8770, "corta")):
         with pytest.raises(HouseError):
             house.register(name, "192.168.1.20", port, key)
+
+
+async def test_an_unanswered_alarm_is_heard_in_the_other_rooms(house, monkeypatch):
+    import asyncio
+
+    import voxa.service
+
+    main, room, main_said, room_said = house
+    monkeypatch.setattr(voxa.service, "UNANSWERED_SECONDS", 0.05)
+    timer = main.app.timers.add(1, "arroz")
+    timer.ringing_since = 1.0
+    main.on_ring(timer)
+    await asyncio.sleep(0.5)
+    assert room_said == ["Aviso de la cocina: ¡Terminó el temporizador de arroz!"]
+    main.on_ring(timer)  # vuelve a sonar: no se repite el aviso
+    await asyncio.sleep(0.2)
+    assert len(room_said) == 1

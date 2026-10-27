@@ -168,3 +168,13 @@ def test_urls():
     assert valid_url("webcal://p01-caldav.icloud.com/published/2/abc")
     assert not valid_url("http://inseguro.example/cal.ics")
     assert not valid_url("calendario")
+
+
+async def test_heads_up_before_each_event_only_once(agenda):
+    skill, _, _ = agenda
+    told = set()
+    skill._now = lambda: NOW.replace(hour=8, minute=50)
+    assert await skill.coming_up(10, told) == ["En 10 minutos: Dentista."]
+    assert await skill.coming_up(10, told) == []  # ya se dijo
+    skill._now = lambda: NOW.replace(hour=8, minute=59, second=30)
+    assert await skill.coming_up(10, set()) == ["Ya casi empieza: Dentista."]

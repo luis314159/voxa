@@ -104,10 +104,10 @@ python scripts/descargar_fondos.py           # ~77 fondos: México, pueblos y pa
 - **Agregar un cuarto:** en el celular, Ajustes → Cuartos → «Agregar» da un comando para pegar en esa PC. Instala VOXA y la une a la casa con `voxa unir-casa`.
 - **Qué hace cada cuarto:** cada uno tiene su «Hey Voxa», sus temporizadores y su música («VOXA Sala» en Spotify).
 - **Qué comparten:** la lista del súper y el calendario son los de la cocina.
-- **Avisos:** «avisa a todos que ya está la comida», «dile a la sala que se bajen a cenar» o «llama a todos a comer» se oyen en los otros cuartos. También se mandan desde el celular, en la sección «Casa».
+- **Avisos:** «avisa a todos que ya está la comida», «dile a la sala que se bajen a cenar» o «llama a todos a comer» se oyen en los otros cuartos. También se mandan desde el celular, en la sección «Casa». Si una alarma suena 45 segundos sin que nadie la apague, se avisa en los demás cuartos («Aviso de la cocina: ¡terminó el temporizador de arroz!»).
 - **Cómo se conectan:** cada cuarto le avisa a la principal cada minuto que sigue ahí. Todo va por la red de la casa y con la clave de cada VOXA.
 
-**Calendario de la familia (opcional).** «¿Qué tengo hoy?», «¿qué tengo mañana?», «¿cuál es mi siguiente cita?», y lo de hoy en «buenos días». Lee la dirección secreta iCal del calendario (Google Calendar, iCloud, Outlook), sin pedir acceso a la cuenta y solo para leer. Entiende eventos de todo el día, zonas horarias, eventos que se repiten y sus cambios. Se refresca cada 15 minutos y, sin internet, responde con la última copia.
+**Calendario de la familia (opcional).** «¿Qué tengo hoy?», «¿qué tengo mañana?», «¿cuál es mi siguiente cita?», y lo de hoy en «buenos días»; además avisa en voz alta 10 minutos antes de cada evento (se cambia en Ajustes). Lee la dirección secreta iCal del calendario (Google Calendar, iCloud, Outlook), sin pedir acceso a la cuenta y solo para leer. Entiende eventos de todo el día, zonas horarias, eventos que se repiten y sus cambios. Se refresca cada 15 minutos y, sin internet, responde con la última copia.
 
 **La lista del súper en Telegram (opcional).** Para apuntar cosas desde la calle:
 

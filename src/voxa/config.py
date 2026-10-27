@@ -127,6 +127,8 @@ class HouseConfig:
 @dataclass(frozen=True)
 class CalendarConfig:
     enabled: bool = False
+    remind_minutes: int = 10
+    """Avisa en voz alta este tiempo antes de cada evento (0: no avisa)."""
 
 
 @dataclass(frozen=True)

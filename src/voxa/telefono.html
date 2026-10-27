@@ -205,6 +205,7 @@
   <p class="estado" id="cal-estado"></p>
   <p class="ayuda">Para «¿qué tengo hoy?» y lo de hoy en «buenos días». En Google Calendar (desde una computadora): Configuración → tu calendario → «Dirección secreta en formato iCal». Pégala aquí; VOXA solo lo lee.</p>
   <form class="fila" id="form-cal"><input type="password" id="cal-url" placeholder="https://calendar.google.com/…/basic.ics" autocomplete="off"><button>Guardar</button></form>
+  <label class="campo"><span>Avisar antes de cada evento</span><select id="cal-avisar"><option value="0">No avisar</option><option value="5">5 minutos antes</option><option value="10">10 minutos antes</option><option value="15">15 minutos antes</option><option value="30">30 minutos antes</option></select></label>
   <p class="ayuda" id="cal-respuesta"></p>
 </section>
 
@@ -561,6 +562,7 @@ async function cargarAjustes() {
   const cal = a.calendario;
   $("cal-estado").replaceChildren(marca(cal.enabled && cal.url, !cal.url ? "Sin calendario" : cal.enabled ? "Conectado" : "Apagado"));
 
+  $("cal-avisar").value = String(cal.avisar);
   const tg = a.telegram;
   $("tg-estado").replaceChildren(marca(tg.enabled && tg.token && tg.chats.length > 0,
     !tg.token ? "Sin bot" : !tg.enabled ? "Apagado" : tg.chats.length ? `${tg.chats.length} chat(s) vinculados` : "Falta vincular un chat"));
@@ -734,6 +736,7 @@ $("ia-probar").onclick = async () => {
 document.querySelectorAll("[data-ajuste]").forEach((c) => {
   c.onchange = () => { const [s, k] = c.dataset.ajuste.split("."); guardar(s, { [k]: c.checked }); };
 });
+$("cal-avisar").onchange = () => guardar("calendar", { remind_minutes: Number($("cal-avisar").value) }, "cal-respuesta");
 $("whisper").onchange = () => guardar("voice", { whisper_model: $("whisper").value });
 if (location.hash === "#ajustes") mostrarVista("ajustes");
 

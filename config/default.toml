@@ -116,6 +116,8 @@ room = "Cocina"
 # iCal» del calendario (Google Calendar: Configuración → el calendario → Integrar el calendario).
 # La dirección se guarda en ~/.config/voxa/calendario_url (600): quien la tiene puede leerlo.
 enabled = false
+# Avisa en voz alta estos minutos antes de cada evento («En 10 minutos: dentista»). 0 = no avisa.
+remind_minutes = 10
 
 [telegram]
 # La lista del súper desde Telegram, también fuera de casa: se le escribe «leche y huevos» al

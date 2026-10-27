@@ -69,6 +69,20 @@ class CalendarSkill:
         lead = "En el calendario de hoy hay" if morning else "Hoy tienes"
         return f"{lead} {count_phrase(events)}: {say_events(events, now.tzinfo)}."
 
+    async def coming_up(self, minutes: int, told: set[tuple[str, str]]) -> list[str]:
+        """Los avisos de los eventos que empiezan en los próximos ``minutes`` (cada uno una sola vez)."""
+        now = self._now()
+        said = []
+        # El final se incluye: el evento de las 9:00 se avisa a las 8:50 con «10 minutos».
+        for event in await self.calendar.events(now, now + timedelta(minutes=minutes, seconds=30)):
+            key = (event.title, event.start.isoformat())
+            if event.all_day or event.start < now or key in told:
+                continue
+            told.add(key)
+            left = round((event.start - now).total_seconds() / 60)
+            said.append(f"En {left} minutos: {event.title}." if left > 1 else f"Ya casi empieza: {event.title}.")
+        return said
+
     async def today_for_morning(self) -> str:
         return await self.today(morning=True)
 
