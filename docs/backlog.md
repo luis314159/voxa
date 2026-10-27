@@ -39,6 +39,11 @@ Lo que falta para que VOXA sea un producto excelente para familias, en orden de 
 - **Ubuntu 22.04:** su polkit no lee reglas JavaScript, así que «actualízate» no arranca ahí la actualización (la nocturna sí funciona). Opción: una regla `.pkla` o un servicio de usuario con un puente.
 - **Satélites mínimos:** solo micrófono y bocina (por ejemplo una ESP32-S3 o una Raspberry Pi Zero 2 W) que mandan el audio a la principal, en lugar de una VOXA completa por cuarto.
 - **Llamar a alguien por la casa:** «llama a Ana» usa el reconocimiento de voz para saber en qué cuarto habló Ana por última vez.
+- **Versión para Windows** (no es prioridad). Lo investigado:
+  - Spotifast ya tiene versión para Windows y sus comandos son los mismos;
+  - en lugar de PipeWire: volumen y bajar la música con pycaw; cancelación de eco con el mismo algoritmo de WebRTC (librería livekit, Apache 2.0) y lo que suena en las bocinas capturado con PyAudioWPatch como referencia (en una prueba con eco sintético quitó 35 dB);
+  - mpv por *named pipe*, arranque con una tarea programada e instalador `.exe`;
+  - unas 3 sesiones de trabajo, sin tocar la versión de Linux.
 
 ## Calidad
 
