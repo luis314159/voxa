@@ -312,6 +312,7 @@ def build_app(config: Config, *, simulated: bool = False, on_ring: Callable[[Tim
     assistant = Assistant(matcher, skills, timers, video_active=video_active, other=other,
                           bilingual=config.voice.bilingual)
     assistant.postscript = notes_skill.postscript
+    assistant.aliases = lambda: config.family.aliases
     ai, ai_problem = build_ai(config, assistant)
     if ai is not None:
         ai.for_kids = kids.applies

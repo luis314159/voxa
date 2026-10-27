@@ -36,7 +36,7 @@ install -D -m 755 "$fuente/voxa" "$raiz/usr/bin/voxa"
 ln -s /opt/voxa/app/ui/bin/voxa-ui "$raiz/usr/bin/voxa-ui"
 install -D -m 644 "$fuente/voxa.service" "$raiz/usr/lib/systemd/user/voxa.service"
 install -D -m 644 "$fuente/voxa-ui.service" "$raiz/usr/lib/systemd/user/voxa-ui.service"
-for unidad in voxa-actualizar.service voxa-actualizar.timer voxa-ytdlp.service voxa-ytdlp.timer; do
+for unidad in voxa-actualizar.service voxa-actualizar.timer voxa-actualizar.path voxa-ytdlp.service voxa-ytdlp.timer; do
   install -D -m 644 "$fuente/$unidad" "$raiz/usr/lib/systemd/system/$unidad"
 done
 install -D -m 644 "$REPO/deploy/autostart/voxa-ui.desktop" "$raiz/etc/xdg/autostart/voxa-ui.desktop"

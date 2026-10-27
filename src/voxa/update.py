@@ -78,6 +78,8 @@ def run_installer(version: str | None) -> int:
 
 DEB_VENV = Path("/opt/voxa/venv")
 DEB_UNIT = "voxa-actualizar.service"
+DEB_REQUEST = Path("/var/lib/voxa/actualizar/ahora")
+"""Sin polkit que deje arrancar la unidad (Ubuntu 22.04): este aviso la arranca (voxa-actualizar.path)."""
 
 
 def from_package() -> bool:
@@ -94,10 +96,15 @@ def launch_package_update(version: str | None = None, folder: Path | None = None
         return False
     args = [systemctl, "start", DEB_UNIT] if wait else [systemctl, "start", "--no-block", DEB_UNIT]
     result = subprocess.run(args, check=False, capture_output=True, text=True)
-    if result.returncode != 0:
+    if result.returncode == 0:
+        return True
+    try:  # polkit no la dejó (Ubuntu 22.04 no lee reglas JavaScript): el aviso para voxa-actualizar.path
+        DEB_REQUEST.touch()
+        log.info("Actualización pedida por %s (polkit: %s)", DEB_REQUEST, result.stderr.strip())
+        return True
+    except OSError:
         log.warning("No pude arrancar la actualización del paquete: %s", result.stderr.strip())
         return False
-    return True
 
 
 def launch_unattended(version: str, folder: Path) -> bool:

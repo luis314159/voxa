@@ -115,3 +115,13 @@ def test_a_bilingual_home_downloads_both_voices():
     names = [d.target.name for d in model_downloads(Config(voice=VoiceConfig(language="es", bilingual=True)))]
     assert "es_MX-claude-high.onnx" in names and "en_US-lessac-medium.onnx" in names
     assert "en_US-lessac-medium.onnx" not in [d.target.name for d in model_downloads(Config())]
+
+
+async def test_a_timer_set_in_one_language_is_found_in_the_other():
+    app = bilingual_app()
+    await app.assistant.handle_text("pon un temporizador de diez minutos para el arroz")
+    await app.assistant.handle_text("pon un temporizador de tres minutos para los huevos")
+    said = await app.assistant.handle_text("how much time is left on the rice timer")
+    assert said.speech == "10 minutes left for arroz."
+    assert app.timers.find("chicken") == []
+    assert (await app.assistant.handle_text("cancel the rice timer")).speech == "Canceled the arroz timer."

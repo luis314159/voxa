@@ -95,10 +95,14 @@ def falta(remaining: str) -> str:
     return f"{'Falta' if singular else 'Faltan'} {remaining}"
 
 
+_ARTICLES = {"el", "la", "los", "las", "the"}
+
+
 def of_label(label: str) -> str:
     """«el arroz» → «del arroz», «la sopa» → «de la sopa» («for rice»)."""
-    if english():
-        return f"for {label}"
+    if english():  # sin el artículo de un nombre puesto en español («for arroz», no «for el arroz»)
+        words = label.split()
+        return "for " + " ".join(words[1:] if len(words) > 1 and words[0].lower() in _ARTICLES else words)
     if label.startswith("el "):
         return "del " + label[3:]
     return "de " + label

@@ -8,6 +8,7 @@ BASE="https://github.com/$REPO/releases/latest/download"
 arch="$(dpkg --print-architecture)"
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
+rm -f /var/lib/voxa/actualizar/ahora  # el aviso de voxa-actualizar.path, ya atendido
 
 curl -fsSL --retry 3 -o "$tmp/SHA256SUMS" "$BASE/SHA256SUMS"
 deb="$(grep -o "voxa_[0-9][0-9.]*_${arch}\.deb" "$tmp/SHA256SUMS" | head -1 || true)"

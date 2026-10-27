@@ -6,6 +6,7 @@ import logging
 from dataclasses import replace
 from typing import Awaitable, Callable, Mapping
 
+from voxa.core.people import resolve
 from voxa.core.types import OK, Intent, Response, Skill
 from voxa.i18n import guess_language, home_language, in_language, localize
 from voxa.nlu.matcher import Matcher
@@ -51,6 +52,8 @@ class Assistant:
         """La gramática del otro idioma: los botones de la pantalla y a veces la IA mandan órdenes en
         español aunque la casa hable inglés; en una casa bilingüe, se prueba con cada frase."""
         self.bilingual = bilingual and other is not None
+        self.aliases: Callable[[], dict[str, str]] = dict
+        """Cómo más le dicen a cada quien («papá» → Luis), para todas las órdenes con una persona."""
         self.last_outcome = "no"
         """Cómo se entendió la última frase: «reglas», «ia» o «no» (para las mediciones)."""
         self.postscript: Callable[[], str | None] | None = None
@@ -115,6 +118,8 @@ class Assistant:
         return await self.handle_intent(intent)
 
     async def handle_intent(self, intent: Intent) -> Response:
+        if person := (intent.slots.get("person") or "").strip():  # «los pendientes de papá» → los de Luis
+            intent = replace(intent, slots={**intent.slots, "person": resolve(person, self.aliases())})
         if self._timers and self._timers.ringing and intent.name in STOPS_ALARM:
             return await self._dispatch("timer", Intent("timer.stop_alarm", text=intent.text, raw=intent.raw))
         if intent.name == "system.repeat":

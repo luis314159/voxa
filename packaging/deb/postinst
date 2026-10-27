@@ -22,7 +22,9 @@ case "$1" in
     systemctl --global enable voxa.service >/dev/null 2>&1 || true
     if [ -d /run/systemd/system ]; then
       systemctl daemon-reload || true
-      systemctl enable --now voxa-ytdlp.timer voxa-actualizar.timer >/dev/null 2>&1 || true
+      # «Actualízate» sin polkit: cualquiera en la PC puede dejar el aviso (solo instala el release oficial).
+      install -d -m 1733 /var/lib/voxa/actualizar
+      systemctl enable --now voxa-ytdlp.timer voxa-actualizar.timer voxa-actualizar.path >/dev/null 2>&1 || true
       if [ -z "${VOXA_SIN_ARRANQUE:-}" ]; then
         # Quien ya tiene la sesión abierta: VOXA arranca (o se reinicia tras una actualización).
         for uid in $(loginctl list-users --no-legend 2>/dev/null | awk '{print $1}'); do

@@ -1,0 +1,11 @@
+[Unit]
+Description=VOXA: «actualízate» sin polkit (Ubuntu 22.04 y otros sin reglas JavaScript)
+
+# VOXA deja el archivo «ahora» cuando polkit no la deja arrancar voxa-actualizar.service;
+# actualizar.sh lo borra al empezar.
+[Path]
+PathExists=/var/lib/voxa/actualizar/ahora
+Unit=voxa-actualizar.service
+
+[Install]
+WantedBy=multi-user.target

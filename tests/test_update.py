@@ -108,3 +108,22 @@ async def test_automatic_update_waits_for_the_night_and_a_quiet_kitchen(tmp_path
     await asyncio.sleep(0.05)
     task.cancel()
     assert launched == ["0.2.0"]
+
+
+class Finished:
+    def __init__(self, code, stderr=""):
+        self.returncode, self.stderr = code, stderr
+
+
+def test_without_polkit_the_update_is_asked_through_a_file(tmp_path, monkeypatch):
+    """Ubuntu 22.04: polkit no deja arrancar la unidad; el aviso lo atiende voxa-actualizar.path."""
+    request = tmp_path / "actualizar" / "ahora"
+    request.parent.mkdir()
+    monkeypatch.setattr(update, "DEB_REQUEST", request)
+    monkeypatch.setattr(update.shutil, "which", lambda name: "/usr/bin/systemctl")
+    monkeypatch.setattr(update.subprocess, "run", lambda *a, **k: Finished(1, "Interactive authentication required."))
+    assert update.launch_package_update() and request.exists()
+    monkeypatch.setattr(update, "DEB_REQUEST", tmp_path / "no-existe" / "ahora")
+    assert not update.launch_package_update()  # sin el paquete (sin la carpeta), no se puede
+    monkeypatch.setattr(update.subprocess, "run", lambda *a, **k: Finished(0))
+    assert update.launch_package_update()  # con polkit, como siempre

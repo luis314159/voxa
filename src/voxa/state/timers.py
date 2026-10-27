@@ -34,6 +34,18 @@ def next_weekly(at: tuple[int, int], days: list[int] | frozenset[int], after: da
     raise ValueError(f"sin días: {days}")
 
 
+# En una casa bilingüe, el temporizador se pone en un idioma y se pregunta en el otro: «the rice timer».
+_SAME_THING = [
+    ("arroz", "rice"), ("pasta", "pasta"), ("huevos", "eggs"), ("huevo", "egg"), ("pollo", "chicken"),
+    ("frijoles", "beans"), ("pan", "bread"), ("pastel", "cake"), ("galletas", "cookies"), ("horno", "oven"),
+    ("sopa", "soup"), ("carne", "meat"), ("papas", "potatoes"), ("verduras", "vegetables"), ("cafe", "coffee"),
+    ("te", "tea"), ("pescado", "fish"), ("lavadora", "washer"), ("ropa", "laundry"), ("secadora", "dryer"),
+    ("tarea", "homework"), ("siesta", "nap"), ("pizza", "pizza"), ("brownies", "brownies"), ("salsa", "sauce"),
+    ("elote", "corn"), ("tamales", "tamales"), ("frijol", "bean"), ("pay", "pie"), ("hielo", "ice"),
+]
+_OTHER_LANGUAGE = {a: b for a, b in _SAME_THING} | {b: a for a, b in _SAME_THING}
+
+
 def label_key(label: str) -> str:
     """Clave para comparar nombres: «al arroz», «del arroz» y «arroz» son el mismo; «té» y «te» también."""
     return strip_accents(display_label(label))
@@ -121,8 +133,12 @@ class TimerManager:
 
     def find(self, label: str) -> list[Timer]:
         key = label_key(label)
-        exact = [t for t in self.active if t.label and label_key(t.label) == key]
-        return exact or [t for t in self.active if t.label and key in label_key(t.label)]
+        # «the rice timer» encuentra el de «arroz» (casa bilingüe).
+        for candidate in dict.fromkeys([key, " ".join(_OTHER_LANGUAGE.get(w, w) for w in key.split())]):
+            exact = [t for t in self.active if t.label and label_key(t.label) == candidate]
+            if found := exact or [t for t in self.active if t.label and candidate in label_key(t.label)]:
+                return found
+        return []
 
     # --- cambios ---------------------------------------------------------
     def add(self, seconds: int, label: str | None = None, *, kind: str = "timer") -> Timer:

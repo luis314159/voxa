@@ -5,8 +5,8 @@ set -e
 
 case "$1" in
   remove|purge)
-    rm -rf /opt/voxa/venv
-    rmdir /opt/voxa 2>/dev/null || true
+    rm -rf /opt/voxa/venv /var/lib/voxa/actualizar
+    rmdir /opt/voxa /var/lib/voxa 2>/dev/null || true
     ;;
 esac
 

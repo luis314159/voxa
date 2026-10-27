@@ -62,3 +62,14 @@ async def test_notes_in_english(tmp_path):
     with speaking("Luis"):
         said = await app.assistant.handle_text("thanks")
     assert said.speech == "You're welcome! By the way, Luis: Someone left you a message: Buy tortillas."
+
+
+async def test_nicknames_work_everywhere(tmp_path):
+    """«Los pendientes de papá» y «recuérdale a mamá…» llegan a la persona correcta."""
+    app = build_app(Config(family=FamilyConfig(aliases={"Luis": "papá", "Ana": "mamá, ma"}), state_dir=tmp_path),
+                    simulated=True)
+    say = app.assistant.handle_text
+    assert (await say("agrega llamar al plomero a los pendientes de papá")).speech.endswith("llamar al plomero.")
+    assert [t.text for t in app.tasks.of("Luis")] == ["llamar al plomero"]
+    await say("recuérdale a mamá que saque la basura a las 9 de la noche")
+    assert app.timers.active[0].person == "Ana"

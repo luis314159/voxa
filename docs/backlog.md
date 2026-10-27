@@ -16,7 +16,6 @@ Lo que falta para que VOXA sea un producto excelente para familias, en orden de 
 2. **Inglés y casas bilingües, en una casa real.** Ya está todo en inglés (también recetas, conversiones, pantalla, celular y «aprende mi voz») y el modo bilingüe contesta cada frase en su idioma. Falta medirlo con una familia:
    - qué tan seguido Whisper confunde el idioma en órdenes muy cortas;
    - si conviene un Vosk cerrado también para el otro idioma (hoy las órdenes cortas solo van rápido en el idioma de la casa);
-   - nombres de temporizadores entre idiomas: «the rice timer» no encuentra el temporizador «arroz».
 3. **Spotifast:** sus comandos (`play-search --kind`, `now-playing --raw`, `like`) ya se confirmaron con Spotifast 0.14 en Windows; falta verlos en la PC de la cocina con `voxa -v texto`.
 
 ## Siguiente
@@ -29,14 +28,12 @@ Lo que falta para que VOXA sea un producto excelente para familias, en orden de 
 - **Privacidad visible:**
   - una página en el celular que explique qué se queda en la PC y qué sale a internet;
   - una marca en la pantalla cuando la IA (de paga) está encendida.
-- **Apodos en todo:** «los pendientes de papá» y «¿qué tiene mamá hoy?» con los apodos de Ajustes (hoy solo las notas los usan).
 - **Modo niños, siguiente paso:** con YouTube no se sabe si una canción es explícita; probar si YouTube Music lo expone, o un filtro por letra.
 
 ## Producto e instalación
 
 - **Imagen lista para Raspberry Pi:** se graba, se conecta y se configura desde el celular, sin instalar nada.
 - **Repositorio apt firmado:** actualizaciones por el Gestor de actualizaciones de Mint, en lugar del temporizador nocturno.
-- **Ubuntu 22.04:** su polkit no lee reglas JavaScript, así que «actualízate» no arranca ahí la actualización (la nocturna sí funciona). Opción: una regla `.pkla` o un servicio de usuario con un puente.
 - **Satélites mínimos:** solo micrófono y bocina (por ejemplo una ESP32-S3 o una Raspberry Pi Zero 2 W) que mandan el audio a la principal, en lugar de una VOXA completa por cuarto.
 - **Llamar a alguien por la casa:** «llama a Ana» usa el reconocimiento de voz para saber en qué cuarto habló Ana por última vez.
 - **Versión para Windows** (no es prioridad). Lo investigado:

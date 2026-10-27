@@ -16,8 +16,8 @@ from voxa.core.phrases import (
     weekday_name,
 )
 from voxa.core.types import OK, Intent, Response
-from voxa.i18n import tr
-from voxa.state.timers import Timer, TimerManager, label_key, next_weekly
+from voxa.i18n import english, tr
+from voxa.state.timers import Timer, TimerManager, display_label, label_key, next_weekly
 
 _MAX_SECONDS = 24 * 3600
 _SOON = timedelta(seconds=30)  # «a las 7» dicho a las 6:59:50 es para mañana, no para dentro de 10 s
@@ -239,7 +239,8 @@ class TimerSkill:
             return problem
         if len(timers) == 1 and not timers[0].is_reminder:
             timer = timers[0]
-            suffix = tr(" para {label}", label=timer.label) if timer.label and len(self.timers.active) > 1 else ""
+            label = timer.label if not english() or not timer.label else display_label(timer.label)
+            suffix = tr(" para {label}", label=label) if label and len(self.timers.active) > 1 else ""
             return Response(f"{falta(format_remaining(self.timers.remaining(timer)))}{suffix}.")
         parts = [self._describe(t) for t in timers]
         if len(parts) == 1:
@@ -275,7 +276,7 @@ class TimerSkill:
 def _of_and_name(timer: Timer) -> tuple[str, str]:
     """«del arroz» / «de 5 minutos» (español) y «rice» / «5 minute» (para «the rice timer» en inglés)."""
     if timer.label:
-        return of_label(timer.label), timer.label
+        return of_label(timer.label), display_label(timer.label)
     duration = format_duration(timer.duration)
     return tr("de {duration}", duration=duration), duration
 
