@@ -281,6 +281,8 @@ EN: dict[str, str] = {
     "No pude avisar: no contesta la VOXA principal.": "I couldn't announce it: the main VOXA isn't answering.",
     "No contesta la VOXA de la cocina; inténtalo en un momento.": "The kitchen VOXA isn't answering; try again in a moment.",
     "No encontré {place} conectada.": "I couldn't find {place} connected.",
+    "En el celular, conectado al wifi de la casa, abre {host} punto local, dos puntos, {port}, y escribe el código: {code}.":
+        "On your phone, on the home wifi, open {host} dot local, colon, {port}, and type the code: {code}.",
     # --- screen, voice, updates, video ---------------------------------------------------------------------------------
     "Todavía no sé hacer eso con la pantalla.": "I can't do that with the screen yet.",
     "Escanea el código con la cámara del celular. Ahí también están los ajustes.":

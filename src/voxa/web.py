@@ -44,7 +44,21 @@ FORBIDDEN_PAGE = """<!doctype html><html lang="es"><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>VOXA</title>
 <body style="font-family:sans-serif;background:#0b1020;color:#f8faff;padding:2em;line-height:1.5">
 <h1>VOXA</h1><p>Para usar VOXA desde este celular, escanea el código de la pantalla de la cocina
-(dile «conecta mi celular»).</p></body></html>"""
+(dile «conecta mi celular»).</p>
+<p>¿Esa VOXA no tiene pantalla? Dile «Hey Voxa, conecta mi celular» y escribe aquí el código que te diga:</p>
+<form id="f" style="display:flex;gap:8px"><input id="c" inputmode="numeric" maxlength="6" autocomplete="one-time-code"
+style="font-size:1.4em;width:7em;padding:.3em" placeholder="000000"><button style="font-size:1.1em">Entrar</button></form>
+<p id="r"></p>
+<script>
+document.getElementById("f").onsubmit = async (ev) => {
+  ev.preventDefault();
+  const r = await fetch("/api/emparejar", {method: "POST", headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({codigo: document.getElementById("c").value.trim()})});
+  if (r.ok) location.href = "/"; else document.getElementById("r").textContent = (await r.json()).error;
+};
+</script></body></html>"""
+PAIR_MINUTES = 10
+PAIR_TRIES = 5
 
 
 def load_or_create_key(path: Path) -> str:
@@ -89,6 +103,25 @@ class WebServer:
         self._port = port
         self._server: asyncio.base_events.Server | None = None
         self.page = resources.files("voxa").joinpath("telefono.html").read_text(encoding="utf-8")
+        self._pairing: list | None = None
+        """El código hablado para entrar sin pantalla: [código, hasta cuándo, intentos que quedan]."""
+
+    def new_pairing_code(self) -> str:
+        """Seis dígitos para entrar desde el celular sin escanear el QR (VOXA sin pantalla): 10 minutos, 5 intentos."""
+        code = "".join(secrets.choice("0123456789") for _ in range(6))
+        self._pairing = [code, time.monotonic() + PAIR_MINUTES * 60, PAIR_TRIES]
+        return code
+
+    def _pair(self, given: str) -> bool:
+        pairing = self._pairing
+        if pairing is None or time.monotonic() > pairing[1] or pairing[2] <= 0:
+            self._pairing = None
+            return False
+        pairing[2] -= 1
+        if len(given) == 6 and hmac.compare_digest(given, pairing[0]):
+            self._pairing = None  # un solo uso
+            return True
+        return False
 
     @property
     def port(self) -> int:
@@ -149,6 +182,16 @@ class WebServer:
             # Primera visita desde el código QR: el celular guarda la clave y la URL queda limpia.
             cookie = f"{COOKIE}={self._key}; Max-Age=31536000; Path=/; HttpOnly; SameSite=Strict"
             return 303, {"Location": "/", "Set-Cookie": cookie}, b""
+        if method == "POST" and url.path == "/api/emparejar":
+            body = await asyncio.wait_for(reader.readexactly(length), 10) if length else b""
+            try:
+                given = str(json.loads(body or b"{}").get("codigo") or "").strip()
+            except (ValueError, AttributeError):
+                given = ""
+            if not self._pair(given):
+                return self._json(403, {"error": "Ese código no sirve: pídele a VOXA uno nuevo («conecta mi celular»)."})
+            cookie = f"{COOKIE}={self._key}; Max-Age=31536000; Path=/; HttpOnly; SameSite=Strict"
+            return 200, {"Content-Type": "application/json; charset=utf-8", "Set-Cookie": cookie}, b'{"ok": true}'
         if not self._authorized(headers):
             if url.path.startswith("/api/"):
                 return self._json(403, {"error": "falta la clave: escanea el código de la pantalla"})

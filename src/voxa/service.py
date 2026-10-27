@@ -10,6 +10,7 @@ import asyncio
 import collections
 import contextlib
 import logging
+import socket
 import time
 from typing import TYPE_CHECKING, AsyncIterable, AsyncIterator
 
@@ -47,6 +48,7 @@ UNANSWERED_SECONDS = 45.0
 SETUP_SECONDS = 600.0
 _MIC_RETRY_SECONDS = 30.0
 _CLEAN_MUSIC_SECONDS = 10.0
+_SCREEN_WAIT_SECONDS = 30.0
 # Lo que se ve encima del video mientras VOXA escucha o piensa (el video tapa la pantalla).
 _VIDEO_OSD = {"listening": "🎙 Te escucho…", "thinking": "Un momento…"}
 WAKE_PHRASE = "Hey Voxa"
@@ -303,6 +305,21 @@ class Service:
             from voxa.audio.verifier import Verifier
 
             self.wake.verifier = Verifier.load(path)
+
+    def pairing_phrase(self) -> str | None:
+        """Sin pantalla que muestre el QR: la dirección y un código de 6 dígitos, dichos en voz alta."""
+        if self.web is None or self.display.watched:
+            return None
+        code = ", ".join(self.web.new_pairing_code())
+        host = socket.gethostname().split(".")[0] or "voxa"
+        return tr("En el celular, conectado al wifi de la casa, abre {host} punto local, dos puntos, {port}, "
+                  "y escribe el código: {code}.", host=host, port=self.web.port, code=code)
+
+    async def _pair_if_no_screen(self) -> None:
+        """Recién instalada y sin pantalla (una Raspberry Pi en la sala): dice cómo configurarla."""
+        await asyncio.sleep(_SCREEN_WAIT_SECONDS)  # la pantalla tarda en conectarse al arrancar
+        if self.session is not None and (phrase := self.pairing_phrase()):
+            await self.session.say(Response(phrase))
 
     def show_phone_code(self, on: bool, seconds: float = PHONE_SECONDS) -> None:
         """El código QR para abrir VOXA en el celular (unos minutos o hasta que se toque)."""
@@ -637,9 +654,11 @@ class Service:
         screen = self.app.assistant.skill("display")
         if screen is not None and hasattr(screen, "phone_ready"):
             screen.phone_ready = lambda: self.web is not None
+            screen.without_screen = self.pairing_phrase
         if self.web is not None and self.needs_setup():
             # Recién instalada: el código para configurarla desde el celular, sin tocar la terminal.
             self.show_phone_code(True, SETUP_SECONDS)
+            self._spawn(self._pair_if_no_screen())
         try:
             yield self
         finally:

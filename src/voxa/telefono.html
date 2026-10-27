@@ -316,6 +316,9 @@
       <pre class="comando" id="invitar-comando"></pre>
       <button id="copiar-comando" style="width:100%">Copiar</button>
       <p class="ayuda">Lleva la clave de esta VOXA: compártelo solo con esa PC.</p>
+      <p class="ayuda">¿Es una Raspberry Pi con la imagen de VOXA? No hace falta la terminal: abre esa VOXA en el celular (dile «Hey Voxa, conecta mi celular» y te dice cómo) y, en Ajustes → Cuartos, pega esta dirección:</p>
+      <pre class="comando" id="invitar-direccion"></pre>
+      <button id="copiar-direccion" style="width:100%">Copiar la dirección</button>
     </div>
     <ul id="cuartos-lista"></ul>
   </div>
@@ -638,6 +641,9 @@ const EN = {
   "Quitar": "Remove",
   "Conectada": "Connected",
   "Sin conectar": "Not connected",
+  // Raspberry Pi sin pantalla
+  "¿Es una Raspberry Pi con la imagen de VOXA? No hace falta la terminal: abre esa VOXA en el celular (dile «Hey Voxa, conecta mi celular» y te dice cómo) y, en Ajustes → Cuartos, pega esta dirección:": "Is it a Raspberry Pi with the VOXA image? No terminal needed: open that VOXA on your phone (say «Hey Voxa, connect my phone» and it tells you how) and, in Settings → Rooms, paste this address:",
+  "Copiar la dirección": "Copy the address",
   // Notas
   "Notas": "Notes",
   "«Compra tortillas»": "«Buy tortillas»",
@@ -1070,7 +1076,12 @@ $("form-invitar").onsubmit = (ev) => {
   const pantalla = $("invitar-pantalla").checked ? "" : " --sin-pantalla";
   $("invitar-comando").textContent =
     `curl -fLO ${INSTALADOR} && bash instalar-voxa.sh${pantalla} && ~/.local/bin/voxa unir-casa ${comillas(invitacion)} --cuarto ${comillas(cuarto)} && systemctl --user restart voxa`;
+  $("invitar-direccion").textContent = invitacion;
   $("invitacion").hidden = false;
+};
+$("copiar-direccion").onclick = async () => {
+  try { await navigator.clipboard.writeText($("invitar-direccion").textContent); decir("cuartos-respuesta", tr("Copiado.")); }
+  catch (e) { decir("cuartos-respuesta", tr("Mantén presionado el texto para copiarlo.")); }
 };
 $("invitar-pantalla").onchange = () => { if (!$("invitacion").hidden) $("form-invitar").requestSubmit(); };
 $("copiar-comando").onclick = async () => {

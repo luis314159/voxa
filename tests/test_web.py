@@ -161,3 +161,49 @@ async def test_phone_shows_how_voxa_is_doing(phone):
     assert status == 200 and summary["no_entendidas"] == 1 and "blablá" in summary["reporte"]
     status, _, body = await http(server.port, "POST", "/api/como-va", **as_json({"borrar": True}))
     assert json.loads(body)["ordenes"] == 0
+
+
+def connect_screen_skill(service, server):
+    """Lo que hace el servicio al arrancar con la página del celular encendida."""
+    service.web = server
+    screen = service.app.assistant.skill("display")
+    screen.phone_ready = lambda: True
+    screen.without_screen = service.pairing_phrase
+
+
+async def test_without_a_screen_a_spoken_code_lets_the_phone_in(phone):
+    """Una VOXA sin pantalla (una Raspberry Pi en la sala): «conecta mi celular» dice un código de 6 dígitos."""
+    server, service, _ = phone
+    connect_screen_skill(service, server)
+    said = await service.handle_text("conecta mi celular")
+    assert "punto local, dos puntos" in said.speech and "escribe el código" in said.speech
+    code = "".join(c for c in said.speech.rsplit(":", 1)[1] if c.isdigit())
+    assert len(code) == 6
+    wrong = await http(server.port, "POST", "/api/emparejar", body=b'{"codigo": "000000"}',
+                       headers={"Content-Type": "application/json"})
+    assert wrong[0] == 403
+    status, headers, _ = await http(server.port, "POST", "/api/emparejar", body=json.dumps({"codigo": code}).encode(),
+                                    headers={"Content-Type": "application/json"})
+    assert status == 200 and f"voxa_clave={KEY}" in headers["Set-Cookie"]
+    again = await http(server.port, "POST", "/api/emparejar", body=json.dumps({"codigo": code}).encode(),
+                       headers={"Content-Type": "application/json"})
+    assert again[0] == 403  # un solo uso
+
+
+async def test_the_pairing_code_allows_few_tries(phone):
+    server, *_ = phone
+    code = server.new_pairing_code()
+    for _ in range(5):
+        await http(server.port, "POST", "/api/emparejar", body=b'{"codigo": "111111"}',
+                   headers={"Content-Type": "application/json"})
+    status, _, _ = await http(server.port, "POST", "/api/emparejar", body=json.dumps({"codigo": code}).encode(),
+                              headers={"Content-Type": "application/json"})
+    assert status == 403  # tras 5 intentos fallidos, ese código ya no sirve
+
+
+async def test_with_a_screen_it_shows_the_qr(phone):
+    server, service, _ = phone
+    connect_screen_skill(service, server)
+    service.display.subscribe()  # la pantalla de la cocina está conectada
+    said = await service.handle_text("conecta mi celular")
+    assert said.speech.startswith("Escanea el código")
