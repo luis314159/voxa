@@ -274,6 +274,17 @@
 </section>
 
 <section>
+  <h2>Rutina de la mañana</h2>
+  <p class="ayuda">Los días de escuela VOXA avisa 15 y 5 minutos antes de salir y a la hora, con lo que no hay que olvidar. «Buenos días» y «¿cuánto falta para salir?» también lo dicen.</p>
+  <label class="campo"><span>Hora de salida (vacío: sin avisos)</span><input type="time" id="rutina-salida"></label>
+  <div class="campo"><span class="detalle">Días</span><div class="fila" id="rutina-dias" style="flex-wrap:wrap"></div></div>
+  <label class="campo"><span>No olviden (separado por comas)</span><input type="text" id="rutina-llevar" placeholder="mochila, lonche, uniforme" autocomplete="off"></label>
+  <label class="campo"><span>Música de «buenos días» (opcional)</span><input type="text" id="rutina-musica" placeholder="«mi playlist de la mañana»" autocomplete="off"></label>
+  <button id="rutina-guardar" style="width:100%;margin-top:10px">Guardar</button>
+  <p class="ayuda" id="rutina-respuesta"></p>
+</section>
+
+<section>
   <h2>Funciones</h2>
   <div class="interruptor"><span>Videos de YouTube</span><input type="checkbox" data-ajuste="video.enabled"></div>
   <div class="interruptor"><span>Avisar si hay versión nueva</span><input type="checkbox" data-ajuste="update.check"></div>
@@ -644,6 +655,15 @@ async function cargarAjustes() {
   const valores = { "video.enabled": a.funciones.video, "update.check": a.funciones.avisar_version, "update.automatic": a.funciones.actualizar_solo };
   document.querySelectorAll("[data-ajuste]").forEach((c) => { c.checked = Boolean(valores[c.dataset.ajuste]); });
   $("whisper").value = a.voz.whisper;
+  $("rutina-salida").value = a.rutina.salida;
+  $("rutina-llevar").value = a.rutina.llevar;
+  $("rutina-musica").value = a.rutina.musica;
+  $("rutina-dias").replaceChildren(...["L", "M", "M", "J", "V", "S", "D"].map((letra, i) => {
+    const etiqueta = el("label", "voz"), caja = document.createElement("input");
+    caja.type = "checkbox"; caja.value = i; caja.checked = a.rutina.dias.includes(i);
+    etiqueta.append(caja, document.createTextNode(letra));
+    return etiqueta;
+  }));
   // Con el paquete .deb, la PC se actualiza sola de madrugada (lo hace el sistema).
   document.querySelector('[data-ajuste="update.automatic"]').closest(".interruptor").hidden = Boolean(a.paquete);
   pintarCuartos(a.casa);
@@ -810,6 +830,12 @@ document.querySelectorAll("[data-ajuste]").forEach((c) => {
   c.onchange = () => { const [s, k] = c.dataset.ajuste.split("."); guardar(s, { [k]: c.checked }); };
 });
 $("cal-avisar").onchange = () => guardar("calendar", { remind_minutes: Number($("cal-avisar").value) }, "cal-respuesta");
+$("rutina-guardar").onclick = () => guardar("routine", {
+  departure: $("rutina-salida").value,
+  departure_days: [...$("rutina-dias").querySelectorAll("input:checked")].map((c) => Number(c.value)),
+  checklist: $("rutina-llevar").value.trim(),
+  morning_music: $("rutina-musica").value.trim(),
+}, "rutina-respuesta");
 $("whisper").onchange = () => guardar("voice", { whisper_model: $("whisper").value });
 if (location.hash === "#ajustes") mostrarVista("ajustes");
 

@@ -140,6 +140,12 @@
   patterns:
     - "(reanuda|continua|sigue con|arranca|quita la pausa del|quitale la pausa al) [el|la|mi] (temporizador|timer|cronometro|cuenta regresiva) [(del|de la|de los|de|para) {name}]"
 
+# La salida de la mañana (antes que «¿cuánto falta para el arroz?»).
+- intent: routine.departure
+  patterns:
+    - "(cuanto falta|cuanto tiempo falta|cuantos minutos faltan) (para salir|para irnos|para la escuela|para irnos a la escuela)"
+    - "(a que hora|cuando) (salimos|nos vamos|hay que salir)"
+
 - intent: timer.query
   patterns:
     - "cuanto [tiempo] (falta|queda|le falta|le queda|les falta|les queda) [(al|a la|a los|a las|a|del|de la|de los|de las|de|para|el|la|los|las) {name}]"

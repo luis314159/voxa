@@ -93,6 +93,11 @@ max_height = 720
 # «Buenos días»: además de la hora, el clima y los recordatorios del día, pone esta música.
 # Ejemplo: morning_music = "mi playlist de la mañana"   (vacío = sin música)
 morning_music = ""
+# Salida de la mañana (escuela, trabajo): avisa 15 y 5 minutos antes y a la hora, con lo que no hay
+# que olvidar. «¿Cuánto falta para salir?» también lo dice. Vacío = sin avisos.
+departure = ""
+departure_days = [0, 1, 2, 3, 4]   # 0 = lunes
+checklist = ""                     # ejemplo: "mochila, lonche, uniforme"
 
 [weather]
 # Ubicación de la casa para el clima (Open-Meteo). Ejemplo: Ciudad de México.

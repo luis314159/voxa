@@ -9,6 +9,7 @@ from typing import Awaitable, Callable
 from voxa.core.people import speaker
 from voxa.core.phrases import clock_words, join_words, time_phrase
 from voxa.core.types import Intent, Response
+from voxa.departure import Departure
 from voxa.services.calendar import CalendarUnavailable
 from voxa.services.music_backend import BackendUnavailable, MusicBackend, NothingFound
 from voxa.services.weather import OpenMeteo, WeatherUnavailable
@@ -27,6 +28,7 @@ class RoutineSkill:
         now: Callable[[], datetime] = datetime.now,
         agenda: Callable[[], Awaitable[str]] | None = None,
         pending: Callable[[str | None], str] | None = None,
+        departure: Departure | None = None,
     ) -> None:
         self._timers = timers
         self._weather = weather
@@ -35,9 +37,12 @@ class RoutineSkill:
         self._now = now
         self._agenda = agenda
         self._pending = pending
+        self.departure = departure or Departure(None, frozenset(), [])
         """Lo de hoy en el calendario de la familia (vacío si no hay nada)."""
 
     async def handle(self, intent: Intent) -> Response:
+        if intent.name == "routine.departure":
+            return Response(self.departure.how_long(self._now()))
         if intent.name == "routine.good_night":
             return Response(self._good_night())
         return Response(await self._good_morning())
@@ -65,6 +70,8 @@ class RoutineSkill:
                 log.info("Sin calendario para «buenos días»: %s", exc)
         if self._pending is not None and (pending := self._pending(person)):
             parts.append(pending)
+        if leaving := self.departure.morning(now):
+            parts.append(leaving)
         if self._morning_music and self._music is not None:
             try:
                 await self._music.play(self._morning_music)

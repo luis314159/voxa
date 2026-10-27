@@ -115,6 +115,8 @@ class SettingsApi:
                 "whisper": config.voice.whisper_model,
             },
             "casa": {**(app.house.status() if app.house else {}), "invitacion": self.invitation()},
+            "rutina": {"salida": config.routine.departure, "dias": list(config.routine.departure_days),
+                       "llevar": config.routine.checklist, "musica": config.routine.morning_music},
             "paquete": _from_package(),
             "funciones": {
                 "video": config.video.enabled, "actualizar_solo": config.update.automatic,

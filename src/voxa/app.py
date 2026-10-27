@@ -30,6 +30,7 @@ from voxa.skills.kitchen import KitchenSkill
 from voxa.skills.music import MusicSkill
 from voxa.skills.recipe import RecipeSkill
 from voxa.skills.routine import RoutineSkill
+from voxa.departure import Departure
 from voxa.house import SHARED_DOMAINS, House
 from voxa.skills.calendar import CalendarSkill
 from voxa.skills.house import HouseSkill, RemoteSkill
@@ -228,7 +229,7 @@ def build_app(config: Config, *, simulated: bool = False, on_ring: Callable[[Tim
         "kitchen": KitchenSkill(),
         "routine": RoutineSkill(timers, weather, music, config.routine.morning_music,
                                 agenda=agenda.today_for_morning if agenda.has_any() else None,
-                                pending=tasks_skill.morning),
+                                pending=tasks_skill.morning, departure=Departure.from_config(config.routine)),
         "tasks": tasks_skill,
         "calendar": agenda,
         "shopping": ShoppingSkill(shopping),

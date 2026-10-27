@@ -231,3 +231,4 @@
 - {text: "agrega llamar al plomero a mis pendientes", intent: tasks.add, slots: {query: llamar al plomero}}
 - {text: "qué pendientes tengo", intent: tasks.list}
 - {text: "ya hice la tarea de mate", intent: tasks.done}
+- {text: "¿cuánto falta para salir?", intent: routine.departure}

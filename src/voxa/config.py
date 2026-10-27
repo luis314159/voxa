@@ -83,6 +83,12 @@ class VideoConfig:
 @dataclass(frozen=True)
 class RoutineConfig:
     morning_music: str = ""
+    departure: str = ""
+    """Hora de salida de la mañana («07:30»; vacío: sin avisos de salida)."""
+    departure_days: tuple[int, ...] = (0, 1, 2, 3, 4)
+    """Días con salida (0 = lunes)."""
+    checklist: str = ""
+    """Lo que no hay que olvidar al salir («mochila, lonche, uniforme»)."""
 
 
 @dataclass(frozen=True)

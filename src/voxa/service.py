@@ -367,6 +367,20 @@ class Service:
         if heard:
             log.info("Alarma sin atender: avisé en %s", ", ".join(heard))
 
+    async def _departure_reminders(self) -> None:
+        """«Faltan 15 minutos para salir. No olviden: mochila y lonche.» los días de escuela."""
+        from datetime import datetime
+
+        routine = self.app.assistant.skill("routine")
+        departure = getattr(routine, "departure", None)
+        if departure is None or departure.at is None:
+            return
+        told: set[str] = set()
+        while True:
+            for text in departure.due(datetime.now(), told):
+                await self.say_announcement(text, heading="Salida")
+            await asyncio.sleep(20)
+
     async def _calendar_reminders(self) -> None:
         """«En 10 minutos: dentista»: un aviso antes de cada evento del calendario."""
         from voxa.services.calendar import CalendarUnavailable
@@ -473,6 +487,7 @@ class Service:
             asyncio.create_task(self._keep_microphone()),
             asyncio.create_task(self._listen_for_wake()),
             asyncio.create_task(self._calendar_reminders()),
+            asyncio.create_task(self._departure_reminders()),
         ]
         if self.app.updater is not None:
             self.app.updater.on_change = self.display.publish

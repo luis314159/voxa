@@ -14,6 +14,7 @@ import shutil
 from pathlib import Path
 from typing import Any
 
+from voxa.departure import parse_time
 from voxa.services.process import CommandRunner, run_command
 
 log = logging.getLogger(__name__)
@@ -35,6 +36,7 @@ EDITABLE: dict[str, dict[str, Any]] = {
     "update": {"check": bool, "automatic": bool},
     "web": {"enabled": bool},
     "voice": {"whisper_model": ("tiny", "base", "small")},
+    "routine": {"departure": "time", "departure_days": "days", "checklist": str, "morning_music": str},
     "house": {"room": str, "main": str},
 }
 _TEXT_LIMIT = 300
@@ -69,6 +71,16 @@ def validate(section: str, values: dict[str, Any]) -> dict[str, Any]:
         kind = allowed.get(key)
         if kind is None:
             raise SettingsError(f"«{section}.{key}» no se cambia desde la app")
+        if kind == "time":
+            if not isinstance(value, str) or (value.strip() and parse_time(value) is None):
+                raise SettingsError(f"«{section}.{key}» debe ser una hora como 07:30")
+            clean[key] = value.strip()
+            continue
+        if kind == "days":
+            if not isinstance(value, list) or not all(isinstance(d, int) and 0 <= d <= 6 for d in value):
+                raise SettingsError(f"«{section}.{key}» deben ser días de 0 (lunes) a 6 (domingo)")
+            clean[key] = sorted(set(value))
+            continue
         if isinstance(kind, tuple):
             if value not in kind:
                 raise SettingsError(f"«{section}.{key}» debe ser uno de: {', '.join(kind)}")
