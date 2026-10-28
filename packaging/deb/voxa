@@ -1,4 +1,6 @@
 #!/bin/sh
 # VOXA instalada con el paquete .deb: su entorno de Python está en /opt/voxa/venv.
 export VOXA_APP_DIR=/opt/voxa/app
+# Las mismas herramientas que ve el servicio (yt-dlp y deno del entorno, Spotifast en ~/.local/bin).
+export PATH="/opt/voxa/venv/bin:$HOME/.local/bin:$PATH"
 exec /opt/voxa/venv/bin/voxa "$@"

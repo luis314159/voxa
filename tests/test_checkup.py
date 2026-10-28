@@ -30,7 +30,7 @@ def by_name(findings):
 
 async def test_missing_config_and_typos_are_reported(tmp_path):
     findings = by_name(await run_checkup(tmp_path / "no-existe.toml", fake_tools(modules=False)))
-    assert findings["config.toml"].status == WARN
+    assert findings["config.toml"].status == OK  # sin config.toml: todo desde el celular
     assert findings["Paquetes de audio"].status == FAIL
 
     path = tmp_path / "config.toml"
@@ -103,3 +103,15 @@ async def test_without_spotify_music_comes_from_youtube(tmp_path):
     findings = by_name(await run_checkup(tmp_path / "config.toml", fake_tools()))
     assert findings["Música"].status == OK and "YouTube" in findings["Música"].detail
     assert findings["Spotify"].status == SKIP
+
+
+async def test_settings_from_the_phone_count_without_config_toml(tmp_path):
+    (tmp_path / "ajustes.json").write_text('{"weather": {"latitude": 19.4, "longitude": -99.1, "place": "CDMX"}}', encoding="utf-8")
+    findings = await run_checkup(tmp_path / "config.toml", fake_tools(online=False))  # sin red: no pide el clima
+    assert not any(f.name == "Clima" and f.detail == "Sin ubicación" for f in findings)
+
+
+async def test_the_deb_updates_ytdlp_with_a_system_timer(tmp_path):
+    tools = fake_tools(outputs={"systemctl is-enabled voxa-ytdlp.timer": "enabled"})
+    findings = by_name(await run_checkup(tmp_path / "config.toml", tools))
+    assert findings["voxa-ytdlp.timer"].status == OK

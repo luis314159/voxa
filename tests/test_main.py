@@ -19,3 +19,38 @@ def test_text_mode_runs_commands(tmp_path, monkeypatch, capsys):
     monkeypatch.setattr(builtins, "input", lambda prompt="": next(lines))
     assert main(["texto", "--simulado"]) == 0
     assert "Un minuto para el té." in capsys.readouterr().out
+
+
+async def test_the_phone_address_and_the_qr_on_the_screen(tmp_path, capsys):
+    import asyncio
+    import json
+
+    from voxa.config import Config, DisplayConfig
+    from voxa.main import show_phone
+
+    received = asyncio.Queue()
+
+    async def screen(reader, writer):
+        received.put_nowait(json.loads(await reader.readline()))
+        writer.close()
+
+    server = await asyncio.start_server(screen, "127.0.0.1", 0)
+    port = server.sockets[0].getsockname()[1]
+    config = Config(config_dir=tmp_path, display=DisplayConfig(port=port))
+    assert await show_phone(config) == 1  # VOXA todavía no ha creado su clave
+    (tmp_path / "web_clave").write_text("abc123\n", encoding="utf-8")
+    assert await show_phone(config) == 0
+    assert ":8770/?k=abc123" in capsys.readouterr().out
+    assert await asyncio.wait_for(received.get(), 2) == {"type": "say", "text": "conecta mi celular"}
+    server.close()
+
+
+def test_loudness_tells_silence_from_a_voice():
+    import numpy as np
+
+    from voxa.main import loudness
+
+    t = np.arange(1280) / 16000
+    voice = (3000 * np.sin(2 * np.pi * 220 * t)).astype(np.int16)
+    assert loudness(np.zeros(1280, dtype=np.int16)) == 0.0
+    assert loudness(voice) > 0.6

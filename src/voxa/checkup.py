@@ -61,14 +61,14 @@ def _sha256(path: Path) -> str:
 # --- cada grupo devuelve sus hallazgos ------------------------------------------------
 def check_config(path: Path) -> tuple[Config, list[Finding]]:
     group = "Configuración"
-    if not path.exists():
-        return Config(), [Finding(group, "config.toml", WARN, f"No existe {path}: se usan los valores por defecto.",
-                                  f"cp config/default.toml {path}")]
     try:
-        config, warnings = read_config(path)
+        config, warnings = read_config(path)  # con los ajustes del celular encima
     except Exception as exc:  # noqa: BLE001 - TOML mal escrito
         return Config(), [Finding(group, "config.toml", FAIL, f"No se puede leer: {exc}", f"Revisa {path}")]
-    findings = [Finding(group, "config.toml", OK, str(path))]
+    if path.exists():
+        findings = [Finding(group, "config.toml", OK, str(path))]
+    else:  # lo normal: todo se ajusta desde el celular
+        findings = [Finding(group, "config.toml", OK, "no hace falta: valores por defecto y los Ajustes del celular")]
     findings += [Finding(group, "Errata", WARN, w, "Compara con config/default.toml") for w in warnings]
     return config, findings
 
@@ -236,7 +236,7 @@ async def check_network(config: Config, tools: Tools) -> list[Finding]:
     out = [Finding(group, "Internet", FAIL if problem else OK, problem.detail if problem else "")]
     w = config.weather
     if w.latitude is None or w.longitude is None:
-        out.append(Finding(group, "Clima", WARN, "Sin ubicación", "Pon latitude y longitude en [weather]"))
+        out.append(Finding(group, "Clima", WARN, "Sin ubicación", "En el celular: Ajustes → Clima"))
     elif not problem:
         from voxa.services.http import UrllibHttp
         from voxa.services.weather import OpenMeteo, WeatherUnavailable
@@ -327,11 +327,14 @@ async def check_services(config: Config, tools: Tools) -> list[Finding]:
             out.append(Finding(group, unit, FAIL, f"{why}: {state}",
                                f"systemctl --user restart {unit}  ·  journalctl --user -u {unit.split('.')[0]} -n 50"))
     if config.video.enabled:
-        try:
-            result = await tools.run(["systemctl", "--user", "is-enabled", "voxa-ytdlp.timer"])
-            enabled = result.stdout.strip() == "enabled"
-        except (CommandNotFound, asyncio.TimeoutError):
-            enabled = False
+        enabled = False
+        # Con el paquete .deb el timer es del sistema; con el instalador, del usuario.
+        for scope in (["--user"], []):
+            try:
+                result = await tools.run(["systemctl", *scope, "is-enabled", "voxa-ytdlp.timer"])
+            except (CommandNotFound, asyncio.TimeoutError):
+                continue
+            enabled = enabled or result.stdout.strip() == "enabled"
         out.append(Finding(group, "voxa-ytdlp.timer", OK if enabled else WARN,
                            "actualiza yt-dlp cada semana" if enabled else "yt-dlp no se actualizará solo",
                            "" if enabled else "systemctl --user enable --now voxa-ytdlp.timer"))

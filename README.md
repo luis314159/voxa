@@ -186,9 +186,11 @@ Desde un release (Linux Mint / Ubuntu 22.04 o más nuevo, de 64 bits; también A
 curl -fLO https://github.com/luis314159/voxa/releases/latest/download/instalar-voxa.sh
 bash instalar-voxa.sh                 # opciones: --simular, --sin-video, --cancelar-eco… (se recuerdan)
 voxa revisar                          # qué falta configurar
+voxa celular                          # la dirección para el celular (y el QR en la pantalla)
+voxa probar-activacion                # el nivel del micrófono y qué tan bien oye «Hey Voxa»
 ```
 
-**Lo demás se configura desde el celular.** Al arrancar sin configurar, la pantalla de la cocina muestra un código QR (también con «Hey Voxa, configura VOXA» o «conecta mi celular»). Al escanearlo, en la pestaña **Ajustes** están:
+**Lo demás se configura desde el celular.** Al arrancar sin configurar, la pantalla de la cocina muestra un código QR. Vuelve a salir con el botón «Abrir en el celular» (abajo en la pantalla), con «Hey Voxa, conecta mi celular» o con `voxa celular` en la terminal. Al escanearlo, en la pestaña **Ajustes** están:
 
 - **Pendientes**: lo mismo que `voxa revisar`, como lista.
 - **Voz de la familia**: «Grabar» guía a cada persona en la cocina para que VOXA la reconozca.

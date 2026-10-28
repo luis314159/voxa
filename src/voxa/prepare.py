@@ -249,14 +249,15 @@ def prepare_desktop() -> None:
     marker = data_dir() / "escritorio-listo"
     if marker.exists() or not shutil.which("gsettings"):
         return
-    schemas = subprocess.run(["gsettings", "list-schemas"], capture_output=True, text=True, check=False).stdout
-    if "org.cinnamon.desktop.session" not in schemas.split():
+    schemas = set(subprocess.run(["gsettings", "list-schemas"], capture_output=True, text=True, check=False).stdout.split())
+    if "org.cinnamon.desktop.session" not in schemas:
         return
     for args in (["org.cinnamon.desktop.session", "idle-delay", "0"],
                  ["org.cinnamon.desktop.screensaver", "lock-enabled", "false"],
                  ["org.cinnamon.settings-daemon.plugins.power", "sleep-display-ac", "0"],
                  ["org.cinnamon.settings-daemon.plugins.power", "sleep-inactive-ac-timeout", "0"]):
-        subprocess.run(["gsettings", "set", *args], check=False)
+        if args[0] in schemas:  # no todas las versiones de Mint traen todos
+            subprocess.run(["gsettings", "set", *args], check=False)
     marker.parent.mkdir(parents=True, exist_ok=True)
     marker.touch()
 

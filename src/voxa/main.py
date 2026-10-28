@@ -6,8 +6,12 @@ import argparse
 import asyncio
 import contextlib
 import http.server
+import json
 import logging
+import math
 import secrets
+import shutil
+import subprocess
 import sys
 import threading
 import time
@@ -200,14 +204,61 @@ async def probe_wake_word(config: Config, threshold: float | None, path: Path | 
     from voxa.audio.devices import Microphone
 
     print("Di «Hey Voxa» unas cuantas veces, de cerca y de lejos, con y sin música. Ctrl+C para terminar.")
+    print("Cada segundo sale cuánto oye el micrófono; al decir «Hey Voxa», qué tan seguro está.")
     async with Microphone(_device(config.voice.input_device)) as mic:
-        started = time.monotonic()
+        started = last = heard = time.monotonic()
+        level, warned = 0.0, False
         while True:
             frame = await mic.read()
+            level = max(level, loudness(frame))
             detected = detector.feed(frame)
             if detected or detector.last_score >= 0.1:
                 show(time.monotonic() - started, detected)
+            now = time.monotonic()
+            if now - last >= 1.0:
+                print(f"{now - started:7.2f}s micrófono {'▮' * round(level * 20):<20}|", flush=True)
+                if level >= _QUIET:
+                    heard = now
+                elif now - heard >= 8 and not warned:
+                    warned = True
+                    print("Casi no oigo nada: en Sonido → Entrada, elige el micrófono y súbele el volumen.", flush=True)
+                level, last = 0.0, now
             await asyncio.sleep(0)
+
+
+_QUIET = 0.3  # por debajo, ni la voz de cerca: el micrófono equivocado o sin volumen
+
+
+def loudness(frame) -> float:
+    """Qué tan fuerte suena un bloque del micrófono, de 0 (silencio, -60 dB) a 1 (al tope)."""
+    import numpy as np
+
+    rms = float(np.sqrt(np.mean(np.square(frame.astype(np.float32))))) / 32768
+    return min(1.0, max(0.0, (20 * math.log10(rms + 1e-9) + 60) / 60))
+
+
+async def show_phone(config: Config) -> int:
+    """La dirección para abrir VOXA en el celular, y el código QR otra vez en la pantalla de la cocina."""
+    from voxa.settings import read_secret
+
+    key = read_secret(config.web_key_path)
+    if not config.web.enabled or key is None:
+        print("La página del celular está apagada (enabled en [web]) o VOXA todavía no arranca.")
+        return 1
+    url = f"http://{diagnostics.local_ip() or '127.0.0.1'}:{config.web.port}/?k={key}"
+    print(f"Abre esto en el celular, en el wifi de la casa:\n  {url}")
+    if shutil.which("qrencode"):
+        subprocess.run(["qrencode", "-t", "ansiutf8", url], check=False)
+    if config.display.enabled:
+        try:
+            _, writer = await asyncio.wait_for(asyncio.open_connection("127.0.0.1", config.display.port), 3)
+        except (OSError, asyncio.TimeoutError):
+            return 0
+        writer.write(json.dumps({"type": "say", "text": "conecta mi celular"}).encode() + b"\n")
+        await writer.drain()
+        writer.close()
+        print("El código QR también está en la pantalla.")
+    return 0
 
 
 async def record_wake_samples(config: Config, person: str, times: int, talk_seconds: int) -> None:
@@ -507,6 +558,7 @@ def main(argv: list[str] | None = None) -> int:
     record.add_argument("--veces", type=int, default=8)
     record.add_argument("--platica", type=int, default=30, metavar="SEGUNDOS", help="segundos de plática normal")
     sub.add_parser("entrenar-verificador", help="entrena el verificador familiar con las grabaciones")
+    sub.add_parser("celular", help="cómo abrir VOXA en el celular: la dirección, y el código QR en la pantalla")
     sub.add_parser("revisar", help="revisa la instalación y dice qué falta y cómo arreglarlo")
     how = sub.add_parser("como-va", help="cómo va VOXA: órdenes entendidas, activaciones falsas, tiempos")
     how.add_argument("--dias", type=int, default=7)
@@ -544,6 +596,8 @@ def main(argv: list[str] | None = None) -> int:
 
         print(report(UsageMetrics(config.state_dir / "metricas.json").summary(max(1, args.dias))))
         return 0
+    if args.command == "celular":
+        return asyncio.run(show_phone(config))
     if args.command == "preparar":
         from voxa.prepare import prepare
 

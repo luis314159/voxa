@@ -237,6 +237,7 @@ impl eframe::App for VoxaApp {
         }
         let timers_area = Rect::from_min_max(pos2(right.left(), right.top() + f.px(250.0)), right.max);
         self.timers(ui, &painter, &f, timers_area, &state);
+        self.phone_button(ui, &painter, &f, pos2(right.left(), rect.bottom() - f.px(16.0)));
         let mut footer = rect.bottom() - f.px(28.0);
         if let Some(place) = self.backgrounds.as_ref().and_then(Backgrounds::caption) {
             let shown = widgets::shadow_text(&painter,
@@ -788,6 +789,22 @@ impl VoxaApp {
             self.open_diagnostics();
         } else {
             ui.ctx().request_repaint_after(Duration::from_millis(100));
+        }
+    }
+
+    /// Abajo, discreto: vuelve a mostrar el código QR (sin tener que hablarle).
+    fn phone_button(&mut self, ui: &mut Ui, painter: &Painter, f: &Frame, bottom_left: Pos2) {
+        let label = t("Abrir en el celular", "Open on your phone");
+        let font = theme::regular(f.px(24.0));
+        let height = f.px(46.0);
+        let width = painter.layout_no_wrap(label.to_owned(), font.clone(), theme::TEXT_DIM).size().x + f.px(40.0);
+        let pill = Rect::from_min_size(bottom_left - vec2(0.0, height), vec2(width, height));
+        let response = ui.interact(pill, ui.scope_id().with("boton-celular"), Sense::click());
+        let fill = if response.hovered() { theme::CARD_HOVER } else { theme::alpha(theme::TRACK, 0.5) };
+        painter.rect_filled(pill, CornerRadius::same((height / 2.0) as u8), fill);
+        painter.text(pill.center(), Align2::CENTER_CENTER, label, font, theme::TEXT_DIM);
+        if response.clicked() {
+            self.send(Command::Say { text: "conecta mi celular".into() });
         }
     }
 
