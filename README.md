@@ -188,6 +188,7 @@ curl -fLO https://github.com/luis314159/voxa/releases/latest/download/instalar-v
 bash instalar-voxa.sh                 # opciones: --simular, --sin-video, --cancelar-eco… (se recuerdan)
 voxa revisar                          # qué falta configurar
 voxa ajustes                          # los Ajustes en el navegador de esta PC
+voxa manual                           # el manual para la familia (también: «Manual» en el celular)
 voxa celular                          # la dirección para el celular (y el QR en la pantalla)
 voxa probar-activacion                # el nivel del micrófono y qué tan bien oye «Hey Voxa»
 ```

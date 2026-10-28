@@ -70,3 +70,5 @@ def test_the_settings_open_in_this_pcs_browser(tmp_path, monkeypatch):
     (tmp_path / "web_clave").write_text("abc123", encoding="utf-8")
     assert open_settings(config) == 0
     assert opened == ["http://127.0.0.1:8770/?k=abc123#ajustes"]
+    assert open_settings(config, manual=True) == 0
+    assert opened[-1] == "http://127.0.0.1:8770/manual?k=abc123"

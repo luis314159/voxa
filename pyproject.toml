@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "voxa"
-version = "0.8.2"
+version = "0.8.3"
 description = "VOXA — asistente de voz familiar para Linux. Tu voz, tu hogar, más fácil."
 readme = "README.md"
 license = "AGPL-3.0-or-later"
@@ -49,7 +49,7 @@ voxa = "voxa.main:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-voxa = ["nlu/*.yaml", "audio/*.yaml", "audio/*.npz", "telefono.html"]
+voxa = ["nlu/*.yaml", "audio/*.yaml", "audio/*.npz", "telefono.html", "manual/index.html", "manual/img/*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

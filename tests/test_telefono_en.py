@@ -10,6 +10,7 @@ PAGINA = Path(__file__).resolve().parents[1] / "src" / "voxa" / "telefono.html"
 # Textos que se quedan igual en inglés: marcas, direcciones, números.
 SIN_TRADUCIR = {
     "VOXA",
+    "Manual",
     "Spotify",
     "Playlists",
     "Client ID",

@@ -1,0 +1,378 @@
+<!doctype html>
+<!-- Plantilla del manual: scripts/manual/convertir.py la llena con docs/manual.md. No editar index.html a mano. -->
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="referrer" content="no-referrer">
+<title>Manual de VOXA</title>
+<style>
+/* Una columna de lectura con el índice arriba; lo que se le dice a VOXA va en globos de diálogo.
+   Solo letras del sistema: el manual se abre sin internet, desde la red de la casa. */
+:root {
+  --bg: #f3f6fb;
+  --surface: #ffffff;
+  --fg: #131a2e;
+  --muted: #4f5a74;
+  --line: #d9e0ec;
+  --accent: #087f92;
+  --accent-ink: #ffffff;
+  --bubble: #def4f7;
+  --bubble-ink: #0b3c46;
+  --note: #fff6dc;
+  --note-line: #e2b63c;
+  --code-bg: #e9eef6;
+  --font-display: system-ui, -apple-system, "Segoe UI", Roboto, Ubuntu, "Noto Sans", sans-serif;
+  --font-body: system-ui, -apple-system, "Segoe UI", Roboto, Ubuntu, "Noto Sans", sans-serif;
+  --font-mono: ui-monospace, "DejaVu Sans Mono", "Cascadia Mono", Consolas, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0b1020; --surface: #151c33; --fg: #eef1f8; --muted: #b4bcd6; --line: #273150;
+    --accent: #11ddf2; --accent-ink: #06202a; --bubble: #11314a; --bubble-ink: #c9f6fc;
+    --note: #2b2614; --note-line: #c99a24; --code-bg: #1b2340; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0b1020; --surface: #151c33; --fg: #eef1f8; --muted: #b4bcd6; --line: #273150;
+  --accent: #11ddf2; --accent-ink: #06202a; --bubble: #11314a; --bubble-ink: #c9f6fc;
+  --note: #2b2614; --note-line: #c99a24; --code-bg: #1b2340; color-scheme: dark;
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font: 400 1.0625rem/1.65 var(--font-body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 0 72px;
+}
+.page { max-width: 46rem; margin: 0 auto; }
+
+header.cabecera { padding-block: 44px 20px; display: grid; gap: 10px; }
+.marca { display: flex; align-items: center; gap: 12px; color: var(--accent); font: 800 0.8rem/1 var(--font-display); letter-spacing: 0.14em; text-transform: uppercase; }
+.marca svg { width: 34px; height: 34px; flex: none; }
+h1 { font: 800 clamp(2.2rem, 7vw, 3.2rem)/1.05 var(--font-display); margin: 0; letter-spacing: -0.02em; text-wrap: balance; }
+.lead { color: var(--muted); font-size: 1.125rem; margin: 0 0 12px; max-width: 40rem; }
+
+nav.indice { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 18px 20px; margin-block: 8px 28px; }
+nav.indice h2 { font: 600 0.78rem/1 var(--font-display); text-transform: uppercase; letter-spacing: 0.12em; color: var(--muted); margin: 0 0 12px; }
+nav.indice ol { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); gap: 2px 18px; }
+nav.indice a { display: flex; gap: 10px; align-items: baseline; padding: 6px 4px; border-radius: 8px; color: var(--fg); text-decoration: none; }
+nav.indice a:hover { background: var(--bubble); }
+.num { font: 600 0.85rem/1 var(--font-mono); color: var(--accent); min-width: 1.6em; font-variant-numeric: tabular-nums; }
+
+section { padding-block: 26px 6px; border-top: 1px solid var(--line); scroll-margin-top: 16px; }
+h2 { font: 800 1.65rem/1.2 var(--font-display); margin: 0 0 14px; display: flex; gap: 12px; align-items: baseline; text-wrap: balance; letter-spacing: -0.01em; }
+h2 .num { font-size: 1rem; }
+h3 { font: 600 1.15rem/1.3 var(--font-display); margin: 26px 0 8px; }
+p, li, td { overflow-wrap: break-word; }
+p { margin: 0 0 14px; }
+ul, ol { margin: 0 0 16px; padding-left: 1.4em; display: grid; gap: 6px; }
+li > ul, li > ol { margin: 6px 0 0; }
+a { color: var(--accent); text-underline-offset: 3px; }
+a:focus-visible, input:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+strong { font-weight: 700; }
+
+/* Lo que se le dice a VOXA: un globo de diálogo. */
+q.di { quotes: none; background: var(--bubble); color: var(--bubble-ink); padding: 1px 9px 2px; border-radius: 12px 12px 12px 3px; white-space: normal; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
+q.di::before { content: "«"; opacity: 0.55; }
+q.di::after { content: "»"; opacity: 0.55; }
+
+code { font: 0.88em var(--font-mono); background: var(--code-bg); padding: 1px 6px; border-radius: 6px; overflow-wrap: anywhere; }
+.code { overflow-x: auto; background: var(--code-bg); border-radius: 14px; margin: 0 0 16px; }
+.code pre { margin: 0; padding: 16px 18px; }
+.code code { background: none; padding: 0; font-size: 0.85rem; line-height: 1.6; overflow-wrap: normal; white-space: pre; }
+
+aside.nota { background: var(--note); border-left: 4px solid var(--note-line); border-radius: 4px 14px 14px 4px; padding: 14px 18px; margin: 0 0 18px; }
+aside.nota p { margin: 0; }
+
+.tabla { overflow-x: auto; margin: 0 0 18px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; min-width: 30rem; }
+th, td { text-align: left; vertical-align: top; padding: 11px 14px; border-bottom: 1px solid var(--line); }
+tr:last-child td { border-bottom: 0; }
+th { font: 600 0.8rem/1.3 var(--font-display); text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+
+.buscar { display: grid; gap: 6px; margin: 4px 0 18px; }
+.buscar span { font: 600 0.78rem/1 var(--font-display); text-transform: uppercase; letter-spacing: 0.12em; color: var(--muted); }
+.buscar input { font: inherit; color: var(--fg); background: var(--surface); border: 1.5px solid var(--line); border-radius: 12px; padding: 11px 14px; width: 100%; box-sizing: border-box; }
+.sin { color: var(--muted); }
+mark { background: transparent; color: inherit; box-shadow: inset 0 -0.45em 0 color-mix(in srgb, var(--accent) 35%, transparent); }
+
+figure { margin: 6px 0 22px; display: grid; gap: 8px; }
+figure img { display: block; width: 100%; height: auto; border-radius: 14px; border: 1px solid var(--line); background: #0b1020; }
+figure.cel img { max-width: 340px; }
+figcaption { color: var(--muted); font-size: 0.92rem; }
+
+footer { margin-top: 36px; color: var(--muted); font-size: 0.9rem; border-top: 1px solid var(--line); padding-top: 18px; }
+@media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+.arriba { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+.volver { font: 600 0.95rem/1 var(--font-body); color: var(--accent); text-decoration: none; padding: 8px 12px; border: 1.5px solid var(--line); border-radius: 999px; }
+.volver:hover { background: var(--bubble); }
+</style>
+</head>
+<body>
+<div class="page">
+  <header class="cabecera">
+    <div class="arriba">
+      <div class="marca">
+        <svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="17" fill="none" stroke="currentColor" stroke-width="3.2"/><path d="M12.5 13 L20 28 L27.5 13" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Asistente de la cocina
+      </div>
+      <a class="volver" href="/">← Volver a VOXA</a>
+    </div>
+    <h1>Manual de VOXA</h1>
+  </header>
+
+  <main id="contenido">
+    <p>VOXA es el asistente de voz de la cocina. Pone música y videos de recetas, cuenta tiempos, recuerda cosas, lleva la lista del súper, convierte medidas, dice la hora y el clima, y mucho más. Todo se hace hablando, y lo que no se dice se ajusta desde el celular o desde la misma PC.</p>
+<p>Este manual es para la familia: no hace falta saber de computadoras. Lo de la terminal va al final, para quien lo quiera.</p>
+<p><strong>Dónde abrirlo:</strong> en el celular, el botón <strong>«Manual»</strong> arriba en la página de VOXA; en la PC, menú → <strong>«Manual de VOXA»</strong>. Funciona sin internet, desde el wifi de la casa. También está en internet: <a href="https://github.com/luis314159/voxa/blob/master/docs/manual.md">https://github.com/luis314159/voxa/blob/master/docs/manual.md</a>.</p>
+<section id="s1">
+<h2><span class="num">1</span>Instalar VOXA</h2>
+<h3>En la PC de la cocina (Linux Mint o Ubuntu)</h3>
+<ol><li>Entra a la página de versiones: <a href="https://github.com/luis314159/voxa/releases/latest">https://github.com/luis314159/voxa/releases/latest</a>.</li><li>Baja <strong><code>voxa_X.Y.Z_amd64.deb</code></strong> (X.Y.Z es el número de la versión).</li><li>Ábrelo con doble clic y toca <strong>«Instalar paquete»</strong>. Pide tu contraseña una vez.</li><li>Cierra la sesión y vuelve a entrar (menú → apagar → «Cerrar sesión»). No hace falta reiniciar la PC.</li></ol>
+<aside class="nota"><p><strong>Si sale «Failed to download package files» con errores 404:</strong> la lista de programas de la PC está vieja. Abre el <strong>Gestor de actualizaciones</strong>, toca <strong>«Actualizar»</strong>, instala lo que salga y vuelve a abrir el <code>.deb</code>.</p></aside>
+<h3>En una Raspberry Pi 4 o 5 (sin instalar nada)</h3>
+<p>Cada versión trae una imagen de Raspberry Pi OS con VOXA ya puesta. Necesitas una tarjeta microSD de <strong>16 GB o más</strong>.</p>
+<ol><li>Instala <strong>Raspberry Pi Imager</strong> en tu computadora.</li><li>En las opciones de Imager, en «Contenido» (*content repository*), pega: <code>https://github.com/luis314159/voxa/releases/latest/download/os_list_voxa.json</code></li><li>Elige <strong>VOXA</strong> como sistema operativo y tu tarjeta.</li><li>Antes de grabar, Imager te deja poner el <strong>wifi de la casa</strong>, el usuario y el nombre del equipo (por ejemplo <code>sala</code>).</li><li>Pon la tarjeta en la Raspberry Pi y enciéndela.</li></ol>
+</section>
+<section id="s2">
+<h2><span class="num">2</span>La primera vez</h2>
+<ol><li><strong>VOXA baja sus voces.</strong> Al entrar a la sesión se abre la pantalla de la cocina y dice «Preparando VOXA». Baja los modelos de voz (unos minutos, según el internet).</li><li><strong>Aparece un código QR.</strong> Escanéalo con la cámara del celular, <strong>conectado al wifi de la casa</strong>. Se abre la página de VOXA.</li></ol>
+<figure class="pantalla"><img src="/manual/img/pantalla-codigo-qr.jpg" alt="El código QR en la pantalla de la cocina" loading="lazy"><figcaption>El código QR en la pantalla de la cocina</figcaption></figure>
+<ol start="3"><li><strong>Configura lo básico en «Ajustes»:</strong><ul><li><strong>Clima:</strong> escribe tu ciudad y elígela.</li><li><strong>Voz de la familia:</strong> que cada quien grabe su voz (sección 7).</li><li>Lo demás (Spotify, calendario, IA…) es opcional.</li></ul></li><li><strong>Guarda la página en el celular:</strong> en el menú del navegador, «Agregar a la pantalla de inicio». Así queda como un ícono y no necesitas el QR otra vez.</li></ol>
+<p><strong>¿Se te fue el código QR?</strong> Vuelve a sacarlo de cualquiera de estas formas:</p>
+<ul><li>Toca <strong>«Abrir en el celular»</strong>, abajo en la pantalla de la cocina.</li><li>Di <strong><q class="di">Hey Voxa, conecta mi celular</q></strong>.</li><li>Desde un celular que ya está conectado: Ajustes → <strong>«Otro celular»</strong> muestra el código ahí mismo.</li><li>En la PC: menú → <strong>«Ajustes de VOXA»</strong> abre la página en el navegador, sin código.</li></ul>
+<p><strong>Raspberry Pi sin pantalla:</strong> di <q class="di">Hey Voxa, conecta mi celular</q>. VOXA te dice en voz alta qué dirección abrir (<code>voxa.local:8770</code>) y un código de 6 dígitos para entrar.</p>
+</section>
+<section id="s3">
+<h2><span class="num">3</span>Cómo hablarle</h2>
+<p>Hay cuatro formas, y todas hacen lo mismo:</p>
+<div class="tabla"><table><thead><tr><th>Forma</th><th>Cómo</th></tr></thead><tbody><tr><td><strong>Con la voz</strong></td><td>Di <strong><q class="di">Hey Voxa</q></strong> (u <q class="di">Oye Voxa</q>) y la orden, de corrido: <q class="di">Hey Voxa, pon un temporizador de 10 minutos</q>.</td></tr><tr><td><strong>Tocando la pantalla</strong></td><td>Toca el <strong>anillo</strong> (el círculo con la V) y habla.</td></tr><tr><td><strong>Con el teclado</strong></td><td>En la pantalla de la cocina, <strong>empieza a escribir</strong>. Aparece un renglón: <strong>Enter</strong> lo manda y <strong>Esc</strong> lo cancela. No hace falta el mouse. Sirve si el micrófono falla.</td></tr><tr><td><strong>Desde el celular</strong></td><td>En la pestaña «Cocina», sección <strong>«Escríbele a VOXA»</strong>. Por defecto contesta en el celular sin hablar en la cocina; marca «Que lo diga en voz alta» si quieres que se oiga.</td></tr></tbody></table></div>
+<p>Consejos:</p>
+<ul><li><strong>Mientras suena una alarma</strong> basta con decir <q class="di">ya</q>, «para» o «gracias», sin <q class="di">Hey Voxa</q>.</li><li><strong>Para que VOXA no se active con la tele</strong> y sepa quién le habla, que cada quien grabe su voz (Ajustes → Voz de la familia).</li><li><strong>Para pedir otra cosa sin repetir <q class="di">Hey Voxa</q>:</strong> Ajustes → Accesibilidad → «seguir escuchando» unos segundos después de contestar.</li><li>Si no te entendió, <strong>«repite»</strong> o «¿qué dijiste?» repite su última respuesta.</li></ul>
+</section>
+<section id="s4">
+<h2><span class="num">4</span>La pantalla de la cocina</h2>
+<figure class="pantalla"><img src="/manual/img/pantalla-cocina.jpg" alt="La pantalla de la cocina: el reloj, la última respuesta, el clima, los temporizadores, la música y el anillo" loading="lazy"><figcaption>La pantalla de la cocina: el reloj, la última respuesta, el clima, los temporizadores, la música y el anillo</figcaption></figure>
+<ul><li><strong>El anillo:</strong> tócalo para hablar. Cambia de color cuando escucha, piensa o habla. Se pone <strong>ámbar</strong> cuando algo falla, con el problema escrito debajo («Sin internet», «No encuentro el micrófono»…).</li><li><strong>El micrófono</strong> (botón junto al anillo): lo apaga de verdad; VOXA deja de escuchar. También con <q class="di">Hey Voxa, deja de escuchar</q>. Tocar el anillo lo vuelve a encender.</li><li><strong>«Abrir en el celular»</strong> (abajo): muestra el código QR.</li><li><strong>Temporizadores:</strong> cada uno con su cuenta. Tócalo para que aparezca la <strong>×</strong> y cancelarlo.</li><li><strong>Música:</strong> canción, portada y botones de anterior, pausa y siguiente.</li><li><strong>Modo foto:</strong> dos toques en una parte vacía (o «modo foto») dejan solo la imagen de fondo. Un toque la regresa.</li><li><strong>Modo noche:</strong> de 10 de la noche a 6:30 de la mañana la pantalla se oscurece. Un toque la enciende 30 segundos; las alarmas y respuestas también.</li><li><strong>Diagnóstico:</strong> <strong>mantén presionado el reloj</strong>. Muestra la versión, el micrófono, la música, la red, los problemas y el gasto de la IA del mes.</li><li><strong>«IA»</strong> arriba del micrófono: aparece mientras el respaldo con IA (de paga) está encendido.</li><li><strong>Fondos:</strong> fotos de paisajes que cambian cada 10 minutos. Puedes subir fotos de la familia desde el celular.</li></ul>
+<figure class="pantalla"><img src="/manual/img/pantalla-problema.jpg" alt="Cuando algo falla, el anillo se pone ámbar y dice qué pasa" loading="lazy"><figcaption>Cuando algo falla, el anillo se pone ámbar y dice qué pasa</figcaption></figure>
+<p><strong>Abrir la pantalla otra vez:</strong> si la cerraste, en el menú de la PC busca <strong>«VOXA»</strong>.</p>
+</section>
+<section id="s5">
+<h2><span class="num">5</span>Qué le puedes pedir</h2>
+<label class="buscar" for="buscar"><span>Busca qué decirle</span><input type="search" id="buscar" placeholder="Por ejemplo: arroz, música, lista…" autocomplete="off"></label><p class="sin" id="sin-resultados" hidden>Nada con esa palabra. Prueba con otra, o pregúntale a VOXA «¿qué puedes hacer?».</p>
+<p>Pregúntale <strong><q class="di">¿qué puedes hacer?</q></strong> y te da ideas. Estos son ejemplos; hay muchas formas de decir lo mismo.</p>
+<h3>Temporizadores, alarmas y recordatorios</h3>
+<ul><li><q class="di">Pon un temporizador de 10 minutos para el arroz</q></li><li><q class="di">¿Cuánto le falta al arroz?</q> · <q class="di">Agrégale 5 minutos</q> · <q class="di">Pausa el temporizador</q> · <q class="di">Cancela el del arroz</q> · <q class="di">Cancela todos los temporizadores</q></li><li>Cuando suena: <q class="di">ya</q> para apagarla, o <q class="di">5 minutos más</q></li><li><q class="di">Recuérdame sacar la basura a las 8 de la noche</q></li><li><q class="di">Despiértame de lunes a viernes a las 6</q> · <q class="di">Recuérdame regar las plantas los martes a las 7</q></li><li><q class="di">Recuérdale a Luis que saque la basura a las 9</q></li></ul>
+<h3>Música</h3>
+<ul><li><q class="di">Pon a Juan Gabriel</q> · <q class="di">Pon Amor eterno</q> · <q class="di">Pon algo tranquilo para cocinar</q> · <q class="di">Pon salsa</q> · <q class="di">Pon música de los 80</q></li><li><q class="di">Pausa</q> · <q class="di">Sigue</q> · <q class="di">Siguiente</q> · <q class="di">Anterior</q> · <q class="di">Modo aleatorio</q></li><li><q class="di">¿Qué canción es esta?</q></li><li>Con Spotify: <q class="di">Pon mis me gusta</q> · <q class="di">Pon mi playlist para correr</q> · <q class="di">¿Qué playlists tengo?</q> · <q class="di">Me gusta esta canción</q> · <q class="di">Pásala a la sala</q></li></ul>
+<p>Sin cuenta, la música sale de <strong>YouTube</strong> (gratis). Con <strong>Spotify Premium</strong> se agregan tus playlists y tus Me gusta (sección 8).</p>
+<h3>Volumen</h3>
+<ul><li><q class="di">Súbele</q> · <q class="di">Bájale un poco</q> · <q class="di">Pon el volumen en 40</q> · <q class="di">Silencia</q> · <q class="di">Quita el silencio</q></li></ul>
+<h3>Videos de recetas (YouTube)</h3>
+<ul><li><q class="di">Pon un video de cómo hacer pozole</q></li><li>Mientras se ve: <q class="di">pausa</q>, <q class="di">sigue</q>, <q class="di">adelanta 30 segundos</q>, <q class="di">regrésale 10 segundos</q>, <q class="di">cierra el video</q></li><li>En la pantalla: un toque pausa, dos toques lo cierran.</li></ul>
+<h3>Recetas paso a paso (con la IA)</h3>
+<ul><li><q class="di">Dame la receta de pozole</q> · <q class="di">Cómo se hace el arroz rojo</q></li><li><q class="di">¿Qué ingredientes lleva?</q> · <q class="di">Siguiente paso</q> · <q class="di">Paso anterior</q> · <q class="di">Repite el paso</q> · <q class="di">Ve al paso 4</q></li><li><q class="di">Pon el tiempo</q> (cuenta los minutos de ese paso) · <q class="di">Agrega los ingredientes a la lista</q> · <q class="di">Termina la receta</q></li></ul>
+<p>Sin IA, <q class="di">receta de pozole</q> pone un video.</p>
+<figure class="pantalla"><img src="/manual/img/pantalla-receta.jpg" alt="Una receta paso a paso en la pantalla, con el botón para contar el tiempo del paso" loading="lazy"><figcaption>Una receta paso a paso en la pantalla, con el botón para contar el tiempo del paso</figcaption></figure>
+<h3>Cocina</h3>
+<ul><li><q class="di">¿Cuántos gramos es una taza de harina?</q> · <q class="di">¿Cuántas cucharadas son media taza?</q></li><li><q class="di">350 grados Fahrenheit en centígrados</q></li></ul>
+<h3>Lista del súper</h3>
+<ul><li><q class="di">Se acabó el café</q> · <q class="di">Agrega leche y tortillas a la lista</q></li><li><q class="di">¿Qué hay en la lista?</q> · <q class="di">Quita la leche de la lista</q> · <q class="di">Borra la lista</q></li></ul>
+<h3>Notas y recados</h3>
+<ul><li><q class="di">Déjale una nota a papá que compre tortillas</q> · <q class="di">Pon una nota que diga no hay agua caliente</q></li><li><q class="di">¿Tengo recados?</q> · <q class="di">Ya leí mis recados</q></li></ul>
+<p>VOXA le dice la nota a esa persona la próxima vez que reconoce su voz. Las notas se ven en la pantalla y se borran solas a los 3 días.</p>
+<figure class="pantalla"><img src="/manual/img/pantalla-notas.jpg" alt="Las notas en la pantalla de la cocina" loading="lazy"><figcaption>Las notas en la pantalla de la cocina</figcaption></figure>
+<h3>Pendientes de cada quien</h3>
+<ul><li><q class="di">Agrega llamar al plomero a mis pendientes</q> · <q class="di">¿Qué pendientes tengo?</q> · <q class="di">Ya hice la tarea de mate</q></li><li><q class="di">Agrega la tarea de mate a los pendientes de Luis</q> · <q class="di">¿Qué pendientes tiene Ana?</q></li></ul>
+<h3>Medicinas</h3>
+<ul><li><q class="di">Recuérdale a Ana que se tome la pastilla de la presión a las 8</q></li><li>Cuando pregunta <q class="di">¿ya te la tomaste?</q>: <q class="di">ya me la tomé</q> o <q class="di">todavía no</q> (sin <q class="di">Hey Voxa</q>)</li><li><q class="di">¿Ya se tomó Ana la medicina?</q></li></ul>
+<h3>Calendario</h3>
+<ul><li><q class="di">¿Qué tengo hoy?</q> · <q class="di">¿Qué tengo mañana?</q> · <q class="di">¿Cuál es mi siguiente cita?</q> · <q class="di">¿Qué tiene Ana hoy?</q></li><li>Con Google conectado: <q class="di">Agrega dentista el martes a las 5 al calendario</q> · <q class="di">Agenda el cumpleaños de Ana el sábado</q></li></ul>
+<h3>El día</h3>
+<ul><li><q class="di">¿Qué hora es?</q> · <q class="di">¿Qué día es hoy?</q></li><li><q class="di">¿Cómo está el clima?</q> · <q class="di">¿Va a llover hoy?</q></li><li><strong><q class="di">Buenos días</q>:</strong> saluda por nombre y dice la hora, el clima, los recordatorios, el calendario, tus pendientes y cuánto falta para salir.</li><li><q class="di">Buenas noches</q> · <q class="di">¿Cuánto falta para salir?</q></li></ul>
+<h3>La casa</h3>
+<ul><li><q class="di">Avisa a todos que ya está la comida</q> · <q class="di">Dile a la sala que se bajen a cenar</q> (con VOXA en varios cuartos)</li><li><q class="di">Modo niños</q> (sección 7)</li><li><q class="di">Aprende mi voz</q> (graba tu voz, guiado)</li><li><q class="di">Conecta mi celular</q> · <q class="di">Modo foto</q> · <q class="di">Deja de escuchar</q></li><li><q class="di">¿Hay actualizaciones?</q> · <q class="di">Actualízate</q></li></ul>
+<h3>En inglés</h3>
+<p>En Ajustes → Funciones se cambia el idioma a inglés, o se enciende <strong><q class="di">Casa bilingüe</q></strong>: entiende los dos idiomas y contesta cada frase en el idioma en que se dijo (<q class="di">what's the weather like?</q>).</p>
+</section>
+<section id="s6">
+<h2><span class="num">6</span>VOXA en el celular y en la PC</h2>
+<p>Es <strong>la misma página</strong> en los dos lados y se configura lo mismo:</p>
+<ul><li><strong>En el celular:</strong> escanea el código QR (sección 2).</li><li><strong>En la PC de la cocina:</strong> menú → <strong>«Ajustes de VOXA»</strong>. Se abre en el navegador.</li></ul>
+<p>La página funciona solo <strong>en el wifi de la casa</strong> y con la clave que lleva el código QR. Nadie más en la red puede entrar sin ella.</p>
+<p>Tiene dos pestañas.</p>
+<h3>Pestaña «Cocina»</h3>
+<ul><li><strong>Sonando:</strong> la música, con sus botones.</li><li><strong>Temporizadores:</strong> verlos, cancelarlos y poner temporizadores rápidos.</li><li><strong>Lista del súper:</strong> agregar y tachar.</li><li><strong>Notas:</strong> dejar y borrar recados.</li><li><strong>Medicinas de hoy:</strong> cuáles se tomaron, y un botón para marcar la que se tomó sin avisar.</li><li><strong>Pendientes:</strong> de cada persona, para tacharlos.</li><li><strong>Playlists:</strong> las de tu cuenta de Spotify, o buscar otras y ponerlas con un toque.</li><li><strong>Casa:</strong> mandar un aviso a los otros cuartos.</li><li><strong>Escríbele a VOXA:</strong> escribir una orden.</li><li><strong>Fondo de pantalla:</strong> subir fotos de la familia.</li></ul>
+<figure class="cel"><img src="/manual/img/celular-cocina.png" alt="La pestaña «Cocina» en el celular" loading="lazy"><figcaption>La pestaña «Cocina» en el celular</figcaption></figure>
+<h3>Pestaña «Ajustes»</h3>
+<p>Todo lo de la sección 7.</p>
+<figure class="cel"><img src="/manual/img/celular-ajustes.png" alt="El principio de la pestaña «Ajustes»" loading="lazy"><figcaption>El principio de la pestaña «Ajustes»</figcaption></figure>
+</section>
+<section id="s7">
+<h2><span class="num">7</span>Ajustes, sección por sección</h2>
+<p>Al guardar, VOXA se reinicia sola si hace falta.</p>
+<ul><li><strong>Pendientes:</strong> toca «Revisar» y te dice qué falta configurar en la instalación.</li><li><strong>Otro celular:</strong> el código QR para que alguien más de la familia entre desde su celular. También tiene un botón para mostrarlo en grande en la pantalla de la cocina.</li><li><strong>Cómo va VOXA:</strong> cuántas órdenes entendió y cuáles no, en los últimos 7 días, y cuántas veces se activó sin que nadie le hablara. «Copiar reporte» sirve para mandárselo a quien la mantiene.</li><li><strong>Voz de la familia:</strong><ul><li>Escribe tu nombre, toca <strong>«Grabar»</strong> y ve a la cocina. VOXA te guía en voz alta, como un minuto.</li><li>Así te reconoce, te saluda por nombre, usa tu Spotify y tu calendario, y no se activa con la tele.</li><li>Ahí mismo se escriben los <strong>apodos</strong> («papá», «la abuela») para que los recados lleguen a la persona correcta.</li></ul></li><li><strong>Spotify:</strong> ver la sección 8.</li><li><strong>Clima:</strong> busca tu ciudad.</li><li><strong>Calendario:</strong> ver la sección 8. También se elige si avisa antes de cada evento: 5, 10, 15 o 30 minutos, o no avisar.</li><li><strong>Lista del súper en Telegram:</strong> ver la sección 8.</li><li><strong>Respaldo con IA:</strong> ver la sección 8.</li><li><strong>Cuartos:</strong> agregar VOXA en otros cuartos (sección 9).</li><li><strong>Rutina de la mañana:</strong><ul><li>Hora de salida y días de escuela.</li><li>Lo que no hay que olvidar («mochila, lonche, uniforme»).</li><li>Una música para «buenos días» (opcional).</li><li>VOXA avisa 15 y 5 minutos antes de salir, y a la hora.</li></ul></li><li><strong>Privacidad:</strong> qué se queda en la PC y qué sale a internet (sección 10).</li><li><strong>Accesibilidad:</strong><ul><li><strong>Velocidad de la voz</strong> para todos, y aún más despacio con quien lo necesite (por ejemplo, los abuelos).</li><li><strong>Letra grande</strong> en la pantalla.</li><li><strong>Seguir escuchando</strong> 4, 6 o 10 segundos después de contestar.</li></ul></li><li><strong>Medicinas:</strong><ul><li>Preguntar «¿ya te la tomaste?» y cada cuánto.</li><li>Después de cuántas preguntas sin respuesta avisa a otra persona, por Telegram o en los otros cuartos.</li></ul></li><li><strong>Horas de silencio:</strong> por ejemplo de 22:00 a 7:00. VOXA habla bajito y no avisa en otros cuartos. Las alarmas suenan normal.</li><li><strong>Modo niños:</strong><ul><li>Marca quiénes son niños (deben haber grabado su voz).</li><li>Música sin canciones explícitas (con Spotify), volumen máximo, horario para videos y respuestas de la IA para niños.</li><li>«Para todos» lo aplica a cualquiera, por ejemplo con visitas.</li><li>Por voz se enciende con <q class="di">Hey Voxa, modo niños</q>. <strong>Se apaga solo desde aquí</strong>, para que los niños no lo quiten.</li></ul></li><li><strong>Funciones:</strong><ul><li>Videos de YouTube.</li><li>Avisar si hay versión nueva y actualizarse sola de madrugada.</li><li>Idioma (español o inglés) y casa bilingüe.</li><li><strong>Reconocimiento de voz:</strong> rápido, normal o preciso. Preciso entiende mejor, pero tarda más en contestar.</li></ul></li></ul>
+</section>
+<section id="s8">
+<h2><span class="num">8</span>Cuentas y llaves</h2>
+<p>Todo se conecta en <strong>Ajustes</strong>, desde el celular o desde la PC. Las llaves se guardan solo en la PC de la cocina y nunca se vuelven a mostrar.</p>
+<aside class="nota"><p><strong>Cuando Spotify o Google digan que «no se puede abrir la página», es normal.</strong> Copia la dirección completa de la barra del navegador y pégala en la página de VOXA, en el campo que aparece.</p></aside>
+<h3>Spotify (la cuenta de la casa)</h3>
+<p>Necesitas <strong>Spotify Premium</strong>. Es un trámite de una sola vez, de unos 5 minutos, porque Spotify pide una «app de desarrollador»:</p>
+<ol><li>Abre <strong>developer.spotify.com/dashboard</strong> con tu cuenta y toca <strong>«Create app»</strong>.</li><li>Nombre: «VOXA de la casa». Descripción: «Asistente de la cocina».</li><li>En <strong>«Redirect URIs»</strong> agrega las dos direcciones que muestra VOXA (tienen botón «Copiar»).</li><li>Marca <strong>«Web API»</strong>, acepta los términos y guarda.</li><li>Copia el <strong>«Client ID»</strong> y pégalo en VOXA. Toca «Guardar».</li><li>Toca <strong>«Conectar con Spotify»</strong> y acepta. Pega la dirección de regreso.</li><li>Toca <strong>«Abrir Spotifast en la cocina»</strong>. En la pantalla de la cocina toca «Sign in with Spotify» y «Set up playback here». Así la música suena en la bocina de la cocina.</li></ol>
+<p>Ahí mismo se elige de dónde sale la música: Spotify si está conectado (y si no, YouTube), solo Spotify o solo YouTube.</p>
+<figure class="cel"><img src="/manual/img/celular-spotify.png" alt="La sección de Spotify en Ajustes" loading="lazy"><figcaption>La sección de Spotify en Ajustes</figcaption></figure>
+<h3>Spotify de cada quien</h3>
+<p>En Ajustes → Spotify → <strong>«La cuenta de cada quien»</strong>, cada persona conecta la suya. Cuando VOXA reconoce su voz, «pon mis me gusta» y «pon mi playlist…» usan su cuenta (también sus playlists privadas). La música sigue sonando en la cocina.</p>
+<p>Spotify deja <strong>hasta 5 cuentas</strong>. El correo de cada persona se agrega antes en tu app de Spotify, en <strong>«User Management»</strong>.</p>
+<h3>Calendario (para leerlo)</h3>
+<p>Para «¿qué tengo hoy?» y los avisos antes de cada evento:</p>
+<ol><li>En <strong>Google Calendar desde una computadora:</strong> Configuración → tu calendario → <strong>«Dirección secreta en formato iCal»</strong>. También sirve la de iCloud u Outlook.</li><li>Pégala en Ajustes → Calendario y elige de quién es: de la familia o de una persona.</li></ol>
+<p>Solo lee: no puede cambiar nada de tu calendario.</p>
+<figure class="cel"><img src="/manual/img/celular-calendario.png" alt="La sección de Calendario en Ajustes" loading="lazy"><figcaption>La sección de Calendario en Ajustes</figcaption></figure>
+<h3>Google Calendar (para agregar citas por voz)</h3>
+<p>Para decir <q class="di">agrega dentista el martes a las 5 al calendario</q>. Es una vez, de unos 10 minutos, desde una computadora:</p>
+<ol><li>En <strong>console.cloud.google.com</strong> crea un proyecto («VOXA de la casa») y activa la <strong>«Google Calendar API»</strong>.</li><li>En <strong>«Pantalla de consentimiento de OAuth»</strong> elige el tipo «Externo» y pon tu correo.<ul><li>Al final toca <strong>«Publicar app»</strong> para dejarla en producción.</li><li><strong>Importante:</strong> si se queda «En prueba», Google corta el permiso cada 7 días.</li></ul></li><li>En «Credenciales» → «Crear credenciales» → <strong>«ID de cliente de OAuth»</strong> → tipo <strong>«App de escritorio»</strong>. Copia el ID y el secreto en VOXA.</li><li>Toca <strong>«Conectar Google Calendar»</strong>.<ul><li>Google avisa que la app no está verificada: es la tuya. Toca «Configuración avanzada» → «Ir a VOXA».</li><li>Pega la dirección de regreso.</li></ul></li></ol>
+<h3>Telegram (la lista del súper desde la calle)</h3>
+<ol><li>En Telegram, háblale a <strong>@BotFather</strong>, manda <code>/newbot</code> y copia el <strong>token</strong> que te da.</li><li>Pégalo en Ajustes → Lista del súper en Telegram.</li><li>Toca <strong>«Vincular un chat»</strong>. Manda al bot el código de 6 dígitos desde tu chat o desde el grupo de la familia.</li></ol>
+<p>Al bot se le escribe «leche, huevos y tortillas» o «quita la leche». <code>/lista</code> manda la lista con botones para ir palomeando en la tienda.</p>
+<h3>Respaldo con IA (Claude, Azure OpenAI u OpenAI)</h3>
+<p>Para lo que VOXA no entiende sola: recetas paso a paso, dudas de cocina, órdenes dichas de forma rara. <strong>Es de paga</strong>, con un tope al mes. Solo se manda el texto de la frase, nunca audio.</p>
+<ol><li>Consigue tu llave (API key):<ul><li><strong>Claude:</strong> en console.anthropic.com → API Keys.</li><li><strong>OpenAI:</strong> en platform.openai.com → API keys.</li><li><strong>Azure OpenAI:</strong> en el portal de Azure, en tu recurso de Azure OpenAI → «Claves y punto de conexión». Necesitas también el <strong>nombre de tu deployment</strong>.</li></ul></li><li>En Ajustes → <strong>Respaldo con IA</strong>, elige el <strong>Proveedor</strong>.</li><li><strong>Modelo:</strong> déjalo vacío para usar el recomendado. Con <strong>Azure</strong>, aquí va el nombre de tu deployment.</li><li><strong>Dirección del servicio</strong> (solo con Azure): <code>https://TU-RECURSO.openai.azure.com</code>.</li><li><strong>Tope al mes (USD):</strong> lo máximo que puede gastar.</li><li>Pega la llave en <strong>«Llave (API key)»</strong> y toca <strong>«Guardar llave»</strong>.</li><li>Enciende <strong>«Encendida»</strong>, toca «Guardar» y luego <strong>«Probar»</strong>. Hace una pregunta de prueba y dice cuánto costó.</li></ol>
+<figure class="cel"><img src="/manual/img/celular-ia.png" alt="La sección de Respaldo con IA en Ajustes" loading="lazy"><figcaption>La sección de Respaldo con IA en Ajustes</figcaption></figure>
+<p>El gasto del mes se ve en el diagnóstico de la pantalla (mantén presionado el reloj).</p>
+</section>
+<section id="s9">
+<h2><span class="num">9</span>VOXA en varios cuartos</h2>
+<p>La cocina es la VOXA principal. La sala, el comedor o las recámaras pueden tener la suya: otra PC o una Raspberry Pi con micrófono y bocina (la pantalla es opcional).</p>
+<ol><li>Instala VOXA en ese equipo (sección 1).</li><li>En la VOXA de la cocina: Ajustes → <strong>Cuartos</strong> → escribe el nombre («Sala») → <strong>«Agregar»</strong>. Te da una dirección.</li><li>En la VOXA nueva: Ajustes → Cuartos → pega esa dirección y el nombre del cuarto.</li></ol>
+<p>Cada cuarto tiene su <q class="di">Hey Voxa</q>, sus temporizadores y su música. La <strong>lista del súper</strong> y el <strong>calendario</strong> son los de la cocina.</p>
+<p>«Avisa a todos que ya está la comida» se oye en todos los cuartos. Si una alarma suena 45 segundos sin que nadie la apague, se avisa en los demás.</p>
+</section>
+<section id="s10">
+<h2><span class="num">10</span>Privacidad</h2>
+<p>En Ajustes → <strong>Privacidad</strong> está explicado en palabras sencillas, según lo que tienes encendido.</p>
+<ul><li><strong>Se queda en la PC:</strong><ul><li>Lo que dices: se reconoce ahí mismo y no se guarda.</li><li>Las voces grabadas de la familia.</li><li>Las listas, notas, medicinas, pendientes y las llaves.</li></ul></li><li><strong>Sale a internet, solo si lo usas:</strong><ul><li>El texto de lo que VOXA no entiende sola, a la IA.</li><li>Spotify y YouTube.</li><li>El clima, que solo usa la ciudad.</li><li>El calendario y Telegram.</li><li>Las actualizaciones.</li></ul></li></ul>
+</section>
+<section id="s11">
+<h2><span class="num">11</span>Actualizaciones</h2>
+<ul><li>VOXA <strong>se actualiza sola de madrugada</strong> cuando la cocina está quieta (Ajustes → Funciones).</li><li><strong><q class="di">Hey Voxa, ¿hay actualizaciones?</q></strong> te dice si hay versión nueva, y <strong>«actualízate»</strong> la instala al momento.</li><li>Después de actualizar, si aparecen cosas nuevas en el menú de la PC, cierra la sesión y vuelve a entrar.</li></ul>
+</section>
+<section id="s12">
+<h2><span class="num">12</span>Si algo no funciona</h2>
+<p>Lo primero: toca <strong>«Revisar»</strong> en Ajustes → Pendientes. Dice qué falta y cómo arreglarlo.</p>
+<p><strong>No me oye o se activa poco</strong></p>
+<ul><li>En la PC: menú → <strong>Sonido</strong> → <strong>Entrada</strong>.<ul><li>Elige el micrófono correcto.</li><li>Habla: la barra de nivel se debe mover.</li><li>Deja el volumen de entrada cerca de <strong>70 %</strong>.</li></ul></li><li>Mientras tanto, <strong>escríbele con el teclado</strong> en la pantalla de la cocina.</li><li>Que cada quien grabe su voz (Ajustes → Voz de la familia).</li></ul>
+<p><strong>Mi voz se oye rota o distorsionada al grabar</strong></p>
+<p>El micrófono está demasiado alto:</p>
+<ol><li>Baja la entrada a 70 % en Sonido → Entrada.</li><li>Si sigue igual, en la terminal abre <code>alsamixer</code>, presiona <strong>F6</strong> y elige tu tarjeta de sonido, luego <strong>F4</strong>, y baja <strong>«Mic Boost»</strong> a 0.</li></ol>
+<p><strong>Se activa sola con la tele</strong></p>
+<p>Graben su voz en Ajustes → Voz de la familia. VOXA aprende a distinguir a la familia.</p>
+<p><strong>No suena la música en la bocina</strong></p>
+<ul><li>Revisa que la bocina Bluetooth esté conectada y elegida como salida en <strong>Sonido → Salida</strong>.</li><li>Con Spotify: Ajustes → Spotify → «Abrir Spotifast en la cocina» y «Set up playback here».</li></ul>
+<p><strong>El anillo está ámbar</strong></p>
+<p>Debajo dice el problema. Los más comunes:</p>
+<ul><li><strong>«Sin internet»:</strong> revisa el wifi.</li><li><strong>«No encuentro el micrófono»:</strong> revisa que esté conectado y elegido en Sonido → Entrada.</li><li><strong>«Falta conectar Spotify»:</strong> termina los pasos de Ajustes → Spotify (sección 8).</li><li><strong>«Spotifast no responde»:</strong> en Ajustes → Spotify toca «Abrir Spotifast en la cocina».</li></ul>
+<p><strong>Perdí el código QR</strong></p>
+<p>Toca «Abrir en el celular» en la pantalla, o di <q class="di">Hey Voxa, conecta mi celular</q> (sección 2).</p>
+<p><strong>Cerré la pantalla de la cocina</strong></p>
+<p>Menú de la PC → <strong>«VOXA»</strong>.</p>
+<p><strong>El celular no abre la página</strong></p>
+<p>El celular debe estar en el <strong>wifi de la casa</strong>, no en datos.</p>
+<p><strong>Google Calendar dejó de funcionar a la semana</strong></p>
+<p>La app de Google se quedó «En prueba». Publícala (sección 8, paso 2) y vuelve a conectar.</p>
+<p><strong>Al instalar sale «Failed to download package files»</strong></p>
+<p>Ver la sección 1: actualiza la lista de programas y vuelve a abrir el <code>.deb</code>.</p>
+<p><strong>Si nada de esto funciona</strong>, copia el reporte de Ajustes → <strong>Cómo va VOXA</strong> y el resultado de <code>voxa revisar</code> (sección 13), y mándaselos a quien mantiene VOXA.</p>
+</section>
+<section id="s13">
+<h2><span class="num">13</span>Para quien usa la terminal</h2>
+<div class="code"><pre><code>voxa revisar               # revisa la instalación y dice cómo arreglar lo que falte
+voxa ajustes               # abre los Ajustes en el navegador de esta PC
+voxa manual                # abre este manual en el navegador de esta PC
+voxa celular               # la dirección para el celular (y el QR en la pantalla y en la terminal)
+voxa probar-activacion     # nivel del micrófono y qué tan bien oye «Hey Voxa» (Ctrl+C para salir)
+voxa como-va               # el reporte de uso de los últimos 7 días
+voxa actualizar            # instala la versión más reciente
+voxa texto                 # escribirle a VOXA desde la terminal
+
+systemctl --user restart voxa          # reinicia VOXA
+journalctl --user -u voxa -n 50        # lo último que pasó (para reportar un problema)</code></pre></div>
+<p>Probar el micrófono con buena calidad (graba 5 segundos y los repite):</p>
+<div class="code"><pre><code>arecord -f S16_LE -r 16000 -d 5 prueba.wav &amp;&amp; aplay prueba.wav</code></pre></div>
+<p>Los detalles técnicos (instalar desde el código, configuración avanzada en <code>~/.config/voxa/config.toml</code>) están en el <a href="https://github.com/luis314159/voxa/blob/master/README.md">README</a>.</p>
+</section>
+  </main>
+
+  <footer>VOXA es software libre (AGPL-3.0). El código y cada versión están en <a href="https://github.com/luis314159/voxa">github.com/luis314159/voxa</a>.</footer>
+</div>
+
+<template id="indice-tpl">
+  <nav class="indice" aria-label="Contenido">
+    <h2>Contenido</h2>
+    <ol>
+      <li><a href="#s1"><span class="num">1</span>Instalar VOXA</a></li>
+<li><a href="#s2"><span class="num">2</span>La primera vez</a></li>
+<li><a href="#s3"><span class="num">3</span>Cómo hablarle</a></li>
+<li><a href="#s4"><span class="num">4</span>La pantalla de la cocina</a></li>
+<li><a href="#s5"><span class="num">5</span>Qué le puedes pedir</a></li>
+<li><a href="#s6"><span class="num">6</span>VOXA en el celular y en la PC</a></li>
+<li><a href="#s7"><span class="num">7</span>Ajustes, sección por sección</a></li>
+<li><a href="#s8"><span class="num">8</span>Cuentas y llaves</a></li>
+<li><a href="#s9"><span class="num">9</span>VOXA en varios cuartos</a></li>
+<li><a href="#s10"><span class="num">10</span>Privacidad</a></li>
+<li><a href="#s11"><span class="num">11</span>Actualizaciones</a></li>
+<li><a href="#s12"><span class="num">12</span>Si algo no funciona</a></li>
+<li><a href="#s13"><span class="num">13</span>Para quien usa la terminal</a></li>
+    </ol>
+  </nav>
+</template>
+
+<script>
+"use strict";
+// El índice va después de la introducción.
+const main = document.getElementById("contenido");
+const primera = main.querySelector("section");
+main.insertBefore(document.getElementById("indice-tpl").content.cloneNode(true), primera);
+main.querySelectorAll(":scope > p").forEach((p) => p.classList.add("lead"));
+
+// «Busca qué decirle»: filtra los ejemplos de la sección 5.
+const buscar = document.getElementById("buscar");
+const seccion = document.getElementById("s5");
+const sinResultados = document.getElementById("sin-resultados");
+const quitarAcentos = (s) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+if (buscar && seccion) {
+  const grupos = [];
+  let actual = null;
+  for (const el of seccion.children) {
+    if (el.tagName === "H3") { actual = { titulo: el, cosas: [] }; grupos.push(actual); }
+    else if (actual && el !== buscar.parentElement && el !== sinResultados) actual.cosas.push(el);
+  }
+  buscar.addEventListener("input", () => {
+    const q = quitarAcentos(buscar.value.trim());
+    let alguno = false;
+    for (const g of grupos) {
+      let visibles = 0;
+      const enTitulo = q && quitarAcentos(g.titulo.textContent).includes(q);
+      for (const el of g.cosas) {
+        const items = el.matches("ul, ol") ? [...el.children] : [el];
+        for (const li of items) {
+          const ve = !q || enTitulo || quitarAcentos(li.textContent).includes(q);
+          li.hidden = !ve;
+          if (ve) visibles++;
+        }
+        if (el.matches("ul, ol")) el.hidden = ![...el.children].some((li) => !li.hidden);
+      }
+      g.titulo.hidden = visibles === 0;
+      if (visibles) alguno = true;
+    }
+    sinResultados.hidden = alguno || !q;
+  });
+}
+</script>
+</body>
+</html>

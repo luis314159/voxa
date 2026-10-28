@@ -4,6 +4,8 @@ VOXA es el asistente de voz de la cocina. Pone música y videos de recetas, cuen
 
 Este manual es para la familia: no hace falta saber de computadoras. Lo de la terminal va al final, para quien lo quiera.
 
+**Dónde abrirlo:** en el celular, el botón **«Manual»** arriba en la página de VOXA; en la PC, menú → **«Manual de VOXA»**. Funciona sin internet, desde el wifi de la casa. También está en internet: <https://github.com/luis314159/voxa/blob/master/docs/manual.md>.
+
 **Contenido**
 
 1. [Instalar VOXA](#1-instalar-voxa)
@@ -51,7 +53,7 @@ Cada versión trae una imagen de Raspberry Pi OS con VOXA ya puesta. Necesitas u
 1. **VOXA baja sus voces.** Al entrar a la sesión se abre la pantalla de la cocina y dice «Preparando VOXA». Baja los modelos de voz (unos minutos, según el internet).
 2. **Aparece un código QR.** Escanéalo con la cámara del celular, **conectado al wifi de la casa**. Se abre la página de VOXA.
 
-   ![El código QR en la pantalla de la cocina](images/manual/pantalla-codigo-qr.jpg)
+   ![El código QR en la pantalla de la cocina](../src/voxa/manual/img/pantalla-codigo-qr.jpg)
 
 3. **Configura lo básico en «Ajustes»:**
    - **Clima:** escribe tu ciudad y elígela.
@@ -92,7 +94,7 @@ Consejos:
 
 ## 4. La pantalla de la cocina
 
-![La pantalla de la cocina: el reloj, la última respuesta, el clima, los temporizadores, la música y el anillo](images/manual/pantalla-cocina.jpg)
+![La pantalla de la cocina: el reloj, la última respuesta, el clima, los temporizadores, la música y el anillo](../src/voxa/manual/img/pantalla-cocina.jpg)
 
 - **El anillo:** tócalo para hablar. Cambia de color cuando escucha, piensa o habla. Se pone **ámbar** cuando algo falla, con el problema escrito debajo («Sin internet», «No encuentro el micrófono»…).
 - **El micrófono** (botón junto al anillo): lo apaga de verdad; VOXA deja de escuchar. También con «Hey Voxa, deja de escuchar». Tocar el anillo lo vuelve a encender.
@@ -105,7 +107,7 @@ Consejos:
 - **«IA»** arriba del micrófono: aparece mientras el respaldo con IA (de paga) está encendido.
 - **Fondos:** fotos de paisajes que cambian cada 10 minutos. Puedes subir fotos de la familia desde el celular.
 
-![Cuando algo falla, el anillo se pone ámbar y dice qué pasa](images/manual/pantalla-problema.jpg)
+![Cuando algo falla, el anillo se pone ámbar y dice qué pasa](../src/voxa/manual/img/pantalla-problema.jpg)
 
 **Abrir la pantalla otra vez:** si la cerraste, en el menú de la PC busca **«VOXA»**.
 
@@ -151,7 +153,7 @@ Sin cuenta, la música sale de **YouTube** (gratis). Con **Spotify Premium** se 
 
 Sin IA, «receta de pozole» pone un video.
 
-![Una receta paso a paso en la pantalla, con el botón para contar el tiempo del paso](images/manual/pantalla-receta.jpg)
+![Una receta paso a paso en la pantalla, con el botón para contar el tiempo del paso](../src/voxa/manual/img/pantalla-receta.jpg)
 
 ### Cocina
 
@@ -170,7 +172,7 @@ Sin IA, «receta de pozole» pone un video.
 
 VOXA le dice la nota a esa persona la próxima vez que reconoce su voz. Las notas se ven en la pantalla y se borran solas a los 3 días.
 
-![Las notas en la pantalla de la cocina](images/manual/pantalla-notas.jpg)
+![Las notas en la pantalla de la cocina](../src/voxa/manual/img/pantalla-notas.jpg)
 
 ### Pendientes de cada quien
 
@@ -233,13 +235,13 @@ Tiene dos pestañas.
 - **Escríbele a VOXA:** escribir una orden.
 - **Fondo de pantalla:** subir fotos de la familia.
 
-![La pestaña «Cocina» en el celular](images/manual/celular-cocina.png)
+![La pestaña «Cocina» en el celular](../src/voxa/manual/img/celular-cocina.png)
 
 ### Pestaña «Ajustes»
 
 Todo lo de la sección 7.
 
-![El principio de la pestaña «Ajustes»](images/manual/celular-ajustes.png)
+![El principio de la pestaña «Ajustes»](../src/voxa/manual/img/celular-ajustes.png)
 
 ---
 
@@ -307,7 +309,7 @@ Necesitas **Spotify Premium**. Es un trámite de una sola vez, de unos 5 minutos
 
 Ahí mismo se elige de dónde sale la música: Spotify si está conectado (y si no, YouTube), solo Spotify o solo YouTube.
 
-![La sección de Spotify en Ajustes](images/manual/celular-spotify.png)
+![La sección de Spotify en Ajustes](../src/voxa/manual/img/celular-spotify.png)
 
 ### Spotify de cada quien
 
@@ -324,7 +326,7 @@ Para «¿qué tengo hoy?» y los avisos antes de cada evento:
 
 Solo lee: no puede cambiar nada de tu calendario.
 
-![La sección de Calendario en Ajustes](images/manual/celular-calendario.png)
+![La sección de Calendario en Ajustes](../src/voxa/manual/img/celular-calendario.png)
 
 ### Google Calendar (para agregar citas por voz)
 
@@ -362,7 +364,7 @@ Para lo que VOXA no entiende sola: recetas paso a paso, dudas de cocina, órdene
 6. Pega la llave en **«Llave (API key)»** y toca **«Guardar llave»**.
 7. Enciende **«Encendida»**, toca «Guardar» y luego **«Probar»**. Hace una pregunta de prueba y dice cuánto costó.
 
-![La sección de Respaldo con IA en Ajustes](images/manual/celular-ia.png)
+![La sección de Respaldo con IA en Ajustes](../src/voxa/manual/img/celular-ia.png)
 
 El gasto del mes se ve en el diagnóstico de la pantalla (mantén presionado el reloj).
 
@@ -474,6 +476,7 @@ Ver la sección 1: actualiza la lista de programas y vuelve a abrir el `.deb`.
 ```bash
 voxa revisar               # revisa la instalación y dice cómo arreglar lo que falte
 voxa ajustes               # abre los Ajustes en el navegador de esta PC
+voxa manual                # abre este manual en el navegador de esta PC
 voxa celular               # la dirección para el celular (y el QR en la pantalla y en la terminal)
 voxa probar-activacion     # nivel del micrófono y qué tan bien oye «Hey Voxa» (Ctrl+C para salir)
 voxa como-va               # el reporte de uso de los últimos 7 días

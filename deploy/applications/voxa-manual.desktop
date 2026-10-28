@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Manual de VOXA
+Name[en]=VOXA Manual
+Comment=Cómo usar y configurar VOXA, con ejemplos de lo que se le puede pedir
+Exec=voxa manual
+Icon=voxa
+Terminal=false
+Categories=Utility;
+Keywords=ayuda;manual;help;

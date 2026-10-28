@@ -1,0 +1,187 @@
+<!doctype html>
+<!-- Plantilla del manual: scripts/manual/convertir.py la llena con docs/manual.md. No editar index.html a mano. -->
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="referrer" content="no-referrer">
+<title>Manual de VOXA</title>
+<style>
+/* Una columna de lectura con el índice arriba; lo que se le dice a VOXA va en globos de diálogo.
+   Solo letras del sistema: el manual se abre sin internet, desde la red de la casa. */
+:root {
+  --bg: #f3f6fb;
+  --surface: #ffffff;
+  --fg: #131a2e;
+  --muted: #4f5a74;
+  --line: #d9e0ec;
+  --accent: #087f92;
+  --accent-ink: #ffffff;
+  --bubble: #def4f7;
+  --bubble-ink: #0b3c46;
+  --note: #fff6dc;
+  --note-line: #e2b63c;
+  --code-bg: #e9eef6;
+  --font-display: system-ui, -apple-system, "Segoe UI", Roboto, Ubuntu, "Noto Sans", sans-serif;
+  --font-body: system-ui, -apple-system, "Segoe UI", Roboto, Ubuntu, "Noto Sans", sans-serif;
+  --font-mono: ui-monospace, "DejaVu Sans Mono", "Cascadia Mono", Consolas, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0b1020; --surface: #151c33; --fg: #eef1f8; --muted: #b4bcd6; --line: #273150;
+    --accent: #11ddf2; --accent-ink: #06202a; --bubble: #11314a; --bubble-ink: #c9f6fc;
+    --note: #2b2614; --note-line: #c99a24; --code-bg: #1b2340; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0b1020; --surface: #151c33; --fg: #eef1f8; --muted: #b4bcd6; --line: #273150;
+  --accent: #11ddf2; --accent-ink: #06202a; --bubble: #11314a; --bubble-ink: #c9f6fc;
+  --note: #2b2614; --note-line: #c99a24; --code-bg: #1b2340; color-scheme: dark;
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font: 400 1.0625rem/1.65 var(--font-body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 0 72px;
+}
+.page { max-width: 46rem; margin: 0 auto; }
+
+header.cabecera { padding-block: 44px 20px; display: grid; gap: 10px; }
+.marca { display: flex; align-items: center; gap: 12px; color: var(--accent); font: 800 0.8rem/1 var(--font-display); letter-spacing: 0.14em; text-transform: uppercase; }
+.marca svg { width: 34px; height: 34px; flex: none; }
+h1 { font: 800 clamp(2.2rem, 7vw, 3.2rem)/1.05 var(--font-display); margin: 0; letter-spacing: -0.02em; text-wrap: balance; }
+.lead { color: var(--muted); font-size: 1.125rem; margin: 0 0 12px; max-width: 40rem; }
+
+nav.indice { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 18px 20px; margin-block: 8px 28px; }
+nav.indice h2 { font: 600 0.78rem/1 var(--font-display); text-transform: uppercase; letter-spacing: 0.12em; color: var(--muted); margin: 0 0 12px; }
+nav.indice ol { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); gap: 2px 18px; }
+nav.indice a { display: flex; gap: 10px; align-items: baseline; padding: 6px 4px; border-radius: 8px; color: var(--fg); text-decoration: none; }
+nav.indice a:hover { background: var(--bubble); }
+.num { font: 600 0.85rem/1 var(--font-mono); color: var(--accent); min-width: 1.6em; font-variant-numeric: tabular-nums; }
+
+section { padding-block: 26px 6px; border-top: 1px solid var(--line); scroll-margin-top: 16px; }
+h2 { font: 800 1.65rem/1.2 var(--font-display); margin: 0 0 14px; display: flex; gap: 12px; align-items: baseline; text-wrap: balance; letter-spacing: -0.01em; }
+h2 .num { font-size: 1rem; }
+h3 { font: 600 1.15rem/1.3 var(--font-display); margin: 26px 0 8px; }
+p, li, td { overflow-wrap: break-word; }
+p { margin: 0 0 14px; }
+ul, ol { margin: 0 0 16px; padding-left: 1.4em; display: grid; gap: 6px; }
+li > ul, li > ol { margin: 6px 0 0; }
+a { color: var(--accent); text-underline-offset: 3px; }
+a:focus-visible, input:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+strong { font-weight: 700; }
+
+/* Lo que se le dice a VOXA: un globo de diálogo. */
+q.di { quotes: none; background: var(--bubble); color: var(--bubble-ink); padding: 1px 9px 2px; border-radius: 12px 12px 12px 3px; white-space: normal; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
+q.di::before { content: "«"; opacity: 0.55; }
+q.di::after { content: "»"; opacity: 0.55; }
+
+code { font: 0.88em var(--font-mono); background: var(--code-bg); padding: 1px 6px; border-radius: 6px; overflow-wrap: anywhere; }
+.code { overflow-x: auto; background: var(--code-bg); border-radius: 14px; margin: 0 0 16px; }
+.code pre { margin: 0; padding: 16px 18px; }
+.code code { background: none; padding: 0; font-size: 0.85rem; line-height: 1.6; overflow-wrap: normal; white-space: pre; }
+
+aside.nota { background: var(--note); border-left: 4px solid var(--note-line); border-radius: 4px 14px 14px 4px; padding: 14px 18px; margin: 0 0 18px; }
+aside.nota p { margin: 0; }
+
+.tabla { overflow-x: auto; margin: 0 0 18px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; min-width: 30rem; }
+th, td { text-align: left; vertical-align: top; padding: 11px 14px; border-bottom: 1px solid var(--line); }
+tr:last-child td { border-bottom: 0; }
+th { font: 600 0.8rem/1.3 var(--font-display); text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+
+.buscar { display: grid; gap: 6px; margin: 4px 0 18px; }
+.buscar span { font: 600 0.78rem/1 var(--font-display); text-transform: uppercase; letter-spacing: 0.12em; color: var(--muted); }
+.buscar input { font: inherit; color: var(--fg); background: var(--surface); border: 1.5px solid var(--line); border-radius: 12px; padding: 11px 14px; width: 100%; box-sizing: border-box; }
+.sin { color: var(--muted); }
+mark { background: transparent; color: inherit; box-shadow: inset 0 -0.45em 0 color-mix(in srgb, var(--accent) 35%, transparent); }
+
+figure { margin: 6px 0 22px; display: grid; gap: 8px; }
+figure img { display: block; width: 100%; height: auto; border-radius: 14px; border: 1px solid var(--line); background: #0b1020; }
+figure.cel img { max-width: 340px; }
+figcaption { color: var(--muted); font-size: 0.92rem; }
+
+footer { margin-top: 36px; color: var(--muted); font-size: 0.9rem; border-top: 1px solid var(--line); padding-top: 18px; }
+@media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+.arriba { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+.volver { font: 600 0.95rem/1 var(--font-body); color: var(--accent); text-decoration: none; padding: 8px 12px; border: 1.5px solid var(--line); border-radius: 999px; }
+.volver:hover { background: var(--bubble); }
+</style>
+</head>
+<body>
+<div class="page">
+  <header class="cabecera">
+    <div class="arriba">
+      <div class="marca">
+        <svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="17" fill="none" stroke="currentColor" stroke-width="3.2"/><path d="M12.5 13 L20 28 L27.5 13" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Asistente de la cocina
+      </div>
+      <a class="volver" href="/">← Volver a VOXA</a>
+    </div>
+    <h1>Manual de VOXA</h1>
+  </header>
+
+  <main id="contenido">
+    {{BODY}}
+  </main>
+
+  <footer>VOXA es software libre (AGPL-3.0). El código y cada versión están en <a href="https://github.com/luis314159/voxa">github.com/luis314159/voxa</a>.</footer>
+</div>
+
+<template id="indice-tpl">
+  <nav class="indice" aria-label="Contenido">
+    <h2>Contenido</h2>
+    <ol>
+      {{TOC}}
+    </ol>
+  </nav>
+</template>
+
+<script>
+"use strict";
+// El índice va después de la introducción.
+const main = document.getElementById("contenido");
+const primera = main.querySelector("section");
+main.insertBefore(document.getElementById("indice-tpl").content.cloneNode(true), primera);
+main.querySelectorAll(":scope > p").forEach((p) => p.classList.add("lead"));
+
+// «Busca qué decirle»: filtra los ejemplos de la sección 5.
+const buscar = document.getElementById("buscar");
+const seccion = document.getElementById("s5");
+const sinResultados = document.getElementById("sin-resultados");
+const quitarAcentos = (s) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+if (buscar && seccion) {
+  const grupos = [];
+  let actual = null;
+  for (const el of seccion.children) {
+    if (el.tagName === "H3") { actual = { titulo: el, cosas: [] }; grupos.push(actual); }
+    else if (actual && el !== buscar.parentElement && el !== sinResultados) actual.cosas.push(el);
+  }
+  buscar.addEventListener("input", () => {
+    const q = quitarAcentos(buscar.value.trim());
+    let alguno = false;
+    for (const g of grupos) {
+      let visibles = 0;
+      const enTitulo = q && quitarAcentos(g.titulo.textContent).includes(q);
+      for (const el of g.cosas) {
+        const items = el.matches("ul, ol") ? [...el.children] : [el];
+        for (const li of items) {
+          const ve = !q || enTitulo || quitarAcentos(li.textContent).includes(q);
+          li.hidden = !ve;
+          if (ve) visibles++;
+        }
+        if (el.matches("ul, ol")) el.hidden = ![...el.children].some((li) => !li.hidden);
+      }
+      g.titulo.hidden = visibles === 0;
+      if (visibles) alguno = true;
+    }
+    sinResultados.hidden = alguno || !q;
+  });
+}
+</script>
+</body>
+</html>

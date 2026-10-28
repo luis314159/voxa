@@ -21,6 +21,8 @@
   h1 { font-size: 26px; margin: 0; letter-spacing: .02em;
        background: linear-gradient(90deg, var(--cyan), var(--blue), #d52bff); -webkit-background-clip: text; color: transparent; }
   #conexion { font-size: 13px; color: var(--dim); }
+  .cabecera-der { display: flex; align-items: center; gap: 14px; }
+  #manual { font-size: 14px; color: var(--cyan); text-decoration: none; border: 1px solid var(--line, #2a3352); border-radius: 999px; padding: 5px 12px; }
   section { background: var(--card); border-radius: var(--radius); padding: 16px; margin-bottom: 14px; }
   h2 { font-size: 14px; text-transform: uppercase; letter-spacing: .08em; color: var(--dim); margin: 0 0 10px; font-weight: 600; }
   .fila { display: flex; gap: 10px; align-items: center; }
@@ -90,7 +92,7 @@
 </style>
 </head>
 <body>
-<header><h1>VOXA</h1><span id="conexion">conectando…</span></header>
+<header><h1>VOXA</h1><div class="cabecera-der"><span id="conexion">conectando…</span><a id="manual" href="/manual">Manual</a></div></header>
 <nav role="tablist">
   <button role="tab" id="tab-cocina" aria-selected="true">Cocina</button>
   <button role="tab" id="tab-ajustes" aria-selected="false">Ajustes</button>

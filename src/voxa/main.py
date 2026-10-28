@@ -244,8 +244,8 @@ def loudness(frame) -> float:
     return min(1.0, max(0.0, (20 * math.log10(rms + 1e-9) + 60) / 60))
 
 
-def open_settings(config: Config) -> int:
-    """Los Ajustes de VOXA en el navegador de esta PC: la misma página que en el celular."""
+def open_settings(config: Config, *, manual: bool = False) -> int:
+    """Los Ajustes de VOXA (o su manual) en el navegador de esta PC: la misma página que en el celular."""
     from voxa.settings import read_secret
 
     key = read_secret(config.web_key_path)
@@ -253,9 +253,9 @@ def open_settings(config: Config) -> int:
         message = "VOXA todavía no arranca (o su página está apagada: enabled en [web])."
         print(message)
         if shutil.which("notify-send"):  # desde el menú no hay terminal donde leerlo
-            subprocess.run(["notify-send", "Ajustes de VOXA", message], check=False)
+            subprocess.run(["notify-send", "Manual de VOXA" if manual else "Ajustes de VOXA", message], check=False)
         return 1
-    url = f"http://127.0.0.1:{config.web.port}/?k={key}#ajustes"
+    url = f"http://127.0.0.1:{config.web.port}/" + (f"manual?k={key}" if manual else f"?k={key}#ajustes")
     if not webbrowser.open(url):
         print(f"Ábrelo en el navegador:\n  {url}")
     return 0
@@ -583,6 +583,7 @@ def main(argv: list[str] | None = None) -> int:
     record.add_argument("--platica", type=int, default=30, metavar="SEGUNDOS", help="segundos de plática normal")
     sub.add_parser("entrenar-verificador", help="entrena el verificador familiar con las grabaciones")
     sub.add_parser("ajustes", help="abre los Ajustes de VOXA en el navegador de esta PC (lo mismo que en el celular)")
+    sub.add_parser("manual", help="abre el manual de VOXA en el navegador de esta PC")
     sub.add_parser("celular", help="cómo abrir VOXA en el celular: la dirección, y el código QR en la pantalla")
     sub.add_parser("revisar", help="revisa la instalación y dice qué falta y cómo arreglarlo")
     how = sub.add_parser("como-va", help="cómo va VOXA: órdenes entendidas, activaciones falsas, tiempos")
@@ -625,6 +626,8 @@ def main(argv: list[str] | None = None) -> int:
         return asyncio.run(show_phone(config))
     if args.command == "ajustes":
         return open_settings(config)
+    if args.command == "manual":
+        return open_settings(config, manual=True)
     if args.command == "preparar":
         from voxa.prepare import prepare
 

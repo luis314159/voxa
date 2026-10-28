@@ -226,13 +226,15 @@ if [ "$SERVICIOS" = 1 ]; then
   instalar_archivo "$REPO/deploy/systemd/voxa.service" "$CONFIG/systemd/user/voxa.service"
   instalar_archivo "$REPO/deploy/systemd/voxa-ui.service" "$CONFIG/systemd/user/voxa-ui.service"
   instalar_archivo "$REPO/deploy/autostart/voxa-ui.desktop" "$CONFIG/autostart/voxa-ui.desktop"
-  # En el menú: «VOXA» y «Ajustes de VOXA» (con la ruta completa: el menú no siempre ve ~/.local/bin).
+  # En el menú: «VOXA», «Ajustes de VOXA» y «Manual de VOXA» (con la ruta completa: el menú no siempre ve ~/.local/bin).
   APPS="$HOME/.local/share/applications"
   instalar_archivo "$REPO/deploy/applications/voxa.desktop" "$APPS/voxa.desktop"
-  ajustes_desktop="$(mktemp)"
-  sed "s|^Exec=voxa |Exec=$BIN/voxa |" "$REPO/deploy/applications/voxa-ajustes.desktop" >"$ajustes_desktop"
-  instalar_archivo "$ajustes_desktop" "$APPS/voxa-ajustes.desktop"
-  rm -f "$ajustes_desktop"
+  for lanzador in voxa-ajustes voxa-manual; do
+    con_ruta="$(mktemp)"
+    sed "s|^Exec=voxa |Exec=$BIN/voxa |" "$REPO/deploy/applications/$lanzador.desktop" >"$con_ruta"
+    instalar_archivo "$con_ruta" "$APPS/$lanzador.desktop"
+    rm -f "$con_ruta"
+  done
   instalar_archivo "$REPO/assets/brand/voxa_icon.svg" "$HOME/.local/share/icons/hicolor/scalable/apps/voxa.svg"
   if [ "$VIDEO" = 1 ]; then
     instalar_archivo "$REPO/deploy/systemd/voxa-ytdlp.service" "$CONFIG/systemd/user/voxa-ytdlp.service"

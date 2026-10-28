@@ -13,6 +13,7 @@ import hmac
 import json
 import logging
 import os
+import re
 import secrets
 import time
 import urllib.parse
@@ -75,6 +76,24 @@ def load_or_create_key(path: Path) -> str:
     with os.fdopen(fd, "w", encoding="utf-8") as fh:
         fh.write(key + "\n")
     return key
+
+
+_MANUAL_IMAGE = re.compile(r"/manual/img/([a-z0-9-]+)\.(png|jpg)")
+
+
+def _manual(path: str) -> tuple[int, dict[str, str], bytes]:
+    """El manual para la familia (scripts/manual/convertir.py lo arma de docs/manual.md) y sus capturas."""
+    folder = resources.files("voxa").joinpath("manual")
+    if path == "/manual":
+        name, kind = "index.html", "text/html; charset=utf-8"
+    elif m := _MANUAL_IMAGE.fullmatch(path):  # solo nombres sencillos: nada de «..» ni otras carpetas
+        name, kind = f"img/{m.group(1)}.{m.group(2)}", "image/png" if m.group(2) == "png" else "image/jpeg"
+    else:
+        return 404, {"Content-Type": "text/plain; charset=utf-8"}, b"No existe"
+    try:
+        return 200, {"Content-Type": kind}, folder.joinpath(name).read_bytes()
+    except OSError:
+        return 404, {"Content-Type": "text/plain; charset=utf-8"}, b"No existe"
 
 
 def photo_kind(data: bytes) -> str | None:
@@ -178,10 +197,10 @@ class WebServer:
             return self._json(413, {"error": "demasiado grande"})
 
         given = query.get("k", [""])[0]
-        if url.path == "/" and given and hmac.compare_digest(given, self._key):
-            # Primera visita desde el código QR: el celular guarda la clave y la URL queda limpia.
+        if url.path in ("/", "/manual") and given and hmac.compare_digest(given, self._key):
+            # Primera visita desde el código QR (o desde el menú de la PC): guarda la clave y la URL queda limpia.
             cookie = f"{COOKIE}={self._key}; Max-Age=31536000; Path=/; HttpOnly; SameSite=Strict"
-            return 303, {"Location": "/", "Set-Cookie": cookie}, b""
+            return 303, {"Location": url.path, "Set-Cookie": cookie}, b""
         if method == "POST" and url.path == "/api/emparejar":
             body = await asyncio.wait_for(reader.readexactly(length), 10) if length else b""
             try:
@@ -200,6 +219,8 @@ class WebServer:
         body = await asyncio.wait_for(reader.readexactly(length), 60) if length else b""
         if method == "GET" and url.path == "/":
             return 200, {"Content-Type": "text/html; charset=utf-8"}, self.page.encode()
+        if method == "GET" and (url.path == "/manual" or url.path.startswith("/manual/img/")):
+            return _manual(url.path)
         if method == "GET" and url.path == "/api/estado":
             return self._json(200, self._state())
         if method == "GET" and url.path == "/api/casa" and self._service.app.house is not None:
