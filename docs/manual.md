@@ -50,6 +50,9 @@ Cada versión trae una imagen de Raspberry Pi OS con VOXA ya puesta. Necesitas u
 
 1. **VOXA baja sus voces.** Al entrar a la sesión se abre la pantalla de la cocina y dice «Preparando VOXA». Baja los modelos de voz (unos minutos, según el internet).
 2. **Aparece un código QR.** Escanéalo con la cámara del celular, **conectado al wifi de la casa**. Se abre la página de VOXA.
+
+   ![El código QR en la pantalla de la cocina](images/manual/pantalla-codigo-qr.jpg)
+
 3. **Configura lo básico en «Ajustes»:**
    - **Clima:** escribe tu ciudad y elígela.
    - **Voz de la familia:** que cada quien grabe su voz (sección 7).
@@ -89,6 +92,8 @@ Consejos:
 
 ## 4. La pantalla de la cocina
 
+![La pantalla de la cocina: el reloj, la última respuesta, el clima, los temporizadores, la música y el anillo](images/manual/pantalla-cocina.jpg)
+
 - **El anillo:** tócalo para hablar. Cambia de color cuando escucha, piensa o habla. Se pone **ámbar** cuando algo falla, con el problema escrito debajo («Sin internet», «No encuentro el micrófono»…).
 - **El micrófono** (botón junto al anillo): lo apaga de verdad; VOXA deja de escuchar. También con «Hey Voxa, deja de escuchar». Tocar el anillo lo vuelve a encender.
 - **«Abrir en el celular»** (abajo): muestra el código QR.
@@ -99,6 +104,8 @@ Consejos:
 - **Diagnóstico:** **mantén presionado el reloj**. Muestra la versión, el micrófono, la música, la red, los problemas y el gasto de la IA del mes.
 - **«IA»** arriba del micrófono: aparece mientras el respaldo con IA (de paga) está encendido.
 - **Fondos:** fotos de paisajes que cambian cada 10 minutos. Puedes subir fotos de la familia desde el celular.
+
+![Cuando algo falla, el anillo se pone ámbar y dice qué pasa](images/manual/pantalla-problema.jpg)
 
 **Abrir la pantalla otra vez:** si la cerraste, en el menú de la PC busca **«VOXA»**.
 
@@ -144,6 +151,8 @@ Sin cuenta, la música sale de **YouTube** (gratis). Con **Spotify Premium** se 
 
 Sin IA, «receta de pozole» pone un video.
 
+![Una receta paso a paso en la pantalla, con el botón para contar el tiempo del paso](images/manual/pantalla-receta.jpg)
+
 ### Cocina
 
 - «¿Cuántos gramos es una taza de harina?» · «¿Cuántas cucharadas son media taza?»
@@ -160,6 +169,8 @@ Sin IA, «receta de pozole» pone un video.
 - «¿Tengo recados?» · «Ya leí mis recados»
 
 VOXA le dice la nota a esa persona la próxima vez que reconoce su voz. Las notas se ven en la pantalla y se borran solas a los 3 días.
+
+![Las notas en la pantalla de la cocina](images/manual/pantalla-notas.jpg)
 
 ### Pendientes de cada quien
 
@@ -222,9 +233,13 @@ Tiene dos pestañas.
 - **Escríbele a VOXA:** escribir una orden.
 - **Fondo de pantalla:** subir fotos de la familia.
 
+![La pestaña «Cocina» en el celular](images/manual/celular-cocina.png)
+
 ### Pestaña «Ajustes»
 
 Todo lo de la sección 7.
+
+![El principio de la pestaña «Ajustes»](images/manual/celular-ajustes.png)
 
 ---
 
@@ -292,6 +307,8 @@ Necesitas **Spotify Premium**. Es un trámite de una sola vez, de unos 5 minutos
 
 Ahí mismo se elige de dónde sale la música: Spotify si está conectado (y si no, YouTube), solo Spotify o solo YouTube.
 
+![La sección de Spotify en Ajustes](images/manual/celular-spotify.png)
+
 ### Spotify de cada quien
 
 En Ajustes → Spotify → **«La cuenta de cada quien»**, cada persona conecta la suya. Cuando VOXA reconoce su voz, «pon mis me gusta» y «pon mi playlist…» usan su cuenta (también sus playlists privadas). La música sigue sonando en la cocina.
@@ -306,6 +323,8 @@ Para «¿qué tengo hoy?» y los avisos antes de cada evento:
 2. Pégala en Ajustes → Calendario y elige de quién es: de la familia o de una persona.
 
 Solo lee: no puede cambiar nada de tu calendario.
+
+![La sección de Calendario en Ajustes](images/manual/celular-calendario.png)
 
 ### Google Calendar (para agregar citas por voz)
 
@@ -342,6 +361,8 @@ Para lo que VOXA no entiende sola: recetas paso a paso, dudas de cocina, órdene
 5. **Tope al mes (USD):** lo máximo que puede gastar.
 6. Pega la llave en **«Llave (API key)»** y toca **«Guardar llave»**.
 7. Enciende **«Encendida»**, toca «Guardar» y luego **«Probar»**. Hace una pregunta de prueba y dice cuánto costó.
+
+![La sección de Respaldo con IA en Ajustes](images/manual/celular-ia.png)
 
 El gasto del mes se ve en el diagnóstico de la pantalla (mantén presionado el reloj).
 

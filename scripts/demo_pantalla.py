@@ -113,12 +113,13 @@ async def main() -> None:
     service.display.big_text = args.letra_grande
     service.display.ai_on = args.ia
     service.display.photo = args.foto
-    if args.celular:
-        service.display.phone_url = "http://192.168.1.50:8770/?k=demo-clave-de-ejemplo-123"
     service.display.wake_word = None if args.sin_activacion or args.silenciado else "Hey Voxa"
 
     async with service.running(args.puerto):
-        if not args.celular:
+        if args.celular:  # una dirección de ejemplo: la de esta PC lleva su clave y no va en capturas
+            service.display.phone_url = "http://192.168.1.50:8770/?k=demo-clave-de-ejemplo-123"
+            service.display.phone_until = None
+        else:
             service.show_phone_code(False)  # la demo no está «sin configurar»
         print(f"Demo lista en el puerto {args.puerto}. Abre la pantalla: voxa-ui (Ctrl+C para salir)")
         for n in itertools.count():
