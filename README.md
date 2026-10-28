@@ -4,6 +4,7 @@
 
 Asistente de voz familiar para la cocina, sobre una PC All-in-One con Linux Mint: música de Spotify, videos de recetas, temporizadores, recordatorios, lista del súper, conversiones de cocina, volumen, hora y clima, todo por voz y en español.
 
+- **Manual para la familia:** [docs/manual.md](docs/manual.md) (instalar, hablarle, Ajustes, cuentas y llaves, problemas comunes)
 - **Plan del proyecto:** [docs/voxa_plan.md](docs/voxa_plan.md)
 - **Fase 0 (diagnóstico del equipo):** [docs/fase0_guia.md](docs/fase0_guia.md)
 - **Marca:** [assets/brand/](assets/brand/)
