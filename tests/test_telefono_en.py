@@ -44,7 +44,7 @@ class _Textos(HTMLParser):
         if tag in ("script", "style"):
             self.dentro = tag
         for nombre, valor in attrs:
-            if nombre in ("placeholder", "title", "aria-label") and valor:
+            if nombre in ("placeholder", "title", "aria-label", "alt") and valor:
                 self.textos.append(" ".join(valor.split()))
 
     def handle_endtag(self, tag):

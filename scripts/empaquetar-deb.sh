@@ -59,7 +59,7 @@ Version: $version
 Architecture: $deb_arch
 Maintainer: luis314159 <luis314159@users.noreply.github.com>
 Installed-Size: $tamano
-Depends: python3 (>= 3.10), python3-venv, ca-certificates, curl, playerctl, libportaudio2, mpv, wireplumber, pipewire-bin | pipewire, libxkbcommon-x11-0, libgl1, libegl1, libwayland-client0, libxcursor1, libxrandr2, libxi6
+Depends: python3 (>= 3.10), python3-venv, ca-certificates, curl, qrencode, playerctl, libportaudio2, mpv, wireplumber, pipewire-bin | pipewire, libxkbcommon-x11-0, libgl1, libegl1, libwayland-client0, libxcursor1, libxrandr2, libxi6
 Section: sound
 Priority: optional
 Homepage: https://github.com/luis314159/voxa

@@ -76,7 +76,7 @@ fi
 # --- 1. Paquetes del sistema --------------------------------------------------
 if [ "$APT" = 1 ]; then
   paso "Paquetes del sistema (pide tu contraseña)"
-  paquetes=(pipx python3-venv playerctl libportaudio2 pipewire-bin wireplumber unzip curl)
+  paquetes=(pipx python3-venv playerctl libportaudio2 pipewire-bin wireplumber unzip curl qrencode)
   if [ "$PANTALLA" = 1 ] && [ -x "$UI_LISTA" ]; then
     # La pantalla ya compilada solo necesita las bibliotecas de X11/Wayland y OpenGL.
     paquetes+=(libxkbcommon-x11-0 libwayland-client0 libgl1 libegl1 libxcursor1 libxrandr2 libxi6)

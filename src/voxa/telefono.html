@@ -194,6 +194,14 @@
 </section>
 
 <section>
+  <h2>Otro celular</h2>
+  <p class="ayuda">Para que alguien más de la familia use VOXA: que escanee este código con la cámara, en el wifi de la casa.</p>
+  <div id="qr-caja" hidden><img id="qr" alt="Código QR de VOXA" style="display:block;width:220px;max-width:100%;margin:8px auto;background:#fff;border-radius:12px;padding:8px"></div>
+  <button id="qr-pantalla" style="width:100%">Mostrar el código en la pantalla de la cocina</button>
+  <p class="ayuda" id="qr-respuesta"></p>
+</section>
+
+<section>
   <h2>Cómo va VOXA</h2>
   <p class="ayuda">Los últimos 7 días. Se queda en esta PC: no sale a internet.</p>
   <ul id="como-va"></ul>
@@ -602,6 +610,13 @@ const EN = {
   "mochila, lonche, uniforme": "backpack, lunch, uniform",
   "Música de «buenos días» (opcional)": "«Good morning» music (optional)",
   "«mi playlist de la mañana»": "«my morning playlist»",
+  // Otro celular
+  "Otro celular": "Another phone",
+  "Para que alguien más de la familia use VOXA: que escanee este código con la cámara, en el wifi de la casa.":
+    "So someone else in the family can use VOXA: scan this code with the camera, on the home wifi.",
+  "Código QR de VOXA": "VOXA QR code",
+  "Mostrar el código en la pantalla de la cocina": "Show the code on the kitchen screen",
+  "Listo: está en la pantalla de la cocina.": "Done: it's on the kitchen screen.",
   // Cómo va VOXA
   "Cómo va VOXA": "How VOXA is doing",
   "Los últimos 7 días. Se queda en esta PC: no sale a internet.": "The last 7 days. It stays on this PC: nothing goes to the internet.",
@@ -732,8 +747,8 @@ const FIJOS = [];
 {
   const paseo = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
   for (let n; (n = paseo.nextNode());) if (n.data.trim() && !n.parentNode.closest("script, style")) FIJOS.push([n, "data"]);
-  for (const e of document.querySelectorAll("[placeholder], [title], [aria-label]"))
-    for (const atr of ["placeholder", "title", "aria-label"]) if (e.hasAttribute(atr)) FIJOS.push([e, atr]);
+  for (const e of document.querySelectorAll("[placeholder], [title], [aria-label], img[alt]"))
+    for (const atr of ["placeholder", "title", "aria-label", "alt"]) if (e.hasAttribute(atr)) FIJOS.push([e, atr]);
 }
 const PUESTO = new WeakMap(); // nodo → { atributo: [español, lo que se puso] }
 
@@ -1155,8 +1170,20 @@ $("como-va-borrar").onclick = async () => {
   cargarComoVa();
 };
 
+function cargarQr() {
+  const img = $("qr");
+  img.onload = () => { $("qr-caja").hidden = false; };
+  img.onerror = () => { $("qr-caja").hidden = true; };  // sin qrencode: queda el botón de la pantalla
+  img.src = "/api/qr.svg?" + Date.now();
+}
+$("qr-pantalla").onclick = async () => {
+  try { await api("/api/mostrar-qr", {}); decir("qr-respuesta", tr("Listo: está en la pantalla de la cocina.")); }
+  catch (e) { decir("qr-respuesta", e.message); }
+};
+
 async function cargarAjustes() {
   cargarComoVa();
+  cargarQr();
   let a;
   try { a = await api("/api/ajustes"); } catch (e) { return; }
   $("voz-estado").replaceChildren(a.voz.personas.length

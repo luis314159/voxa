@@ -207,3 +207,39 @@ async def test_with_a_screen_it_shows_the_qr(phone):
     service.display.subscribe()  # la pantalla de la cocina está conectada
     said = await service.handle_text("conecta mi celular")
     assert said.speech.startswith("Escanea el código")
+
+
+async def test_the_settings_page_shows_the_qr_for_another_phone(phone):
+    server, service, _ = phone
+    service.web = server
+    status, headers, body = await http(server.port, "GET", "/api/qr.svg", headers=logged_in())
+    assert status in (200, 404)  # 404: esta PC no tiene qrencode
+    if status == 200:
+        assert headers["Content-Type"] == "image/svg+xml" and body.lstrip().startswith(b"<")
+    status, _, _ = await http(server.port, "GET", "/api/qr.svg")
+    assert status == 403  # sin la clave, nada
+
+    status, _, body = await http(server.port, "POST", "/api/mostrar-qr", **as_json({}))
+    assert status == 200 and service.display.snapshot()["phone"].endswith(f"/?k={KEY}")
+
+
+async def test_the_qr_comes_from_qrencode(phone, monkeypatch):
+    import asyncio
+
+    server, _, _ = phone
+    calls = []
+
+    class Done:
+        returncode = 0
+
+        async def communicate(self):
+            return b'<?xml version="1.0"?><svg/>', b""
+
+    async def fake_exec(*args, **kwargs):
+        calls.append(args)
+        return Done()
+
+    monkeypatch.setattr(asyncio, "create_subprocess_exec", fake_exec)
+    status, headers, body = await http(server.port, "GET", "/api/qr.svg", headers=logged_in())
+    assert status == 200 and body.startswith(b"<?xml")
+    assert calls[0][:6] == ("qrencode", "-t", "SVG", "-m", "2", "-o") and calls[0][7].endswith(f"/?k={KEY}")

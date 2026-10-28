@@ -209,6 +209,8 @@ class WebServer:
 
             summary = self._service.app.metrics.summary(7)
             return self._json(200, {**summary, "reporte": report(summary)})
+        if method == "GET" and url.path == "/api/qr.svg":
+            return await self._qr()
         if method == "GET" and url.path == "/api/notas":
             return self._json(200, {"notas": self._service.app.notes.snapshot()})
         if method == "GET" and url.path == "/api/tareas":
@@ -243,6 +245,27 @@ class WebServer:
         return status, {"Content-Type": "application/json; charset=utf-8"}, json.dumps(data, ensure_ascii=False).encode()
 
     # --- lo que hace -----------------------------------------------------------------------
+    async def _qr(self) -> tuple[int, dict[str, str], bytes]:
+        """El código QR de VOXA (con su clave) para que otro celular de la casa lo escanee."""
+        from voxa import diagnostics
+
+        url = self.url(diagnostics.local_ip() or "127.0.0.1")
+        try:
+            process = await asyncio.create_subprocess_exec(
+                "qrencode", "-t", "SVG", "-m", "2", "-o", "-", url,
+                stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.DEVNULL,
+            )
+        except OSError:
+            return self._json(404, {"error": "falta qrencode"})
+        try:
+            svg, _ = await asyncio.wait_for(process.communicate(), 5)
+        except asyncio.TimeoutError:
+            process.kill()
+            return self._json(504, {"error": "qrencode tardó demasiado"})
+        if process.returncode != 0 or not svg.lstrip().startswith(b"<"):
+            return self._json(500, {"error": "qrencode falló"})
+        return 200, {"Content-Type": "image/svg+xml"}, svg
+
     def _state(self) -> dict:
         snapshot = self._service.display.snapshot()
         keys = ("phase", "heard", "answer", "timers", "music", "shopping", "recipe", "muted", "weather", "language")
@@ -271,6 +294,9 @@ class WebServer:
                 return await self._playlists(text)
             case "/api/playlists/poner":
                 return await self._play_playlist(str(data.get("uri") or "")[:100], str(data.get("nombre") or "")[:100])
+            case "/api/mostrar-qr":
+                service.show_phone_code(True)
+                return 200, {"ok": True}
             case "/api/como-va":
                 if data.get("borrar") is not True:
                     return 400, {"error": "¿qué hago?"}

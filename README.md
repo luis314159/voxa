@@ -191,7 +191,7 @@ voxa celular                          # la dirección para el celular (y el QR e
 voxa probar-activacion                # el nivel del micrófono y qué tan bien oye «Hey Voxa»
 ```
 
-**Lo demás se configura desde el celular.** Al arrancar sin configurar, la pantalla de la cocina muestra un código QR. Vuelve a salir con el botón «Abrir en el celular» (abajo en la pantalla), con «Hey Voxa, conecta mi celular» o con `voxa celular` en la terminal. En la misma PC, «Ajustes de VOXA» en el menú abre esa página en el navegador. Si el micrófono falla, basta con empezar a escribir en la pantalla de la cocina: Enter manda la orden. En la pestaña **Ajustes** están:
+**Lo demás se configura desde el celular.** Al arrancar sin configurar, la pantalla de la cocina muestra un código QR. Vuelve a salir con el botón «Abrir en el celular» (abajo en la pantalla), con «Hey Voxa, conecta mi celular», con `voxa celular` en la terminal o, desde un celular ya conectado, en Ajustes → «Otro celular». En la misma PC, «Ajustes de VOXA» en el menú abre esa página en el navegador. Si el micrófono falla, basta con empezar a escribir en la pantalla de la cocina: Enter manda la orden. En la pestaña **Ajustes** están:
 
 - **Pendientes**: lo mismo que `voxa revisar`, como lista.
 - **Voz de la familia**: «Grabar» guía a cada persona en la cocina para que VOXA la reconozca.
