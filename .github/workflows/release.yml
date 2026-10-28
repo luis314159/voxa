@@ -102,6 +102,9 @@ jobs:
           cierra la sesión y vuelve a entrar: la pantalla muestra un código para configurarla desde el celular.
           Se actualiza sola de madrugada.
 
+          Si sale «Failed to download package files» (errores 404), la lista de paquetes de la PC está vieja:
+          abre el Gestor de actualizaciones, dale «Actualizar» (o \`sudo apt update\`) y vuelve a abrir el \`.deb\`.
+
           **Con la terminal** (u otras distribuciones):
 
           \`\`\`bash

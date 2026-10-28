@@ -167,6 +167,7 @@ Sin `--simulado`, usa Spotify, Spotifast y PipeWire reales. Para configurarlos, 
 - Pide la contraseña una vez e instala lo necesario.
 - Al volver a entrar a la sesión, VOXA baja sola sus modelos de voz, con la huella de cada uno, y lo muestra en la pantalla. Después enseña el código para configurarla desde el celular.
 - Se actualiza sola de madrugada. «Hey Voxa, actualízate» lo hace al momento.
+- Si sale «Failed to download package files» (con errores 404), la lista de paquetes de la PC está vieja. Abre el Gestor de actualizaciones, dale «Actualizar» (o `sudo apt update` en la terminal) y vuelve a abrir el `.deb`.
 
 **Raspberry Pi (sin instalar nada):** cada versión trae una imagen de Raspberry Pi OS con VOXA ya instalada (`voxa-raspberrypi-X.Y.Z.img.xz`, para Raspberry Pi 4 y 5, en una tarjeta de 16 GB o más).
 
