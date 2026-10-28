@@ -54,3 +54,19 @@ def test_loudness_tells_silence_from_a_voice():
     voice = (3000 * np.sin(2 * np.pi * 220 * t)).astype(np.int16)
     assert loudness(np.zeros(1280, dtype=np.int16)) == 0.0
     assert loudness(voice) > 0.6
+
+
+def test_the_settings_open_in_this_pcs_browser(tmp_path, monkeypatch):
+    import webbrowser
+
+    from voxa.config import Config
+    from voxa.main import open_settings
+
+    opened = []
+    monkeypatch.setattr(webbrowser, "open", lambda url: opened.append(url) or True)
+    monkeypatch.setattr("voxa.main.shutil.which", lambda name: None)
+    config = Config(config_dir=tmp_path)
+    assert open_settings(config) == 1 and opened == []  # VOXA todavía no arranca
+    (tmp_path / "web_clave").write_text("abc123", encoding="utf-8")
+    assert open_settings(config) == 0
+    assert opened == ["http://127.0.0.1:8770/?k=abc123#ajustes"]

@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Ajustes de VOXA
+Name[en]=VOXA Settings
+Comment=Configura VOXA en esta PC: lo mismo que en el celular
+Exec=voxa ajustes
+Icon=voxa
+Terminal=false
+Categories=Settings;Utility;
+Keywords=configurar;spotify;clima;calendario;settings;

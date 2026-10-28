@@ -115,3 +115,15 @@ async def test_the_deb_updates_ytdlp_with_a_system_timer(tmp_path):
     tools = fake_tools(outputs={"systemctl is-enabled voxa-ytdlp.timer": "enabled"})
     findings = by_name(await run_checkup(tmp_path / "config.toml", tools))
     assert findings["voxa-ytdlp.timer"].status == OK
+
+
+async def test_the_microphone_volume(tmp_path):
+    async def volume(text):
+        tools = fake_tools(outputs={"wpctl get-volume @DEFAULT_AUDIO_SOURCE@": text})
+        return by_name(await run_checkup(tmp_path / "config.toml", tools))["Volumen del micrófono"]
+
+    assert (await volume("Volume: 0.70")).status == OK
+    assert (await volume("Volume: 1.53")).status == WARN
+    assert "rota" in (await volume("Volume: 1.53")).detail
+    assert (await volume("Volume: 0.10")).status == WARN
+    assert (await volume("Volume: 0.70 [MUTED]")).status == FAIL

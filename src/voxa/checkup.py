@@ -11,6 +11,7 @@ import asyncio
 import hashlib
 import importlib.util
 import os
+import re
 import shutil
 import sys
 from dataclasses import dataclass, field
@@ -132,6 +133,27 @@ def check_devices(config: Config, tools: Tools) -> list[Finding]:
         else:
             out.append(Finding(group, kind, OK, str(info["name"])))
     return out
+
+
+async def check_mic_volume(tools: Tools) -> list[Finding]:
+    """El volumen de entrada: silenciado, muy bajo, o tan alto que la voz llega rota."""
+    group, name = "Audio", "Volumen del micrófono"
+    try:
+        result = await tools.run(["wpctl", "get-volume", "@DEFAULT_AUDIO_SOURCE@"])
+    except (CommandNotFound, asyncio.TimeoutError):
+        return []
+    match = re.search(r"Volume:\s*([\d.]+)", result.stdout)
+    if match is None:
+        return []
+    volume = float(match.group(1))
+    fix = "Sonido → Entrada, cerca de 70 %  (o: wpctl set-volume @DEFAULT_AUDIO_SOURCE@ 0.7)"
+    if "MUTED" in result.stdout:
+        return [Finding(group, name, FAIL, "silenciado", "wpctl set-mute @DEFAULT_AUDIO_SOURCE@ 0")]
+    if volume > 1.0:
+        return [Finding(group, name, WARN, f"{volume:.0%}: tan alto que la voz llega rota", fix)]
+    if volume < 0.25:
+        return [Finding(group, name, WARN, f"{volume:.0%}: muy bajo, VOXA casi no oirá", fix)]
+    return [Finding(group, name, OK, f"{volume:.0%}")]
 
 
 async def check_bluetooth(tools: Tools) -> list[Finding]:
@@ -348,6 +370,7 @@ async def run_checkup(path: Path, tools: Tools | None = None) -> list[Finding]:
     findings += check_devices(config, tools)
     steps: list[Callable[[], Awaitable[list[Finding]]] | Callable[[], list[Finding]]] = [
         lambda: check_bluetooth(tools),
+        lambda: check_mic_volume(tools),
         lambda: check_wake(config, tools),
         lambda: check_music(config, tools),
         lambda: check_video(config, tools),

@@ -55,6 +55,10 @@ const HINTS_EN: [&str; 9] = [
     "«What song is this?»",
 ];
 
+/// El renglón para escribirle se cierra solo si nadie escribe en este tiempo.
+const TYPING_IDLE: Duration = Duration::from_secs(60);
+const TYPING_MAX_CHARS: usize = 200;
+
 pub struct Options {
     pub twenty_four_hours: bool,
     pub kiosk: bool,
@@ -95,6 +99,10 @@ pub struct VoxaApp {
     diagnostics: Option<DiagnosticsView>,
     /// El código QR del celular, calculado una vez por dirección.
     phone_qr: Option<(String, Option<widgets::Qr>)>,
+    /// Lo que se le está escribiendo con el teclado y desde cuándo no cambia.
+    typed: Option<(String, Instant)>,
+    /// Recién abierto: el renglón se dibuja quieto un cuadro (la tecla que lo abrió ya está adentro).
+    typed_fresh: bool,
 }
 
 fn epoch_now() -> f64 {
@@ -118,6 +126,8 @@ impl VoxaApp {
             clock_pressed: None,
             diagnostics: None,
             phone_qr: None,
+            typed: None,
+            typed_fresh: false,
         }
     }
 
@@ -183,8 +193,12 @@ impl eframe::App for VoxaApp {
             backgrounds.paint(&painter, rect, dim, veil);
         }
         if photo {
-            // Cualquier toque regresa la información (y no llega a ningún botón).
+            // Cualquier toque (o ponerse a escribir) regresa la información (y no llega a ningún botón).
             if ui.interact(rect, ui.scope_id().with("foto"), Sense::click()).clicked() {
+                self.send(Command::Photo { on: false });
+            }
+            self.typing(ui, &painter, &f, rect);
+            if self.typed_fresh {
                 self.send(Command::Photo { on: false });
             }
             self.night(ui, &painter, rect, &state);
@@ -265,6 +279,7 @@ impl eframe::App for VoxaApp {
         } else if let Some(url) = state.phone.clone() {
             self.phone_overlay(ui, &painter, &f, rect, &url);
         }
+        self.typing(ui, &painter, &f, rect);
 
         self.manage_cursor(ui);
         schedule_repaint(ui, &f, &state, self.backgrounds.as_ref());
@@ -748,6 +763,10 @@ impl VoxaApp {
             widgets::shadow_galley(painter, pos2(area.left(), y), galley, color);
             y += height + f.px(28.0);
         }
+        let typing = t("O escríbele con el teclado y pulsa Enter.", "Or type on the keyboard and press Enter.");
+        if y + f.px(40.0) <= area.bottom() {
+            widgets::shadow_text(painter, pos2(area.left(), y + f.px(8.0)), Align2::LEFT_TOP, typing, theme::regular(f.px(30.0)), theme::TEXT_DIM);
+        }
     }
 
     /// De noche, el primer toque solo enciende la pantalla: no pausa la música por accidente.
@@ -792,6 +811,72 @@ impl VoxaApp {
         }
     }
 
+    /// Sin micrófono (o sin ganas de hablar): cualquier letra abre un renglón para escribirle; Enter lo manda.
+    fn typing(&mut self, ui: &mut Ui, painter: &Painter, f: &Frame, rect: Rect) {
+        if self.diagnostics.is_some() {
+            return;
+        }
+        let Some((mut text, changed)) = self.typed.take() else {
+            let first: String = ui.input(|i| {
+                if i.modifiers.ctrl || i.modifiers.command || i.modifiers.alt {
+                    return String::new();
+                }
+                i.events.iter().filter_map(|e| if let egui::Event::Text(t) = e { Some(t.as_str()) } else { None }).collect()
+            });
+            if !first.trim().is_empty() {
+                self.typed = Some((first, Instant::now()));
+                self.typed_fresh = true;
+                ui.ctx().request_repaint();
+            }
+            return;
+        };
+        let (enter, escape) = ui.input(|i| (i.key_pressed(egui::Key::Enter), i.key_pressed(egui::Key::Escape)));
+        if escape || changed.elapsed() > TYPING_IDLE {
+            return;
+        }
+        if enter && !self.typed_fresh {
+            if !text.trim().is_empty() {
+                self.send(Command::Typed { text: text.trim().to_owned() });
+            }
+            return;
+        }
+
+        let card = Rect::from_center_size(pos2(rect.center().x, rect.bottom() - f.px(170.0)), vec2(f.px(1240.0), f.px(112.0)));
+        widgets::shadow_text(painter, pos2(card.left() + f.px(8.0), card.top() - f.px(14.0)), Align2::LEFT_BOTTOM,
+            t("Escríbele a VOXA y pulsa Enter · Esc para cancelar", "Type to VOXA and press Enter · Esc to cancel"),
+            theme::regular(f.px(28.0)), theme::TEXT_DIM);
+        let radius = CornerRadius::same(f.px(28.0) as u8);
+        painter.rect_filled(card, radius, theme::lerp(theme::BG, theme::CARD, 0.9));
+        painter.rect_stroke(card, radius, egui::Stroke::new(f.px(3.0), theme::CYAN), egui::StrokeKind::Inside);
+        let inner = card.shrink2(vec2(f.px(40.0), f.px(18.0)));
+        let font = theme::regular(f.px(46.0));
+        let id = ui.make_persistent_id("escribir-a-voxa");
+        if self.typed_fresh {
+            // La tecla que lo abrió ya está en el texto: la caja empieza el siguiente cuadro, con el cursor al final.
+            self.typed_fresh = false;
+            let mut state = egui::text_edit::TextEditState::load(ui.ctx(), id).unwrap_or_default();
+            let end = egui::text::CCursor::new(text.chars().count());
+            state.cursor.set_char_range(Some(egui::text::CCursorRange::one(end)));
+            state.store(ui.ctx(), id);
+            painter.text(inner.left_center(), Align2::LEFT_CENTER, &text, font, theme::TEXT);
+            ui.ctx().request_repaint();
+            self.typed = Some((text, changed));
+            return;
+        }
+        let edit = egui::TextEdit::singleline(&mut text)
+            .id(id)
+            .font(font)
+            .text_color(theme::TEXT)
+            .frame(egui::Frame::NONE)
+            .desired_width(inner.width())
+            .char_limit(TYPING_MAX_CHARS);
+        let response = ui.put(inner, edit);
+        response.request_focus();
+        let changed = if response.changed() { Instant::now() } else { changed };
+        ui.ctx().request_repaint_after(Duration::from_millis(500));
+        self.typed = Some((text, changed));
+    }
+
     /// Abajo, discreto: vuelve a mostrar el código QR (sin tener que hablarle).
     fn phone_button(&mut self, ui: &mut Ui, painter: &Painter, f: &Frame, bottom_left: Pos2) {
         let label = t("Abrir en el celular", "Open on your phone");
@@ -828,7 +913,8 @@ impl VoxaApp {
             (t("En «Ajustes» se configuran Spotify, el clima, el calendario y más.",
                "In «Settings» you set up Spotify, the weather, the calendar and more."), theme::TEXT_DIM),
             (host, theme::TEXT_DIM),
-            (t("Toca para cerrar", "Tap to close"), theme::TEXT_DIM),
+            (t("En esta PC: menú → «Ajustes de VOXA». Toca para cerrar.",
+               "On this PC: menu → «VOXA Settings». Tap to close."), theme::TEXT_DIM),
         ];
         let mut y = center.y + f.px(330.0);
         for (text, color) in lines {

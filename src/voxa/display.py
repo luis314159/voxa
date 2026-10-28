@@ -7,7 +7,8 @@ Protocolo: JSON, un mensaje por línea, sobre TCP en 127.0.0.1 (nunca hacia fuer
   la pantalla cuenta los segundos por su cuenta, sin un mensaje por segundo.
   También van el clima, los problemas («Sin internet») y si el micrófono está apagado.
 - Pantalla → VOXA: ``{"type": "talk"}`` (tocar el anillo), ``{"type": "say", "text": "pausa"}``
-  (botones de música: misma ruta que una orden hablada), ``{"type": "cancel_timer", "id": 3}``,
+  (botones de música: misma ruta que una orden hablada), ``{"type": "typed", "text": "…"}``
+  (una orden escrita con el teclado), ``{"type": "cancel_timer", "id": 3}``,
   ``{"type": "stop_alarm"}``, ``{"type": "mute", "on": true}``, ``{"type": "photo", "on": true}``
   (solo la foto de fondo, sin información) y ``{"type": "diagnostics"}``,
   que VOXA contesta solo a esa pantalla con ``{"type": "diagnostics", ...}``.
@@ -356,6 +357,8 @@ class DisplayServer:
             action = commands.talk()
         elif kind == "say" and isinstance(message.get("text"), str) and message["text"].strip():
             action = commands.handle_text(message["text"].strip()[:_MAX_SAY_CHARS], button=True)
+        elif kind == "typed" and isinstance(message.get("text"), str) and message["text"].strip():
+            action = commands.handle_text(message["text"].strip()[:_MAX_SAY_CHARS])  # como si se dijera
         elif kind == "cancel_timer" and isinstance(message.get("id"), int):
             action = commands.cancel_timer(message["id"])
         elif kind == "stop_alarm":

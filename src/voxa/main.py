@@ -207,26 +207,33 @@ async def probe_wake_word(config: Config, threshold: float | None, path: Path | 
     print("Cada segundo sale cuánto oye el micrófono; al decir «Hey Voxa», qué tan seguro está.")
     async with Microphone(_device(config.voice.input_device)) as mic:
         started = last = heard = time.monotonic()
-        level, warned = 0.0, False
+        level, warned, clipped, clipped_seconds = 0.0, False, False, 0
         while True:
             frame = await mic.read()
             level = max(level, loudness(frame))
+            clipped = clipped or int(abs(frame.astype("int32")).max()) >= _CLIP
             detected = detector.feed(frame)
             if detected or detector.last_score >= 0.1:
                 show(time.monotonic() - started, detected)
             now = time.monotonic()
             if now - last >= 1.0:
-                print(f"{now - started:7.2f}s micrófono {'▮' * round(level * 20):<20}|", flush=True)
+                mark = "  ← satura" if clipped else ""
+                print(f"{now - started:7.2f}s micrófono {'▮' * round(level * 20):<20}|{mark}", flush=True)
+                clipped_seconds += clipped
+                if clipped_seconds == 3:
+                    print("El micrófono satura (la voz llega rota): en Sonido → Entrada bájale a 70 %;"
+                          " si sigue, en «alsamixer» (F4) baja «Mic Boost».", flush=True)
                 if level >= _QUIET:
                     heard = now
                 elif now - heard >= 8 and not warned:
                     warned = True
                     print("Casi no oigo nada: en Sonido → Entrada, elige el micrófono y súbele el volumen.", flush=True)
-                level, last = 0.0, now
+                level, last, clipped = 0.0, now, False
             await asyncio.sleep(0)
 
 
 _QUIET = 0.3  # por debajo, ni la voz de cerca: el micrófono equivocado o sin volumen
+_CLIP = 32000  # muestras al tope: la voz llega recortada (se oye rota)
 
 
 def loudness(frame) -> float:
@@ -235,6 +242,23 @@ def loudness(frame) -> float:
 
     rms = float(np.sqrt(np.mean(np.square(frame.astype(np.float32))))) / 32768
     return min(1.0, max(0.0, (20 * math.log10(rms + 1e-9) + 60) / 60))
+
+
+def open_settings(config: Config) -> int:
+    """Los Ajustes de VOXA en el navegador de esta PC: la misma página que en el celular."""
+    from voxa.settings import read_secret
+
+    key = read_secret(config.web_key_path)
+    if not config.web.enabled or key is None:
+        message = "VOXA todavía no arranca (o su página está apagada: enabled en [web])."
+        print(message)
+        if shutil.which("notify-send"):  # desde el menú no hay terminal donde leerlo
+            subprocess.run(["notify-send", "Ajustes de VOXA", message], check=False)
+        return 1
+    url = f"http://127.0.0.1:{config.web.port}/?k={key}#ajustes"
+    if not webbrowser.open(url):
+        print(f"Ábrelo en el navegador:\n  {url}")
+    return 0
 
 
 async def show_phone(config: Config) -> int:
@@ -558,6 +582,7 @@ def main(argv: list[str] | None = None) -> int:
     record.add_argument("--veces", type=int, default=8)
     record.add_argument("--platica", type=int, default=30, metavar="SEGUNDOS", help="segundos de plática normal")
     sub.add_parser("entrenar-verificador", help="entrena el verificador familiar con las grabaciones")
+    sub.add_parser("ajustes", help="abre los Ajustes de VOXA en el navegador de esta PC (lo mismo que en el celular)")
     sub.add_parser("celular", help="cómo abrir VOXA en el celular: la dirección, y el código QR en la pantalla")
     sub.add_parser("revisar", help="revisa la instalación y dice qué falta y cómo arreglarlo")
     how = sub.add_parser("como-va", help="cómo va VOXA: órdenes entendidas, activaciones falsas, tiempos")
@@ -598,6 +623,8 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.command == "celular":
         return asyncio.run(show_phone(config))
+    if args.command == "ajustes":
+        return open_settings(config)
     if args.command == "preparar":
         from voxa.prepare import prepare
 

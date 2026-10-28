@@ -52,6 +52,7 @@ jobs:
           voxa --version
           test -x /opt/voxa/venv/bin/yt-dlp
           systemctl --global is-enabled voxa.service
+          test -f /usr/share/applications/voxa-ajustes.desktop && test -f /usr/share/icons/hicolor/scalable/apps/voxa.svg
           systemctl is-enabled voxa-actualizar.timer voxa-ytdlp.timer
           # Baja los modelos de verdad: así se revisan las huellas fijadas en voxa/prepare.py.
           voxa preparar || true

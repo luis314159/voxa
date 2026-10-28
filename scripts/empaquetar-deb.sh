@@ -40,6 +40,9 @@ for unidad in voxa-actualizar.service voxa-actualizar.timer voxa-actualizar.path
   install -D -m 644 "$fuente/$unidad" "$raiz/usr/lib/systemd/system/$unidad"
 done
 install -D -m 644 "$REPO/deploy/autostart/voxa-ui.desktop" "$raiz/etc/xdg/autostart/voxa-ui.desktop"
+# En el menú: «VOXA» abre la pantalla y «Ajustes de VOXA», la página de ajustes en esta PC.
+install -D -m 644 -t "$raiz/usr/share/applications" "$REPO/deploy/applications/voxa.desktop" "$REPO/deploy/applications/voxa-ajustes.desktop"
+install -D -m 644 "$REPO/assets/brand/voxa_icon.svg" "$raiz/usr/share/icons/hicolor/scalable/apps/voxa.svg"
 install -D -m 644 "$fuente/50-voxa.rules" "$raiz/usr/share/polkit-1/rules.d/50-voxa.rules"
 # La licencia (AGPL-3.0) y lo que tiene la suya propia, donde Debian los busca.
 install -D -m 644 "$REPO/LICENSE" "$raiz/usr/share/doc/voxa/copyright"

@@ -281,6 +281,8 @@ pub enum Command {
     Talk,
     /// Igual que decir la orden en voz alta.
     Say { text: String },
+    /// Una orden escrita con el teclado (cuenta como hablada: en el idioma de la casa).
+    Typed { text: String },
     CancelTimer { id: u64 },
     StopAlarm,
     /// Apagar o encender el micrófono.
@@ -408,6 +410,7 @@ mod tests {
         assert_eq!(Command::StopAlarm.to_line(), "{\"type\":\"stop_alarm\"}\n");
         assert_eq!(Command::Mute { on: true }.to_line(), "{\"type\":\"mute\",\"on\":true}\n");
         assert_eq!(Command::Photo { on: false }.to_line(), "{\"type\":\"photo\",\"on\":false}\n");
+        assert_eq!(Command::Typed { text: "hola".into() }.to_line(), "{\"type\":\"typed\",\"text\":\"hola\"}\n");
         assert_eq!(Command::Diagnostics.to_line(), "{\"type\":\"diagnostics\"}\n");
     }
 }

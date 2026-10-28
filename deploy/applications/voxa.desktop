@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=VOXA
+Comment=Abre la pantalla de cocina de VOXA
+Exec=sh -c "systemctl --user start voxa.service; systemctl --user import-environment DISPLAY WAYLAND_DISPLAY XAUTHORITY && systemctl --user restart voxa-ui.service"
+Icon=voxa
+Terminal=false
+Categories=Utility;
+Keywords=asistente;voz;cocina;assistant;voice;kitchen;

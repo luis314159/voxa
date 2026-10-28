@@ -129,16 +129,17 @@ async def test_server_sends_state_and_receives_commands():
             b'{"type": "say", "text": "  pausa  "}\nno es json\n[1, 2]\n{"type": "talk"}\n'
             b'{"type": "cancel_timer", "id": "3"}\n{"type": "cancel_timer", "id": 3}\n{"type": "stop_alarm"}\n'
             b'{"type": "mute", "on": 1}\n{"type": "mute", "on": true}\n'
+            b'{"type": "typed", "text": " que hora es "}\n{"type": "typed", "text": "  "}\n'
         )
         await writer.drain()
         display.phase("listening")
         update = json.loads(await asyncio.wait_for(reader.readline(), 2))
         assert update["phase"] == "listening"
         for _ in range(50):
-            if len(commands.calls) == 5:
+            if len(commands.calls) == 6:
                 break
             await asyncio.sleep(0.01)
-        assert commands.calls == ["say:pausa", "talk", "cancel:3", "stop", "mute:True"]
+        assert commands.calls == ["say:pausa", "talk", "cancel:3", "stop", "mute:True", "text:que hora es"]
 
         writer.write(b'{"type": "diagnostics"}\n')
         report = json.loads(await asyncio.wait_for(reader.readline(), 2))
